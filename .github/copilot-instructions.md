@@ -1,7 +1,7 @@
 # Project general coding guidelines
 
 ## Code Scope
-- Codebase-wide edits should be limited to files and folders within ./FlexCNN_Medical_Physics/FlexCNN_for_Medical_Physics/
+- Codebase-wide edits should be limited to files and folders within ./FlexCNN_Medical_Physics/
 
 ## Code Structure
 Python package (FlexCNN_for_Medical_Physics) is installed and used from within a single jupyter notebook.
