@@ -15,6 +15,11 @@ git config --global user.name "%GITHUB_USER%"
 git config --global user.email "%GITHUB_EMAIL%"
 
 :: Generate SSH key if it doesn't exist
+
+if not exist "%USERPROFILE%\.ssh" (
+    mkdir "%USERPROFILE%\.ssh"
+)
+
 if not exist "%USERPROFILE%\.ssh\id_ed25519" (
     echo Generating new SSH key...
     ssh-keygen -t ed25519 -f "%USERPROFILE%\.ssh\id_ed25519" -N ""
@@ -34,31 +39,6 @@ echo Testing SSH connection to GitHub...
 ssh -T git@github.com
 pause
 
-:: ==============================
-:: Google Drive folder setup
-:: ==============================
-set SYNC_CFG_DIR=%USERPROFILE%\.my_sync_settings
-set SYNC_CFG_FILE=%SYNC_CFG_DIR%\drive_path.cfg
 
-if not exist "%SYNC_CFG_DIR%" mkdir "%SYNC_CFG_DIR%"
-
-:: Prompt for Google Drive folder until valid
-:ASK_DRIVE
-echo Enter the full path to your Google Drive folder where the notebook should be copied:
-set /p DRIVE_PATH="Google Drive folder path: "
-
-:: Validate folder exists
-if not exist "%DRIVE_PATH%" (
-    echo ERROR: The folder "%DRIVE_PATH%" does not exist!
-    echo Please make sure Google Drive is installed and the folder exists.
-    echo.
-    goto ASK_DRIVE
-)
-
-:: Save validated path
-echo %DRIVE_PATH% > "%SYNC_CFG_FILE%"
-echo Google Drive path saved to %SYNC_CFG_FILE%.
-echo.
-
-echo Machine setup complete! Git, SSH, and notebook sync path are ready.
+echo Machine setup complete!
 pause
