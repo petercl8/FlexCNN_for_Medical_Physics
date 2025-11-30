@@ -1,2 +1,2 @@
 def test_func():
-    return "This is a test function."
+    return "This is a test function!"
