@@ -133,7 +133,7 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
             checkpoint_config=air.CheckpointConfig(
                 num_to_keep=10,         # Maximum number of checkpoints that are kept per run.
                 checkpoint_score_attribute=optim_metric,  # Determines which checkpoints are kept on disk.
-                checkpoint_score_order=min_max)
+                checkpoint_score_order=min_max),
             stop={'training_iteration': tune_max_t},  # When using the FIFO scheduler, we must explicitly specify the stopping criterian.
         )
 
