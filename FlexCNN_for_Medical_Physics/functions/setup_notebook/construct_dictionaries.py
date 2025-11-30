@@ -3,6 +3,7 @@ import os
 def construct_config(
     run_mode,
     network_opts,
+    tune_opts,
     test_opts,
     viz_opts,
     config_SUP_SI=None,
@@ -24,6 +25,7 @@ def construct_config(
     Args:
         run_mode: 'tune', 'train', 'test', or 'visualize'
         network_opts: dict with keys: network_type, train_SI, image_size, sino_size, image_channels, sino_channels
+        tune_opts: dict with keys: tune_debug, etc.
         test_opts: dict with keys: test_batch_size, etc.
         viz_opts: dict with keys: visualize_batch_size, etc.
         config_SUP_SI, config_SUP_IS, etc.: Network configuration dictionaries
@@ -41,7 +43,7 @@ def construct_config(
     sino_channels = network_opts['sino_channels']
 
     # Combine dictionaries based on run_mode and network_type
-    if run_mode in ['train', 'test', 'visualize', 'none']:
+    if run_mode in ['train', 'test', 'visualize', 'none'] or tune_opts.get('tune_force_fixed_config')==True:
         if network_type == 'SUP':
             config = config_SUP_SI if train_SI else config_SUP_IS
         elif network_type == 'GAN':
@@ -214,7 +216,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['tune_batches_per_report'] = tune_opts.get('tune_batches_per_report')
         settings['tune_examples_per_report'] = tune_opts.get('tune_examples_per_report')
         settings['tune_augment'] = tune_opts['tune_augment']
-            settings['tune_debug'] = tune_opts.get('tune_debug', False)
+        settings['tune_debug'] = tune_opts.get('tune_debug', False)
 
     elif run_mode == 'train':
         settings['augment'] = train_opts['train_augment']

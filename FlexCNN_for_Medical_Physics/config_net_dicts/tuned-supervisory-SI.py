@@ -33,13 +33,13 @@ config_SUP_SI = {
   "gen_b1": 0.2082092731474774,
   "gen_b2": 0.27147903136187507,
   "gen_lr": 0.0005481469822215635,
-  "sup_criterion": nn.MSELoss(),
-  "sino_size":180,
-  "sino_channels": 3,
-  "image_channels":1,
-  "image_size":90,
+  "network_type": "SUP",
   "train_SI": True,
-  "network_type": "SUP"
+  "sup_criterion": nn.MSELoss(),
+  "image_size":90,
+  "sino_size":180,
+  "image_channels":1,
+  "sino_channels": 3
   }
 
 '''
