@@ -125,8 +125,7 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         )
     else:
         scheduler = FIFOScheduler()     # First in/first out scheduler
-        run_config = train.RunConfig(
-            stop={'training_iteration': tune_max_t},  # When using the FIFO scheduler, we must explicitly specify the stopping criterian.
+        run_config = air.RunConfig(
             name=tune_exp_name,         # Ray checkpoints saved to this file, relative to tune_storage_dirPath
             storage_path=tune_storage_dirPath,     # Local directory
             progress_reporter=reporter,
@@ -135,21 +134,8 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
                 num_to_keep=10,         # Maximum number of checkpoints that are kept per run.
                 checkpoint_score_attribute=optim_metric,  # Determines which checkpoints are kept on disk.
                 checkpoint_score_order=min_max)
+            stop={'training_iteration': tune_max_t},  # When using the FIFO scheduler, we must explicitly specify the stopping criterian.
         )
-        '''
-        run_config=train.RunConfig(       # How to perform the run
-            name=tune_exp_name,              # Ray checkpoints saved to this file, relative to tune_storage_dirPath
-            storage_path=tune_storage_dirPath,     # Local directory
-            progress_reporter=reporter,
-            failure_config=air.FailureConfig(fail_fast=False), # default = False
-            checkpoint_config=air.CheckpointConfig(
-                num_to_keep=10,         # Maximum number of checkpoints that are kept per run.
-                checkpoint_score_attribute=optim_metric,  # Determines which checkpoints are kept on disk.
-                checkpoint_score_order=min_max,
-                stop={"time_total_s": 5})
-            #    stop={"training_iteration": tune_max_t}) # The FIFO scheduler does not have a stopping criterian, so this stops the trial.
-            )
-        '''
 
     ## HyperOpt Search Algorithm ##
     # If the user has requested a fixed config for debugging (no tunable params), disable the searcher
