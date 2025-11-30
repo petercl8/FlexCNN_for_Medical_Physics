@@ -119,8 +119,8 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
         return image_multChannel, sinogram_multChannel
 
     ## Select Data, Convert to Pytorch Tensors ##
-    image_multChannel = torch.from_numpy(image_array[index,:]) # image_multChannel.shape = (C, X, Y)
-    sinogram_multChannel = torch.from_numpy(sino_array[index,:]) # sinogram_multChannel.shape = (C, X, Y)
+    image_multChannel = torch.from_numpy(image_array[index,:]).float() # image_multChannel.shape = (C, X, Y)
+    sinogram_multChannel = torch.from_numpy(sino_array[index,:]).float() # sinogram_multChannel.shape = (C, X, Y)
 
     ## Run Data Augmentation on Selected Data. ##
     if augment==True:
@@ -169,7 +169,10 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
         sino_out = sinogram_multChannel_resize               # Keeps full sinogram with all channels
 
     # Returns both original and altered sinograms and images, assigned to CPU or GPU
-    return sinogram_multChannel.to(device), IS_scale*sino_out.to(device), image_multChannel.to(device), SI_scale*image_out.to(device)
+    sino_scaled = IS_scale * sino_out if IS_normalize else sino_out
+    image_scaled = SI_scale * image_out if SI_normalize else image_out
+
+    return sinogram_multChannel.to(device), sino_scaled.to(device), image_multChannel.to(device), image_scaled.to(device)
 
 
 class NpArrayDataSet(Dataset):
