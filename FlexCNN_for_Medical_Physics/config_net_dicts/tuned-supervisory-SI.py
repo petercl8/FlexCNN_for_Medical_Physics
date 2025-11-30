@@ -15,6 +15,35 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 ### Below networks were tuned on whole dataset ###
 # 1x90x90, Tuned for MSE - fc6 #
 
+
+# 1x90x90, Tuned for Local Distributions Metric, 10x10 window, stride 8 (b5c)
+config_SUP_SI={
+  "SI_dropout": False,
+  "SI_exp_kernel": 4,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": None,
+  "SI_gen_hidden_dim": 9,
+  "SI_gen_mult": 2.1547197646081444,
+  "SI_gen_neck": 5,
+  "SI_gen_z_dim": 344,
+  "SI_layer_norm": "batch",
+  "SI_normalize": False,
+  "SI_pad_mode": "zeros",
+  "SI_scale": 8100,
+  "batch_size": 47,
+  "gen_b1": 0.31108788447029295,
+  "gen_b2": 0.3445239707919786,
+  "gen_lr": 0.0007561178182660596,
+  "sup_criterion": nn.L1Loss()
+  "sino_size":180,
+  "sino_channels": 3,
+  "image_channels":1,
+  "image_size":90,
+  "train_SI": True
+}
+
+
+'''
 # 3x180x180 --> 1x90x90, Tuned for SSIM 
 config_SUP_SI = {
   "SI_dropout": False,
@@ -41,7 +70,7 @@ config_SUP_SI = {
   "image_channels":1,
   "sino_channels": 3
   }
-
+'''
 '''
 # 3x90x90 --> 1x90x90, Tuned for SSIM 
 config_SUP_SI = {
@@ -91,33 +120,6 @@ config_SUP_SI={
   "gen_b2": 0.1207854128656507,
   "gen_lr": 0.0001095057659925285,
   "sup_criterion": nn.BCEWithLogitsLoss()
-  "sino_size":180,
-  "sino_channels": 3,
-  "image_channels":1,
-  "image_size":90,
-  "train_SI": True
-}
-'''
-'''
-# 1x90x90, Tuned for Local Distributions Metric, 10x10 window, stride 8 (b5c)
-config_SUP_SI={
-  "SI_dropout": False,
-  "SI_exp_kernel": 4,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": None,
-  "SI_gen_hidden_dim": 9,
-  "SI_gen_mult": 2.1547197646081444,
-  "SI_gen_neck": 5,
-  "SI_gen_z_dim": 344,
-  "SI_layer_norm": "batch",
-  "SI_normalize": False,
-  "SI_pad_mode": "zeros",
-  "SI_scale": 8100,
-  "batch_size": 47,
-  "gen_b1": 0.31108788447029295,
-  "gen_b2": 0.3445239707919786,
-  "gen_lr": 0.0007561178182660596,
-  "sup_criterion": nn.L1Loss()
   "sino_size":180,
   "sino_channels": 3,
   "image_channels":1,
