@@ -34,7 +34,7 @@ config_SUP_SI={
   "gen_b1": 0.31108788447029295,
   "gen_b2": 0.3445239707919786,
   "gen_lr": 0.0007561178182660596,
-  "sup_criterion": nn.L1Loss()
+  "sup_criterion": nn.L1Loss(),
   "sino_size":180,
   "sino_channels": 3,
   "image_channels":1,
