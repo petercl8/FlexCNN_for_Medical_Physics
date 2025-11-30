@@ -5,7 +5,7 @@
 
 ## Code Structure
 Python package (FlexCNN_for_Medical_Physics) is installed and used from within a single jupyter notebook.
-This notebook is located here: ./FlexCNN_Medical_Physics/context_only/stitching_notebook.ipynb
+This notebook is located here: ./FlexCNN_Medical_Physics/stitching_notebook.ipynb
   Use this notebook (./FlexCNN_Medical_Physics/stitching_notebook.ipynb) to understand how different modules and functions interact.
 
 ## Code Style
