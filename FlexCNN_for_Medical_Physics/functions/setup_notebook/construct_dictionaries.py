@@ -214,7 +214,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['tune_batches_per_report'] = tune_opts.get('tune_batches_per_report')
         settings['tune_examples_per_report'] = tune_opts.get('tune_examples_per_report')
         settings['tune_augment'] = tune_opts['tune_augment']
-            settings['tune_debug'] = tune_opts.get('tune_debug', False)
+        settings['tune_debug'] = tune_opts.get('tune_debug', False)
 
     elif run_mode == 'train':
         settings['augment'] = train_opts['train_augment']
