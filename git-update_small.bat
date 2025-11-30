@@ -8,6 +8,9 @@ if %errorlevel%==1 (
 ) else (
     echo No changes to commit.
 )
-git push origin main
 
-echo Update complete!
+:: Force push to remote to avoid pull/reject issues
+git push --force origin main
+
+echo ✅ Update complete!
+pause

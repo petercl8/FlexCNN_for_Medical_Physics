@@ -1,18 +1,14 @@
 @echo off
 REM ===============================
-REM Git rollback helper
+REM Git rollback helper (single developer)
 REM ===============================
 
-REM --- Config ---
 setlocal enabledelayedexpansion
 
-REM The branch to operate on
+REM --- Config ---
 set BRANCH=main
 
-REM --- Step 0: Disable Git pager for script ---
-set GIT_PAGER=
-
-REM --- Step 1: Make sure we're on the target branch ---
+REM --- Step 1: Make sure we're on the branch ---
 git checkout %BRANCH%
 if errorlevel 1 (
     echo ❌ Failed to checkout %BRANCH%.
@@ -24,11 +20,6 @@ REM --- Step 2: Backup current branch ---
 set BACKUP_BRANCH=backup_before_rollback_%DATE:~10,4%%DATE:~4,2%%DATE:~7,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%
 echo Creating backup branch !BACKUP_BRANCH! ...
 git branch !BACKUP_BRANCH!
-if errorlevel 1 (
-    echo ❌ Failed to create backup branch.
-    pause
-    exit /b
-)
 git push origin !BACKUP_BRANCH!
 echo ✅ Backup branch created and pushed.
 
@@ -43,28 +34,11 @@ set /p TARGET_HASH=Enter the commit hash to rollback to:
 
 REM --- Step 5: Reset local branch ---
 git reset --hard %TARGET_HASH%
-if errorlevel 1 (
-    echo ❌ Failed to reset branch.
-    pause
-    exit /b
-)
 echo ✅ Branch reset to %TARGET_HASH%.
 
-REM --- Step 6: Push reset to remote ---
-echo.
-echo Do you want to force push this rollback to remote? (Y/N)
-set /p PUSH_CONFIRM=
-if /i "%PUSH_CONFIRM%"=="Y" (
-    git push --force origin %BRANCH%
-    if errorlevel 1 (
-        echo ❌ Failed to push rollback to remote.
-        pause
-        exit /b
-    )
-    echo ✅ Rollback pushed to remote.
-) else (
-    echo Rollback not pushed. You can push manually later if desired.
-)
+REM --- Step 6: Force push to remote ---
+git push --force origin %BRANCH%
+echo ✅ Rollback pushed to remote.
 
 echo.
 echo ✅ Rollback complete.

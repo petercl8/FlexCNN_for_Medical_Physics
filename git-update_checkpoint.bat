@@ -1,6 +1,5 @@
 @echo off
-:: ===== Checkpoint Update =====
-:: cd C:\path\to\modules-FNA
+:: ===== Checkpoint Update (safe for single-developer workflow) =====
 
 :: Stage all changes
 git add .
@@ -9,10 +8,11 @@ git add .
 set /p msg=Enter checkpoint commit message: 
 if "%msg%"=="" set msg=Checkpoint update
 
-:: Commit
-git commit -m "%msg%" 2>nul || echo No changes to commit.
+:: Commit (ignore if nothing changed)
+git commit -m "%msg%" 2>nul || echo Nothing to commit.
 
-:: Push to remote
-git push origin main
+:: Force push local main to remote
+git push --force origin main
 
-echo Checkpoint changes pushed to GitHub.
+echo ✅ Checkpoint changes pushed to GitHub.
+pause

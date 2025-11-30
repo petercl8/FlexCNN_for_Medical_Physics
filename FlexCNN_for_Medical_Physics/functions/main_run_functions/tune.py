@@ -152,7 +152,12 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         '''
 
     ## HyperOpt Search Algorithm ##
-    search_alg = HyperOptSearch(metric=optim_metric, mode=min_max)  # It's also possible to pass the search space directly to the search algorithm here.
+    # If the user has requested a fixed config for debugging (no tunable params), disable the searcher
+    use_fixed_config = tune_opts.get('tune_force_fixed_config', tune_opts.get('use_fixed_config', False))
+    if use_fixed_config:
+        search_alg = None
+    else:
+        search_alg = HyperOptSearch(metric=optim_metric, mode=min_max)  # It's also possible to pass the search space directly to the search algorithm here.
                                                                     # But then the search space needs to be defined in terms of the specific search algorithm methods, rather than letting RayTune translate.
 
     ## Which trainable do you want to use? ##
@@ -171,12 +176,15 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     ## If starting from scratch ##
     if tune_restore == False:
 
+        # When debugging with a fixed config, run a single sample and don't use a searcher
+        num_samples = 1 if use_fixed_config else -1
+
         # Initialize a blank tuner object
         tuner = tune.Tuner(
             trainable_with_resources,       # The objective function w/ resources
             param_space=config,             # Let RayTune know what parameter space (dictionary) to search over.
             tune_config=tune.TuneConfig(    # How to perform the search
-                num_samples=-1,
+                num_samples=num_samples,
                 time_budget_s=tune_minutes * 60,  # time_budget is in seconds
                 scheduler=scheduler,
                 search_alg=search_alg,
