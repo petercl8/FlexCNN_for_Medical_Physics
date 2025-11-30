@@ -236,7 +236,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['show_times'] = test_opts['test_show_times']
         settings['sample_division'] = test_opts.get('test_sample_division', 1)
         settings['test_display_step'] = test_opts['test_display_step']
-        settings['test_batch_size'] = test_opts['test_batch_size']
+        #settings['test_batch_size'] = test_opts['test_batch_size']
     
     elif run_mode in ['visualize', 'none']:
         settings['augment'] = False
@@ -247,7 +247,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['show_times'] = False
         settings['offset'] = viz_opts['visualize_offset']
         settings['sample_division'] = 1
-        settings['visualize_batch_size'] = viz_opts['visualize_batch_size']
+        #settings['visualize_batch_size'] = viz_opts['visualize_batch_size']
     else:
         raise ValueError(f"Unknown run_mode: {run_mode}")
     
