@@ -3,6 +3,7 @@ import os
 import time
 import torch
 import pandas as pd
+import logging
 from torch.utils.data import DataLoader
 
 from FlexCNN_for_Medical_Physics.classes.generators import Generator
@@ -37,6 +38,10 @@ from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
     get_tune_session
 )
 
+# Module logger for optional Tune debug output
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 def run_SUP(config, paths, settings):
     """
@@ -61,6 +66,10 @@ def run_SUP(config, paths, settings):
     # Core settings
     run_mode = settings['run_mode']
     device = settings['device']
+    tune_debug = settings.get('tune_debug', False)
+    if tune_debug:
+        logger.setLevel(logging.DEBUG)
+        logger.debug(f"[TUNE_DEBUG] Entering run_SUP; initial device request: {device}")
     train_SI = config['train_SI']
     image_size = config['image_size']
     sino_size = config['sino_size']
@@ -176,6 +185,18 @@ def run_SUP(config, paths, settings):
                 gen_loss = sup_criterion(CNN_output, target)
                 gen_loss.backward()
                 gen_opt.step()
+
+                # Optional per-step debug logging for Tune runs
+                if tune_debug:
+                    try:
+                        param_norm = sum(p.detach().norm().item() for p in gen.parameters())
+                    except Exception:
+                        param_norm = float('nan')
+                    try:
+                        grad_norm = sum(p.grad.detach().norm().item() for p in gen.parameters() if p.grad is not None)
+                    except Exception:
+                        grad_norm = float('nan')
+                    logger.debug(f"[TUNE_DEBUG] epoch={epoch} batch_step={batch_step} loss={gen_loss.item():.6f} param_norm={param_norm:.6f} grad_norm={grad_norm:.6f} device={device}")
 
                 # Keep track of the average generator loss
                 mean_gen_loss += gen_loss.item() / display_step
