@@ -36,7 +36,7 @@ config_CYCLEGAN={ # Works, yeah! ("4a92")
     "SI_layer_norm": "batch",
     "SI_normalize": True,
     "SI_pad_mode": "reflect",
-    "SI_scale": 1400,
+    "SI_scale_fixed": 1400,
     "batch_size": 91,
     "cycle_criterion": nn.MSELoss(),
     "gen_adv_criterion": nn.MSELoss(),
@@ -104,7 +104,7 @@ config={ # Symmetrize == FALSE (final activations don't match). This was the bes
     "SI_gen_mult": 3,
     "SI_gen_z_dim": 1195,                 # Represents an 8x drop in information into narrowest part of neck
     "SI_normalize": True, # True
-    "SI_scale": 1400,
+    "SI_scale_fixed": 1400,
 
     'SI_layer_norm': 'batch',
     'SI_pad_mode': 'reflect',

@@ -13,14 +13,15 @@ from ray import tune
 # --- Begin replacement for config_RAY_SI (flattened, dependent choices) ---
 config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     ## Data Loading ##
+
+    'SI_normalize': False,
     #'SI_normalize': tune.choice([True, False]),                # Normalize dataloader outputs and outputs of generator? If so, the pixel values 
                                                                 # in the image all add up to 1. Only normalize if you don't care about quantitative reconstructions.
-    'SI_normalize': tune.choice([True, False]),                 # Normalize dataloader outputs and outputs of generator? If so, the pixel values 
-                                                                # in the image all add up to 1. Only normalize if you don't care about quantitative reconstructions.
-    'SI_scale': 90*90,                                          # If normalizing the pixel images, multiply images by this value. Otherwise, this is not used.
+    'SI_scale_fixed': 90*90,                                    # If normalizing the pixel images, multiply images by this value. Otherwise, this is not used.
                                                                 # The pixel values will then add up to this number.
-    'SI_output_scale_learnable': tune.choice([True, False]),
-    'SI_output_scale_init': tune.loguniform(1e-6, 1e3),  # initial guess for learned multiplier
+    'SI_output_scale_learnable': True,
+    #'SI_output_scale_learnable': tune.choice([True, False]),
+    'SI_output_scale_init': tune.loguniform(1e-6, 1e3),         # initial guess for learned multiplier
 
     # Generator Network
     'SI_gen_mult': tune.uniform(1.1, 4),                        # Factor by which to multiply channels/block as one moves twowards the center of the network
@@ -63,7 +64,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_scale': 90*90,
     'IS_output_scale_learnable': tune.choice([True, False]),
     'IS_output_scale_init': tune.loguniform(1e-6, 1e3),
-    
+
     # Generator Network
     'IS_gen_mult': tune.uniform(1.1, 4),
     'IS_gen_fill': tune.choice([0,1,2]),

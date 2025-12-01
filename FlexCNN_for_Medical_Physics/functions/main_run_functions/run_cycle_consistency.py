@@ -14,7 +14,7 @@ def run_CYCLE(config, checkpoint_dirPath=None, load_state=False, save_state=Fals
     gen_b2 = config['gen_b2']
     gen_lr = config['gen_lr']
     train_SI = config['train_SI']
-    scale=config['SI_scale'] if train_SI==True else config['IS_scale']
+    scale=config['SI_scale_fixed'] if train_SI==True else config['IS_scale']
 
     ## Tensorboard ##
     writer=SummaryWriter(tensorboard_dir)

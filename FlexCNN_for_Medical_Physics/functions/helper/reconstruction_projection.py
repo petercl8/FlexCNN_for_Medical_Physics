@@ -85,7 +85,7 @@ def iradon_MLEM(sino_ground, azi_angles=None, max_iter=15, circle=True, crop_fac
 
     return image_cropped
 
-def reconstruct(sinogram_tensor, image_size, SI_normalize, SI_scale, recon_type='FBP', circle=True):
+def reconstruct(sinogram_tensor, image_size, SI_normalize, SI_scale_fixed, recon_type='FBP', circle=True):
     '''
     Function for calculating a reconstructed PET image tensor, given a sinogram_tensor. One image is reconstructed for
     each sinogram in the sinogram_tensor.
@@ -94,7 +94,7 @@ def reconstruct(sinogram_tensor, image_size, SI_normalize, SI_scale, recon_type=
                         Only the first channel (photopeak) is used for recontruction here.
     image_size:         size of output (images are resized to this shape)
     SI_normalize:       whether to normalize the reconstructed images
-    SI_scale:           scaling factor to apply to normalized images
+    SI_scale_fixed:           scaling factor to apply to normalized images
     recon_type:         Can be set to 'MLEM' for maximum-likelihood expectation maximization, or 'FBP' for
                         filtered back-projection.
     circle              circle=True: The projection data spans the width (or height) of the activity distribution, and the reconstructed image is circular.
@@ -141,7 +141,7 @@ def reconstruct(sinogram_tensor, image_size, SI_normalize, SI_scale, recon_type=
         a = torch.reshape(a,(batch_size, 1, image_size**2)) # Flattens each image
         a = nn.functional.normalize(a, p=1, dim = 2)
         a = torch.reshape(a,(batch_size, 1 , image_size, image_size)) # Reshapes images back into square matrices
-        a = SI_scale*a
+        a = SI_scale_fixed*a
 
     # Return the reconstructed images as a tensor on the same device as the sinogram_tensor
     return a.to(sinogram_tensor.device)

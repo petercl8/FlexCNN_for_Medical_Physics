@@ -36,9 +36,10 @@ class Generator(nn.Module):
 
         # determine which scale key to read based on direction
         scale_key = 'SI' if gen_SI else 'IS'
+        fixed_key = f'{scale_key}_scale_fixed'  # existing scale in your configs
         learnable_key = f'{scale_key}_output_scale_learnable'
         init_key = f'{scale_key}_output_scale_init'
-        fixed_key = f'{scale_key}_scale'  # existing scale in your configs
+
 
         self.output_scale_learnable = bool(config.get(learnable_key, False))
         # prefer explicit init if provided, else fall back to existing fixed scale
@@ -60,7 +61,7 @@ class Generator(nn.Module):
             self.final_activation = config['SI_gen_final_activ']    # {nn.Tanh(), nn.Sigmoid(), None}
                                                                     # Type of activation function employed at the very end of network
             self.normalize=config['SI_normalize']                   # {True, False} : Normalization
-            self.scale=config['SI_scale']                           # Scale factor by which the output is multiplied,
+            self.scale=config['SI_scale_fixed']                           # Scale factor by which the output is multiplied,
                                                                     #    if the output is first normalized
 
             ## The following variables are used in the network constructor, and not the forward() method, so there is no need for instance variables.
