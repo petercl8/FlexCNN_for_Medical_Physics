@@ -22,39 +22,43 @@ class Generator(nn.Module):
         
         super(Generator, self).__init__()
         
-        # Derive input/output parameters from config based on gen_SI
+        # Determine input/output sizes and channels, and scale keys, based on direction
         if gen_SI:  # Sinogram → Image
             input_size = config['sino_size']
             input_channels = config['sino_channels']
             output_size = config['image_size']
             output_channels = config['image_channels']
-        else:  # Image → Sinogram
+
+            fixed_key = 'SI_scale_fixed'
+            learnable_key = 'SI_output_scale_learnable'
+            init_key = 'SI_output_scale_init'
+        else:        # Image → Sinogram
             input_size = config['image_size']
             input_channels = config['image_channels']
             output_size = config['sino_size']
             output_channels = config['sino_channels']
 
-        # determine which scale key to read based on direction
-        scale_key = 'SI' if gen_SI else 'IS'
-        fixed_key = f'{scale_key}_scale_fixed'  # existing scale in your configs
-        learnable_key = f'{scale_key}_output_scale_learnable'
-        init_key = f'{scale_key}_output_scale_init'
+            fixed_key = 'IS_scale_fixed'
+            learnable_key = 'IS_output_scale_learnable'
+            init_key = 'IS_output_scale_init'
 
-
+        # Determine whether output scale is learnable
         self.output_scale_learnable = bool(config.get(learnable_key, False))
-        # prefer explicit init if provided, else fall back to existing fixed scale
+
+        # Determine initial scale (prefer explicit init, fallback to fixed)
         init_scale = float(config.get(init_key, config.get(fixed_key, 1.0)))
 
+        ## Set Instance Variables ##
         if self.output_scale_learnable:
-            # parameterize as log-scale so learned value stays positive and optimization is stable
+            # Learnable log-scale parameter
             self.log_output_scale = nn.Parameter(torch.log(torch.tensor(init_scale, dtype=torch.float32)))
         else:
+            # Fixed scale stored as buffer
             self.register_buffer('fixed_output_scale', torch.tensor(init_scale, dtype=torch.float32))
 
-
-        ## Set Instance Variables ##
         self.output_channels = output_channels
         self.output_size = output_size
+        
         ## If gen_SI == True, we use the "SI.." keys from the config dictionary to construct the generator network. ##
         if gen_SI:
             # The following instance variables are defined since these will be used in the forward() method below. #
