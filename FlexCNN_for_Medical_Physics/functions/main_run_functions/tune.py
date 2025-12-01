@@ -91,15 +91,14 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     print('===================')
 
     ## Reporters ##
-    reporter1 = CLIReporter(
+    reporter = CLIReporter(
         metric_columns=[optim_metric, 'batch_step'])
 
     # compact, sorted notebook reporter — paste into tune.py replacing reporter1
-    reporter = JupyterNotebookReporter(
+    reporter1 = JupyterNotebookReporter(
         overwrite=True,
         metric_columns=[optim_metric, 'batch_step', 'example_num'],
         parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],  # keep narrow
-        max_rows=10,                       # show only top N rows to avoid wide table
         sort_by_metric=True,       # sort by chosen metric
         metric=[optim_metric],
     )
