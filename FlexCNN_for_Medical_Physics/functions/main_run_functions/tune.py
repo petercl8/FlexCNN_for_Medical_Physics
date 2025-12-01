@@ -91,15 +91,17 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     print('===================')
 
     ## Reporters ##
-    reporter = CLIReporter(
+    reporter1 = CLIReporter(
         metric_columns=[optim_metric, 'batch_step'])
 
-    reporter1 = JupyterNotebookReporter(
-        overwrite=True,                                           # Overwrite subsequent reporter tables in output (so there is no scrolling)
-        metric_columns=[optim_metric, 'batch_step', 'example_num'],  # Values for both 'batch_step' and 'example_num' are passed to RayTune
-        metric=[optim_metric],                                    # Which metric is used to determine best trial?
-        # mode=['min'],
-        sort_by_metric=True,                                      # Order reporter table by metric
+    # compact, sorted notebook reporter — paste into tune.py replacing reporter1
+    reporter = JupyterNotebookReporter(
+        overwrite=True,
+        metric_columns=[optim_metric, 'batch_step', 'example_num'],
+        parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],  # keep narrow
+        max_rows=10,                       # show only top N rows to avoid wide table
+        sort_by_metric=True,       # sort by chosen metric
+        metric=[optim_metric],
     )
 
     ## Trial Scheduler and Run Config ##
