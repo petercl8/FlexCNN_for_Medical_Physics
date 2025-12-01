@@ -113,15 +113,17 @@ class Generator(nn.Module):
         if gen_SI:  # Sinogram → Image
             input_size = config['sino_size']
             input_channels = config['sino_channels']
+            output_size = config['image_size']
             output_channels = config['image_channels']
         else:  # Image → Sinogram
             input_size = config['image_size']
             input_channels = config['image_channels']
+            output_size = config['sino_size']
             output_channels = config['sino_channels']
 
         ## Set Instance Variables ##
         self.output_channels = output_channels
-
+        self.output_size = output_size
         ## If gen_SI == True, we use the "SI.." keys from the config dictionary to construct the generator network. ##
         if gen_SI:
             # The following instance variables are defined since these will be used in the forward() method below. #
@@ -278,9 +280,9 @@ class Generator(nn.Module):
         if self.final_activation:   # Optional final activations
             a = self.final_activation(a)
         if self.normalize:          # Optionally normalize
-            a = torch.reshape(a,(batch_size, self.output_channels, 90**2)) # Flattens each image
+            a = torch.reshape(a,(batch_size, self.output_channels, self.output_size**2)) # Flattens each image
             a = nn.functional.normalize(a, p=1, dim = 2)
-            a = torch.reshape(a,(batch_size, self.output_channels , 90, 90)) # Reshapes images back into square matrices
+            a = torch.reshape(a,(batch_size, self.output_channels , self.output_size, self.output_size)) # Reshapes images back into square matrices
             a = self.scale*a        # If normalizing, multiply the outputs by a scale factor
 
         return a                    # Return the output
