@@ -1,93 +1,6 @@
 from torch import nn
 import torch
 
-
-######################################
-##### Block Generating Functions #####
-######################################
-
-def contract_block(in_channels, out_channels, kernel_size, stride, padding=0, padding_mode='reflect', fill=0, norm='batch', drop=False):
-    '''
-    Function to construct a single "contracting block." Each contracting block consists of one 2D convolutional layer, which decreases
-    the size (height and width) of the data. There are then up to three 2D convolution layers which do not change the height or width
-    (e.g. "constant size layers").
-
-    in_channels:    number of channels at the input of contracting block
-    out_channels:   number of channels at the output of contracting block
-    kernel_size:    size of the kernel for the 1st 2D convolutional layer in the contracting block
-    stride:         stride of the convolution for the 1st 2D convolutional layer in the contracting block
-    padding:        amount of padding for the the 1st 2D convolutional layer in the contracting block
-    padding_mode:   padding mode (options: "zeros", "reflect")
-    fill:           number of "constant size" 2D convolutional layers
-    norm:           type of layer normalization ("batch", "instance", or "none")
-    dropout:        include dropout layers in the contracting block? (True or False)
-    '''
-
-    if norm=='batch':    norm = nn.BatchNorm2d(out_channels)
-    if norm=='instance': norm = nn.InstanceNorm2d(out_channels)
-    if norm=='none':     norm = nn.Sequential()
-    dropout = nn.Dropout() if drop==True else nn.Sequential()
-
-    # Note: for the contracting block, normalization & dropout follow convolutional layers. For expanding blocks, the order is reversed.
-    block1 =  nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, padding_mode=padding_mode), norm, dropout, nn.ReLU())
-    if fill==0:
-        block2 = nn.Sequential() # If fill=0, there are no "constant size" convolutional layers, and so block2 is empty.
-    if fill==1:
-        block2 = nn.Sequential(nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU())
-    elif fill==2:
-        block2 = nn.Sequential(nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU(),
-                                nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU())
-    elif fill==3:
-        block2 = nn.Sequential(nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU(),
-                                nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU(),
-                                nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU())
-    return nn.Sequential(block1, block2)
-
-def expand_block(in_channels, out_channels, kernel_size=3, stride=2, padding=0, output_padding=0, padding_mode='zeros', fill=0, norm='batch', drop=False, final_layer=False):
-    '''
-    Function to construct a single "expanding block." Each expanding block consists of one 2D transposed convolution layer which increases
-    the size of the incoming data (height and width). There are then up to three 2D convolution layers which do not change the height or
-    width (e.g. "constant size layers").
-
-    in_channels:    number of channels at the input of the expanding block
-    out_channels:   number of channels at the output of the expanding block
-    kernel_size:    size of the kernel for the 1st 2D transposed convolutional layer in the expanding block
-    stride:         stride of the convolution for the 1st 2D transposed convolutional layer in the expanding block
-    padding:        amount of padding for the the 1st 2D transposed convolutional layer in the expanding block
-    padding_mode:   padding mode (ex: "zeros", "reflect")
-    fill:           number of "constant size" 2D convolutional layers
-    norm:           type of layer normalization ("batch", "instance", or "none")
-    dropout:        include dropout in the expanding block (True or False)
-    final_layer:    Is this the final layer in the expanding block? (True or False)
-    '''
-
-    if norm=='batch':       norm = nn.BatchNorm2d(out_channels)
-    if norm=='instance':    norm = nn.InstanceNorm2d(out_channels)
-    if norm=='none':        norm = nn.Sequential()
-    dropout = nn.Dropout() if drop==True else nn.Sequential()
-
-    # Note: for the expanding block, normalization & dropout precede convolutional layers in blocks 2-3. For expanding blocks, the order is reversed.
-    block1 = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding, padding_mode=padding_mode)
-    if fill==0:
-        block2 = nn.Sequential()
-    if fill==1:
-        block2 = nn.Sequential(norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode))
-    elif fill==2: # For
-        block2 = nn.Sequential(norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode),
-                                norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode))
-    elif fill==3:
-        block2 = nn.Sequential(norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode),
-                                norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode),
-                                norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode))
-
-    if final_layer==False: # If not the final layer, I add normalization, dropout and activation.
-        block3 = nn.Sequential(norm, dropout, nn.ReLU())
-    else:                  # Otherwise, I leave off the normalization, dropout, and activation. This allows me to do it explicitly
-                           # at the end of the network using tuned parameters.
-        block3 = nn.Sequential()
-    return nn.Sequential(block1, block2, block3)
-
 ###########################
 ##### Generator Class #####
 ###########################
@@ -120,6 +33,23 @@ class Generator(nn.Module):
             input_channels = config['image_channels']
             output_size = config['sino_size']
             output_channels = config['sino_channels']
+
+        # determine which scale key to read based on direction
+        scale_key = 'SI' if gen_SI else 'IS'
+        learnable_key = f'{scale_key}_output_scale_learnable'
+        init_key = f'{scale_key}_output_scale_init'
+        fixed_key = f'{scale_key}_scale'  # existing scale in your configs
+
+        self.output_scale_learnable = bool(config.get(learnable_key, False))
+        # prefer explicit init if provided, else fall back to existing fixed scale
+        init_scale = float(config.get(init_key, config.get(fixed_key, 1.0)))
+
+        if self.output_scale_learnable:
+            # parameterize as log-scale so learned value stays positive and optimization is stable
+            self.log_output_scale = nn.Parameter(torch.log(torch.tensor(init_scale, dtype=torch.float32)))
+        else:
+            self.register_buffer('fixed_output_scale', torch.tensor(init_scale, dtype=torch.float32))
+
 
         ## Set Instance Variables ##
         self.output_channels = output_channels
@@ -283,6 +213,100 @@ class Generator(nn.Module):
             a = torch.reshape(a,(batch_size, self.output_channels, self.output_size**2)) # Flattens each image
             a = nn.functional.normalize(a, p=1, dim = 2)
             a = torch.reshape(a,(batch_size, self.output_channels , self.output_size, self.output_size)) # Reshapes images back into square matrices
-            a = self.scale*a        # If normalizing, multiply the outputs by a scale factor
 
+        if self.output_scale_learnable:
+            scale = torch.exp(self.log_output_scale)
+        else:
+            scale = self.fixed_output_scale
+
+        a = a * scale
         return a                    # Return the output
+    
+
+
+
+######################################
+##### Block Generating Functions #####
+######################################
+
+def contract_block(in_channels, out_channels, kernel_size, stride, padding=0, padding_mode='reflect', fill=0, norm='batch', drop=False):
+    '''
+    Function to construct a single "contracting block." Each contracting block consists of one 2D convolutional layer, which decreases
+    the size (height and width) of the data. There are then up to three 2D convolution layers which do not change the height or width
+    (e.g. "constant size layers").
+
+    in_channels:    number of channels at the input of contracting block
+    out_channels:   number of channels at the output of contracting block
+    kernel_size:    size of the kernel for the 1st 2D convolutional layer in the contracting block
+    stride:         stride of the convolution for the 1st 2D convolutional layer in the contracting block
+    padding:        amount of padding for the the 1st 2D convolutional layer in the contracting block
+    padding_mode:   padding mode (options: "zeros", "reflect")
+    fill:           number of "constant size" 2D convolutional layers
+    norm:           type of layer normalization ("batch", "instance", or "none")
+    dropout:        include dropout layers in the contracting block? (True or False)
+    '''
+
+    if norm=='batch':    norm = nn.BatchNorm2d(out_channels)
+    if norm=='instance': norm = nn.InstanceNorm2d(out_channels)
+    if norm=='none':     norm = nn.Sequential()
+    dropout = nn.Dropout() if drop==True else nn.Sequential()
+
+    # Note: for the contracting block, normalization & dropout follow convolutional layers. For expanding blocks, the order is reversed.
+    block1 =  nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, padding_mode=padding_mode), norm, dropout, nn.ReLU())
+    if fill==0:
+        block2 = nn.Sequential() # If fill=0, there are no "constant size" convolutional layers, and so block2 is empty.
+    if fill==1:
+        block2 = nn.Sequential(nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU())
+    elif fill==2:
+        block2 = nn.Sequential(nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU(),
+                                nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU())
+    elif fill==3:
+        block2 = nn.Sequential(nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU(),
+                                nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU(),
+                                nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode), norm, dropout, nn.ReLU())
+    return nn.Sequential(block1, block2)
+
+def expand_block(in_channels, out_channels, kernel_size=3, stride=2, padding=0, output_padding=0, padding_mode='zeros', fill=0, norm='batch', drop=False, final_layer=False):
+    '''
+    Function to construct a single "expanding block." Each expanding block consists of one 2D transposed convolution layer which increases
+    the size of the incoming data (height and width). There are then up to three 2D convolution layers which do not change the height or
+    width (e.g. "constant size layers").
+
+    in_channels:    number of channels at the input of the expanding block
+    out_channels:   number of channels at the output of the expanding block
+    kernel_size:    size of the kernel for the 1st 2D transposed convolutional layer in the expanding block
+    stride:         stride of the convolution for the 1st 2D transposed convolutional layer in the expanding block
+    padding:        amount of padding for the the 1st 2D transposed convolutional layer in the expanding block
+    padding_mode:   padding mode (ex: "zeros", "reflect")
+    fill:           number of "constant size" 2D convolutional layers
+    norm:           type of layer normalization ("batch", "instance", or "none")
+    dropout:        include dropout in the expanding block (True or False)
+    final_layer:    Is this the final layer in the expanding block? (True or False)
+    '''
+
+    if norm=='batch':       norm = nn.BatchNorm2d(out_channels)
+    if norm=='instance':    norm = nn.InstanceNorm2d(out_channels)
+    if norm=='none':        norm = nn.Sequential()
+    dropout = nn.Dropout() if drop==True else nn.Sequential()
+
+    # Note: for the expanding block, normalization & dropout precede convolutional layers in blocks 2-3. For expanding blocks, the order is reversed.
+    block1 = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding, padding_mode=padding_mode)
+    if fill==0:
+        block2 = nn.Sequential()
+    if fill==1:
+        block2 = nn.Sequential(norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode))
+    elif fill==2: # For
+        block2 = nn.Sequential(norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode),
+                                norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode))
+    elif fill==3:
+        block2 = nn.Sequential(norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode),
+                                norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode),
+                                norm, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode))
+
+    if final_layer==False: # If not the final layer, I add normalization, dropout and activation.
+        block3 = nn.Sequential(norm, dropout, nn.ReLU())
+    else:                  # Otherwise, I leave off the normalization, dropout, and activation. This allows me to do it explicitly
+                           # at the end of the network using tuned parameters.
+        block3 = nn.Sequential()
+    return nn.Sequential(block1, block2, block3)
