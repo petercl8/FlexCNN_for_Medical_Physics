@@ -17,8 +17,8 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     image_array:    image numpy array
     sino_array:     sinogram numpy array
     config:         configuration dictionary with hyperparameters. Must contain: network_type, train_SI, image_size, 
-                    sino_size, image_channels, sino_channels, SI_normalize, SI_output_scale_fixed, and (for non-SUP/GAN networks) 
-                    IS_normalize, IS_scale.
+                    sino_size, image_channels, sino_channels, SI_normalize, SI_fixedScale, and (for non-SUP/GAN networks) 
+                    IS_normalize, SI_fixedScale.
     augment:        perform data augmentation?
     index:          index of the image/sinogram pair to grab
     device:         device to place tensors on ('cuda' or 'cpu')
@@ -35,19 +35,19 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     if (network_type=='GAN') or (network_type=='SUP'):
         if train_SI==True:
             SI_normalize=config['SI_normalize']
-            SI_output_scale_fixed=config['SI_output_scale_fixed']
+            SI_fixedScale=config['SI_fixedScale']
             IS_normalize=False     # If the Sinogram-->Image network (SI) is being trained, IS normalization is not in the config dict.
-            IS_scale=1             # If the Sinogram-->Image network (SI) is being trained, IS scaling is not in the config dict.
+            SI_fixedScale=1             # If the Sinogram-->Image network (SI) is being trained, IS scaling is not in the config dict.
         else:
             IS_normalize=config['IS_normalize']
-            IS_scale=config['IS_scale']
+            SI_fixedScale=config['SI_fixedScale']
             SI_normalize=False
-            SI_output_scale_fixed=1
+            SI_fixedScale=1
     else: # If a cycle-consistent network, normalize & scale everything
         IS_normalize=config['IS_normalize']
         SI_normalize=config['SI_normalize']
-        IS_scale=config['IS_scale']
-        SI_output_scale_fixed=config['SI_output_scale_fixed']
+        SI_fixedScale=config['SI_fixedScale']
+        SI_fixedScale=config['SI_fixedScale']
 
     ## Data Augmentation Functions ##
     def RandRotate(image_multChannel, sinogram_multChannel):
@@ -169,8 +169,8 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
         sino_out = sinogram_multChannel_resize               # Keeps full sinogram with all channels
 
     # Returns both original and altered sinograms and images, assigned to CPU or GPU
-    sino_scaled = IS_scale * sino_out if IS_normalize else sino_out
-    image_scaled = SI_output_scale_fixed * image_out if SI_normalize else image_out
+    sino_scaled = SI_fixedScale * sino_out if IS_normalize else sino_out
+    image_scaled = SI_fixedScale * image_out if SI_normalize else image_out
 
     return sinogram_multChannel.to(device), sino_scaled.to(device), image_multChannel.to(device), image_scaled.to(device)
 
@@ -186,8 +186,8 @@ class NpArrayDataSet(Dataset):
         image_path:         path to images in data set
         sino_path:          path to sinograms in data set
         config:             configuration dictionary with hyperparameters. Must contain: image_size, sino_size, 
-                            image_channels, sino_channels, network_type, train_SI, SI_normalize, SI_output_scale_fixed, 
-                            and (for non-SUP/GAN networks) IS_normalize, IS_scale.
+                            image_channels, sino_channels, network_type, train_SI, SI_normalize, SI_fixedScale, 
+                            and (for non-SUP/GAN networks) IS_normalize, SI_fixedScale.
         augment:            Set True to perform on-the-fly augmentation of data set. Set False to not perform augmentation.
         offset:             To begin dataset at beginning of the datafile, set offset=0. To begin on the second image, offset = 1, etc.
         num_examples:       Max number of examples to load into dataset. Set to -1 to load the maximum number from the numpy array.

@@ -3,7 +3,7 @@ from torch import nn
 config_GAN_SI = { # Older, this still outperforms the more recent tuning
     'SI_disc_adv_criterion': nn.MSELoss(),
     'SI_normalize': True, # True
-    'SI_output_scale_fixed': 1400, # 1      # Added later
+    'SI_fixedScale': 1400, # 1      # Added later
     'SI_gen_neck': 1, # 1
     'SI_layer_norm': 'batch',
     'SI_pad_mode': 'reflect',
@@ -44,7 +44,7 @@ config_GAN_IS = { # new, looks good by step 400, somewhat blocky. May be outperf
   "IS_layer_norm": "instance",
   "IS_normalize": False,
   "IS_pad_mode": "reflect",
-  "IS_scale": 1,
+  "SI_fixedScale": 1,
   # Gets Overwritten Below
   "IS_disc_lr": 0.00021705437338035208,
   "batch_size": 88,
@@ -65,7 +65,7 @@ config_GAN_IS_old = {
 
     "IS_disc_adv_criterion": nn.BCEWithLogitsLoss(),
     "IS_normalize": False, # FALSE
-    'IS_scale': 1, # 1
+    'SI_fixedScale': 1, # 1
     'IS_gen_mult': 3,
     'IS_gen_fill': 0,
     'IS_gen_neck': 5, # Wide neck

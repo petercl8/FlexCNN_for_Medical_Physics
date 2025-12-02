@@ -21,7 +21,7 @@ def run_GAN(config, paths, settings):
     ############################
 
     gen_adv_criterion = config['gen_adv_criterion']
-    scale = config['SI_output_scale_fixed'] if config['train_SI'] else config['IS_scale']
+    scale = config['SI_fixedScale'] if config['train_SI'] else config['SI_fixedScale']
 
     ###########################
     ### Instantiate Classes ###

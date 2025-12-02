@@ -18,7 +18,7 @@ config_CYCLEGAN={ # Works, yeah! ("4a92")
     "IS_layer_norm": "instance",
     "IS_normalize": False,
     "IS_pad_mode": "reflect",
-    "IS_scale": 1,
+    "SI_fixedScale": 1,
     "SI_disc_adv_criterion": nn.MSELoss(),
     "SI_disc_b1": 0.102081,
     "SI_disc_b2": 0.999,
@@ -36,7 +36,7 @@ config_CYCLEGAN={ # Works, yeah! ("4a92")
     "SI_layer_norm": "batch",
     "SI_normalize": True,
     "SI_pad_mode": "reflect",
-    "SI_output_scale_fixed": 1400,
+    "SI_fixedScale": 1400,
     "batch_size": 91,
     "cycle_criterion": nn.MSELoss(),
     "gen_adv_criterion": nn.MSELoss(),
@@ -84,7 +84,7 @@ config={ # Symmetrize == FALSE (final activations don't match). This was the bes
     "IS_gen_mult": 3,                     # mult=3 for both IS and SI
     "IS_gen_z_dim": 5,
     "IS_normalize": True,                 # both are normalized here
-    "IS_scale": 1,                        # OMG, this is weird. We are normalizing both, but the SI image scale is 1400x the IS. Could this by why final activation is now Sigmoid?
+    "SI_fixedScale": 1,                        # OMG, this is weird. We are normalizing both, but the SI image scale is 1400x the IS. Could this by why final activation is now Sigmoid?
 
     'IS_layer_norm': 'batch', # Batch
     'IS_pad_mode': 'reflect',
@@ -104,7 +104,7 @@ config={ # Symmetrize == FALSE (final activations don't match). This was the bes
     "SI_gen_mult": 3,
     "SI_gen_z_dim": 1195,                 # Represents an 8x drop in information into narrowest part of neck
     "SI_normalize": True, # True
-    "SI_output_scale_fixed": 1400,
+    "SI_fixedScale": 1400,
 
     'SI_layer_norm': 'batch',
     'SI_pad_mode': 'reflect',

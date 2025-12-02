@@ -29,21 +29,21 @@ class Generator(nn.Module):
             output_size = config['image_size']
             output_channels = config['image_channels']
 
-            fixed_key = 'SI_output_scale_fixed'
-            learnable_key = 'SI_output_scale_learnable'
-            init_key = 'SI_output_scale_init'
+            normalize_key = 'SI_normalize'    
+            fixed_key = 'SI_fixedScale'
+            init_key = 'SI_learnedScale_init'
         else:        # Image → Sinogram
             input_size = config['image_size']
             input_channels = config['image_channels']
             output_size = config['sino_size']
             output_channels = config['sino_channels']
 
-            fixed_key = 'IS_scale_fixed'
-            learnable_key = 'IS_output_scale_learnable'
-            init_key = 'IS_output_scale_init'
+            normalize_key = 'IS_normalize'    
+            fixed_key = 'SI_fixedScale'
+            init_key = 'IS_learnedScale_init'
 
         # Determine whether output scale is learnable
-        self.output_scale_learnable = bool(config.get(learnable_key, False))
+        self.output_scale_learnable = not(bool(config.get(normalize_key, False)))
 
         # Determine initial scale (prefer explicit init, fallback to fixed)
         init_scale = float(config.get(init_key, config.get(fixed_key, 1.0)))
@@ -65,7 +65,7 @@ class Generator(nn.Module):
             self.final_activation = config['SI_gen_final_activ']    # {nn.Tanh(), nn.Sigmoid(), None}
                                                                     # Type of activation function employed at the very end of network
             self.normalize=config['SI_normalize']                   # {True, False} : Normalization
-            self.scale=config['SI_output_scale_fixed']                           # Scale factor by which the output is multiplied,
+            self.scale=config['SI_fixedScale']                           # Scale factor by which the output is multiplied,
                                                                     #    if the output is first normalized
 
             ## The following variables are used in the network constructor, and not the forward() method, so there is no need for instance variables.
@@ -84,7 +84,7 @@ class Generator(nn.Module):
         else:
             self.final_activation = config['IS_gen_final_activ']
             self.normalize=config['IS_normalize']
-            self.scale=config['IS_scale']
+            self.scale=config['SI_fixedScale']
 
             neck=config['IS_gen_neck']
             exp_kernel=config['IS_exp_kernel']

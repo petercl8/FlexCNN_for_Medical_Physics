@@ -35,24 +35,18 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
 config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
     ## Data Loading ##
     'SI_normalize': False,
-    'SI_output_scale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if SI_normalize=False.
-    'SI_layer_norm_choice': tune.choice(['group', 'none']),
-    'SI_gen_final_activ_choice': tune.choice([nn.ReLU(), None]),
+    'SI_learnedScale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if SI_normalize=False. While SI_learnedScale_init is a hyperparamter, the actual scale is a learned parameter                                                                
+    'SI_layer_norm': tune.choice(['group', 'none']),
+    'SI_gen_final_activ': tune.choice([nn.ReLU(), None]),
 }
-
 config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
     'SI_normalize': True,
-    'SI_output_scale_fixed': 1,
-    'SI_layer_norm_choice': tune.choice(['batch', 'instance', 'group', 'none']),
-    'SI_gen_final_activ_choice': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
+    'SI_fixedScale': 1,
+    'SI_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
+    'SI_gen_final_activ': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
 }
 
-
-
 config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
-    ## Data Loading ##
-    'IS_output_scale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if IS_normalize=False.
-
     # Generator Network
     'IS_gen_mult': tune.uniform(1.1, 4),
     'IS_gen_fill': tune.choice([0,1,2]),
@@ -63,18 +57,6 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_exp_kernel': tune.choice([3,4]),
     'IS_gen_hidden_dim': tune.lograndint(2, 30),
 
-    # Helper choices
-    'IS_layer_norm_choice': tune.choice(['batch', 'instance', 'none']),
-    'IS_gen_final_activ_choice': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
-
-    # Dependent values
-    'IS_layer_norm': tune.sample_from(
-        lambda spec: spec.config['IS_layer_norm_choice'] if spec.config.get('IS_normalize') else 'none'
-    ),
-    'IS_gen_final_activ': tune.sample_from(
-        lambda spec: spec.config['IS_gen_final_activ_choice'] if spec.config.get('IS_normalize') else None
-    ),
-
     # Discriminator Network
     'IS_disc_hidden_dim': tune.lograndint(10, 30),
     'IS_disc_patchGAN': tune.choice([True, False]),
@@ -84,7 +66,20 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_disc_b2': tune.loguniform(0.1, 0.999),
     'IS_disc_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]),
 }
-# --- End replacement for config_RAY_IS ---
+
+config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
+    ## Data Loading ##
+    'IS_normalize': False,
+    'IS_learnedScale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if IS_normalize=False. While IS_learnedScale_init is a hyperparamter, the actual scale is a learned parameter                                                                
+    'IS_layer_norm': tune.choice(['group', 'none']),
+    'IS_gen_final_activ': tune.choice([nn.ReLU(), None]),
+}
+config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
+    'IS_normalize': True,
+    'IS_fixedScale': 1,
+    'IS_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
+    'IS_gen_final_activ': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
+}
 
 config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning
     # NEW: New parameters added to config_RAY_SI (related to generator optimizer)

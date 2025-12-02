@@ -14,7 +14,7 @@ def run_CYCLE(config, checkpoint_dirPath=None, load_state=False, save_state=Fals
     gen_b2 = config['gen_b2']
     gen_lr = config['gen_lr']
     train_SI = config['train_SI']
-    scale=config['SI_output_scale_fixed'] if train_SI==True else config['IS_scale']
+    scale=config['SI_fixedScale'] if train_SI==True else config['SI_fixedScale']
 
     ## Tensorboard ##
     writer=SummaryWriter(tensorboard_dir)
@@ -212,7 +212,7 @@ def run_CYCLE(config, checkpoint_dirPath=None, load_state=False, save_state=Fals
                     print('Sinogram of Generated PET:')
                     show_single_unmatched_tensor(project(fake_I))
                     print('FBP, Low-Rez Sinograms:')
-                    show_single_unmatched_tensor(reconstruct(low_rez_S, config['sino_size'], config['IS_normalize'], config['IS_scale']))
+                    show_single_unmatched_tensor(reconstruct(low_rez_S, config['sino_size'], config['IS_normalize'], config['SI_fixedScale']))
                     '''
 
                     writer.add_scalar('mean adversarial loss', mean_adv_loss, batch_step)

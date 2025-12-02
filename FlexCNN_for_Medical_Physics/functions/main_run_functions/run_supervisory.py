@@ -90,7 +90,7 @@ def run_SUP(config, paths, settings):
 
     # Loss and scales
     sup_criterion = config['sup_criterion']
-    scale = config['SI_output_scale_fixed'] if train_SI else config['IS_scale']
+    scale = config['SI_fixedScale'] if train_SI else config['SI_fixedScale']
 
 
     # Tuning/Test specific initializations
@@ -232,8 +232,8 @@ def run_SUP(config, paths, settings):
                     reconstruct_images_and_update_test_dataframe(input_, CNN_output, image_ground_scaled, test_dataframe, config, compute_MLEM=False)
 
             if run_mode == 'visualize':
-                FBP_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_output_scale_fixed'], recon_type='FBP')
-                MLEM_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_output_scale_fixed'], recon_type='MLEM')
+                FBP_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
+                MLEM_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
 
             _ = display_times('metrics time', time_init_metrics, show_times)
 

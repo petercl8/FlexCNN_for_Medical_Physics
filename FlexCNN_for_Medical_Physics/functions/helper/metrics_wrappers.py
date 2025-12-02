@@ -61,16 +61,16 @@ def reconstruct_images_and_update_test_dataframe(sino_tensor, CNN_output, ground
     CNN_output:     CNN reconstructions
     ground_image:   ground truth images
     test_dataframe: dataframe to append metric values to
-    config:         configuration dictionary containing image_size, SI_normalize, SI_output_scale_fixed
+    config:         configuration dictionary containing image_size, SI_normalize, SI_fixedScale
     compute_MLEM:   whether to compute ML-EM reconstructions (can be slow)
 
     Note: MSE and SSIM are calculated using the metrics.py file, which are defined below in this module.
     '''
 
     # Construct Outputs #
-    FBP_output = reconstruct(sino_tensor, config['image_size'], config['SI_normalize'], config['SI_output_scale_fixed'], recon_type='FBP')
+    FBP_output = reconstruct(sino_tensor, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
     if compute_MLEM==True:
-        MLEM_output = reconstruct(sino_tensor, config['image_size'], config['SI_normalize'], config['SI_output_scale_fixed'], recon_type='MLEM')
+        MLEM_output = reconstruct(sino_tensor, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
     else: # If not looking at ML-EM, don't waste time computing the MLEM images, which can take awhile.
         MLEM_output = FBP_output
 

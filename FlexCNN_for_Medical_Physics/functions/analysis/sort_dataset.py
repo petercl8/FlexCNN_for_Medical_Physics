@@ -27,7 +27,7 @@ def sort_DataSet(
     Parameters
     ----------
     config : dict
-        Must contain: 'train_SI', 'SI_output_scale_fixed', 'IS_scale', 'SI_normalize', 'IS_normalize',
+        Must contain: 'train_SI', 'SI_fixedScale', 'SI_fixedScale', 'SI_normalize', 'IS_normalize',
         'image_size', 'sino_size', 'image_channels', 'sino_channels'.
     load_image_path : str
         Path to source image .npy file.
@@ -67,7 +67,7 @@ def sort_DataSet(
     - Visualization invokes matplotlib; can slow execution.
     """
     train_SI = config['train_SI']
-    scale = config['SI_output_scale_fixed'] if train_SI else config['IS_scale']
+    scale = config['SI_fixedScale'] if train_SI else config['SI_fixedScale']
 
     dataloader = DataLoader(
         NpArrayDataSet(image_path=load_image_path, sino_path=load_sino_path, config=config, num_examples=num_examples),
@@ -108,7 +108,7 @@ def sort_DataSet(
             sino_ground_scaled,
             config['image_size'],
             config['SI_normalize'],
-            config['SI_output_scale_fixed'],
+            config['SI_fixedScale'],
             recon_type='FBP'
         )
 

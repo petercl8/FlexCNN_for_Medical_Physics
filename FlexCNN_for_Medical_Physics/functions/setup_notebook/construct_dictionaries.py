@@ -13,7 +13,11 @@ def construct_config(
     config_CYCLEGAN=None,
     config_CYCLESUP=None,
     config_RAY_SI=None,
+    config_RAY_SI_learnScale=None,
+    config_RAY_SI_fixedScale=None,
     config_RAY_IS=None,
+    config_RAY_IS_learnScale=None,
+    config_RAY_IS_fixedScale=None,
     config_RAY_SUP=None,
     config_RAY_GAN=None,
     config_SUP_RAY_cycle=None,
@@ -41,9 +45,7 @@ def construct_config(
     image_channels = network_opts['image_channels']
     sino_channels = network_opts['sino_channels']
     SI_normalize = network_opts['SI_normalize']
-    SI_output_scale_fixed = network_opts['SI_output_scale_fixed']
     IS_normalize = network_opts['IS_normalize']
-    IS_scale_fixed = network_opts['IS_scale_fixed']
 
     # If not tuning (or forcing tuning with a fixed config for debugging), choose config dictionary based on run_mode and network_type
     if run_mode in ['train', 'test', 'visualize', 'none'] or tune_opts.get('tune_force_fixed_config')==True:
@@ -60,24 +62,36 @@ def construct_config(
 
     # If tuning, we need to construct the dictionary from smaller pieces
     elif run_mode == 'tune':
-        # First, we add user normalization and scaling options to config_RAY_SI and config_RAY_IS
-        config_RAY_SI['SI_normalize'] = SI_normalize
-        config_RAY_SI['SI_output_scale_fixed'] = SI_output_scale_fixed
-        config_RAY_IS['IS_normalize'] = IS_normalize
-        config_RAY_IS['IS_scale_fixed'] = IS_scale_fixed
-
-
+        # First, we add user normalization and scaling options. These must be added before combining dicts (below).
         if network_type == 'SUP':
-            config = {**(config_RAY_SI if train_SI else config_RAY_IS), **config_RAY_SUP}
+            if train_SI:
+                if SI_normalize:
+                    config = {**config_RAY_SI, **config_RAY_SI_fixedScale ,**config_RAY_SUP}
+                else:
+                    config = {**config_RAY_SI, **config_RAY_SI_learnScale ,**config_RAY_SUP}
+            else:
+                if IS_normalize:
+                    config = {**config_RAY_IS, **config_RAY_IS_fixedScale ,**config_RAY_SUP}
+                else:
+                    config = {**config_RAY_IS, **config_RAY_IS_learnScale ,**config_RAY_SUP}
         elif network_type == 'GAN':
-            config = {**(config_RAY_SI if train_SI else config_RAY_IS), **config_RAY_GAN}
+            if train_SI:
+                if SI_normalize:
+                    config = {**config_RAY_SI, **config_RAY_SI_fixedScale ,**config_RAY_GAN}
+                else:
+                    config = {**config_RAY_SI, **config_RAY_SI_learnScale ,**config_RAY_GAN}
+            else:
+                if IS_normalize:
+                    config = {**config_RAY_IS, **config_RAY_IS_fixedScale ,**config_RAY_GAN}
+                else:
+                    config = {**config_RAY_IS, **config_RAY_IS_learnScale ,**config_RAY_GAN}
         elif network_type == 'CYCLESUP':
             config = {**config_SUP_SI, **config_SUP_IS, **config_SUP_RAY_cycle}
         elif network_type == 'CYCLEGAN':
             config = {**config_GAN_SI, **config_GAN_IS, **config_GAN_RAY_cycle}
         else:
             raise ValueError(f"Unknown network_type '{network_type}'.")
-        
+
         # Add data dimensions to config. These are set by the user and not tuned.
         config['network_type'] = network_type # If config is being built from smaller configs (CYCLESUP, CYCLEGAN), then this overwrites any existing value.
         config['train_SI'] = train_SI # Only used for SUP and GAN networks but added here for consistency.

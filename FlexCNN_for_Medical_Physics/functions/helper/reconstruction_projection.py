@@ -85,7 +85,7 @@ def iradon_MLEM(sino_ground, azi_angles=None, max_iter=15, circle=True, crop_fac
 
     return image_cropped
 
-def reconstruct(sinogram_tensor, image_size, SI_normalize, SI_output_scale_fixed, recon_type='FBP', circle=True):
+def reconstruct(sinogram_tensor, image_size, SI_normalize, SI_fixedScale, recon_type='FBP', circle=True):
     '''
     Function for calculating a reconstructed PET image tensor, given a sinogram_tensor. One image is reconstructed for
     each sinogram in the sinogram_tensor.
@@ -94,7 +94,7 @@ def reconstruct(sinogram_tensor, image_size, SI_normalize, SI_output_scale_fixed
                         Only the first channel (photopeak) is used for recontruction here.
     image_size:         size of output (images are resized to this shape)
     SI_normalize:       whether to normalize the reconstructed images
-    SI_output_scale_fixed:           scaling factor to apply to normalized images
+    SI_fixedScale:           scaling factor to apply to normalized images
     recon_type:         Can be set to 'MLEM' for maximum-likelihood expectation maximization, or 'FBP' for
                         filtered back-projection.
     circle              circle=True: The projection data spans the width (or height) of the activity distribution, and the reconstructed image is circular.
@@ -141,14 +141,14 @@ def reconstruct(sinogram_tensor, image_size, SI_normalize, SI_output_scale_fixed
         a = torch.reshape(a,(batch_size, 1, image_size**2)) # Flattens each image
         a = nn.functional.normalize(a, p=1, dim = 2)
         a = torch.reshape(a,(batch_size, 1 , image_size, image_size)) # Reshapes images back into square matrices
-        a = SI_output_scale_fixed*a
+        a = SI_fixedScale*a
 
     # Return the reconstructed images as a tensor on the same device as the sinogram_tensor
     return a.to(sinogram_tensor.device)
 
 
 
-def project(image_tensor, sino_size, IS_normalize, IS_scale_fixed, circle=False, theta=-1):
+def project(image_tensor, sino_size, IS_normalize, SI_fixedScale, circle=False, theta=-1):
     '''
     Perform the forward radon transform to calculate projections from images. Returns an array of sinograms.
 
@@ -186,12 +186,7 @@ def project(image_tensor, sino_size, IS_normalize, IS_scale_fixed, circle=False,
         a = torch.reshape(a,(batch_size, 1, sino_size**2)) # Flattens each image
         a = nn.functional.normalize(a, p=1, dim = 2)
         a = torch.reshape(a,(batch_size, 1 , sino_size, sino_size)) # Reshapes images back into square matrices
-        a = IS_scale_fixed*a
+        a = SI_fixedScale*a
 
     # Return the reconstructed images as a tensor on the same device as the sinogram_tensor
     return a.to(image_tensor.device)
-
-
-
-
-    return torch.from_numpy(sino_array)
