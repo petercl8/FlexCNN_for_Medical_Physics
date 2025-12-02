@@ -1,5 +1,5 @@
-from torch import nn
 import torch
+from torch import nn
 
 ###########################
 ##### Generator Class #####
@@ -39,21 +39,20 @@ class Generator(nn.Module):
             output_channels = config['sino_channels']
 
             normalize_key = 'IS_normalize'    
-            fixed_key = 'SI_fixedScale'
+            fixed_key = 'IS_fixedScale'
             init_key = 'IS_learnedScale_init'
 
-        # Determine whether output scale is learnable
+        # Determine whether output scale is learnable. If normalizing, scale is fixed (not learnable).
         self.output_scale_learnable = not(bool(config.get(normalize_key, False)))
 
-        # Determine initial scale (prefer explicit init, fallback to fixed)
-        init_scale = float(config.get(init_key, config.get(fixed_key, 1.0)))
-
-        ## Set Instance Variables ##
+        # Determine initial scale based on whether it's learnable
         if self.output_scale_learnable:
-            # Learnable log-scale parameter
+            # Learnable: prefer init_key, fallback to fixed_key or 1.0
+            init_scale = float(config.get(init_key, config.get(fixed_key, 1.0)))
             self.log_output_scale = nn.Parameter(torch.log(torch.tensor(init_scale, dtype=torch.float32)))
         else:
-            # Fixed scale stored as buffer
+            # Fixed: use fixed_key directly (or fallback to 1.0)
+            init_scale = float(config.get(fixed_key, 1.0))
             self.register_buffer('fixed_output_scale', torch.tensor(init_scale, dtype=torch.float32))
 
         self.output_channels = output_channels
@@ -84,7 +83,7 @@ class Generator(nn.Module):
         else:
             self.final_activation = config['IS_gen_final_activ']
             self.normalize=config['IS_normalize']
-            self.scale=config['SI_fixedScale']
+            self.scale=config['IS_fixedScale']
 
             neck=config['IS_gen_neck']
             exp_kernel=config['IS_exp_kernel']
@@ -251,9 +250,14 @@ def contract_block(in_channels, out_channels, kernel_size, stride, padding=0, pa
     dropout:        include dropout layers in the contracting block? (True or False)
     '''
 
-    if norm=='batch':    norm = nn.BatchNorm2d(out_channels)
-    if norm=='instance': norm = nn.InstanceNorm2d(out_channels)
-    if norm=='none':     norm = nn.Sequential()
+    if norm=='batch':         norm = nn.BatchNorm2d(out_channels)
+    elif norm=='instance':    norm = nn.InstanceNorm2d(out_channels)
+    elif norm=='group':
+            num_groups = min(8, out_channels)
+            norm = nn.GroupNorm(num_groups, out_channels)
+    else:
+        norm = nn.Sequential()
+
     dropout = nn.Dropout() if drop==True else nn.Sequential()
 
     # Note: for the contracting block, normalization & dropout follow convolutional layers. For expanding blocks, the order is reversed.
@@ -290,9 +294,14 @@ def expand_block(in_channels, out_channels, kernel_size=3, stride=2, padding=0, 
     final_layer:    Is this the final layer in the expanding block? (True or False)
     '''
 
-    if norm=='batch':       norm = nn.BatchNorm2d(out_channels)
-    if norm=='instance':    norm = nn.InstanceNorm2d(out_channels)
-    if norm=='none':        norm = nn.Sequential()
+    if norm=='batch':         norm = nn.BatchNorm2d(out_channels)
+    elif norm=='instance':    norm = nn.InstanceNorm2d(out_channels)
+    elif norm=='group':
+            num_groups = min(8, out_channels)
+            norm = nn.GroupNorm(num_groups, out_channels)
+    else:
+        norm = nn.Sequential()
+        
     dropout = nn.Dropout() if drop==True else nn.Sequential()
 
     # Note: for the expanding block, normalization & dropout precede convolutional layers in blocks 2-3. For expanding blocks, the order is reversed.
@@ -314,4 +323,5 @@ def expand_block(in_channels, out_channels, kernel_size=3, stride=2, padding=0, 
     else:                  # Otherwise, I leave off the normalization, dropout, and activation. This allows me to do it explicitly
                            # at the end of the network using tuned parameters.
         block3 = nn.Sequential()
+
     return nn.Sequential(block1, block2, block3)
