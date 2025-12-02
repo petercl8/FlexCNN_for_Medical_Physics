@@ -3,7 +3,7 @@ from torch import nn
 config_GAN_SI = { # Older, this still outperforms the more recent tuning
     'SI_disc_adv_criterion': nn.MSELoss(),
     'SI_normalize': True, # True
-    'SI_scale_fixed': 1400, # 1      # Added later
+    'SI_output_scale_fixed': 1400, # 1      # Added later
     'SI_gen_neck': 1, # 1
     'SI_layer_norm': 'batch',
     'SI_pad_mode': 'reflect',

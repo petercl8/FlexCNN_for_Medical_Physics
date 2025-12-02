@@ -33,7 +33,6 @@ def construct_config(
     Returns:
         config dict with all network hyperparameters and data dimensions
     """
-    
     # Extract network options
     network_type = str(network_opts['network_type']).upper()  # Normalize strings
     train_SI = network_opts['train_SI']
@@ -41,8 +40,12 @@ def construct_config(
     sino_size = network_opts['sino_size']
     image_channels = network_opts['image_channels']
     sino_channels = network_opts['sino_channels']
+    SI_normalize = network_opts['SI_normalize']
+    SI_output_scale_fixed = network_opts['SI_output_scale_fixed']
+    IS_normalize = network_opts['IS_normalize']
+    IS_scale_fixed = network_opts['IS_scale_fixed']
 
-    # Combine dictionaries based on run_mode and network_type
+    # If not tuning (or forcing tuning with a fixed config for debugging), choose config dictionary based on run_mode and network_type
     if run_mode in ['train', 'test', 'visualize', 'none'] or tune_opts.get('tune_force_fixed_config')==True:
         if network_type == 'SUP':
             config = config_SUP_SI if train_SI else config_SUP_IS
@@ -55,7 +58,15 @@ def construct_config(
         else:
             raise ValueError(f"Unknown network_type '{network_type}'.")
 
+    # If tuning, we need to construct the dictionary from smaller pieces
     elif run_mode == 'tune':
+        # First, we add user normalization and scaling options to config_RAY_SI and config_RAY_IS
+        config_RAY_SI['SI_normalize'] = SI_normalize
+        config_RAY_SI['SI_output_scale_fixed'] = SI_output_scale_fixed
+        config_RAY_IS['IS_normalize'] = IS_normalize
+        config_RAY_IS['IS_scale_fixed'] = IS_scale_fixed
+
+
         if network_type == 'SUP':
             config = {**(config_RAY_SI if train_SI else config_RAY_IS), **config_RAY_SUP}
         elif network_type == 'GAN':

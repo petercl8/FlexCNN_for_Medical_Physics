@@ -29,7 +29,7 @@ class Generator(nn.Module):
             output_size = config['image_size']
             output_channels = config['image_channels']
 
-            fixed_key = 'SI_scale_fixed'
+            fixed_key = 'SI_output_scale_fixed'
             learnable_key = 'SI_output_scale_learnable'
             init_key = 'SI_output_scale_init'
         else:        # Image → Sinogram
@@ -65,7 +65,7 @@ class Generator(nn.Module):
             self.final_activation = config['SI_gen_final_activ']    # {nn.Tanh(), nn.Sigmoid(), None}
                                                                     # Type of activation function employed at the very end of network
             self.normalize=config['SI_normalize']                   # {True, False} : Normalization
-            self.scale=config['SI_scale_fixed']                           # Scale factor by which the output is multiplied,
+            self.scale=config['SI_output_scale_fixed']                           # Scale factor by which the output is multiplied,
                                                                     #    if the output is first normalized
 
             ## The following variables are used in the network constructor, and not the forward() method, so there is no need for instance variables.

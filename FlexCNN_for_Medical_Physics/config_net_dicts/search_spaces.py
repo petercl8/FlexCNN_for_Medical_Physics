@@ -12,17 +12,6 @@ from ray import tune
 
 # --- Begin replacement for config_RAY_SI (flattened, dependent choices) ---
 config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
-    ## Data Loading ##
-
-    'SI_normalize': False,
-    #'SI_normalize': tune.choice([True, False]),                # Normalize dataloader outputs and outputs of generator? If so, the pixel values 
-                                                                # in the image all add up to 1. Only normalize if you don't care about quantitative reconstructions.
-    'SI_scale_fixed': 90*90,                                    # If normalizing the pixel images, multiply images by this value. Otherwise, this is not used.
-                                                                # The pixel values will then add up to this number.
-    'SI_output_scale_learnable': True,
-    #'SI_output_scale_learnable': tune.choice([True, False]),
-    'SI_output_scale_init': tune.loguniform(1e-6, 1e3),         # initial guess for learned multiplier
-
     # Generator Network
     'SI_gen_mult': tune.uniform(1.1, 4),                        # Factor by which to multiply channels/block as one moves twowards the center of the network
     'SI_gen_fill': tune.choice([0,1,2]),                        # Number of constant-sized Conv2d layers/block
@@ -33,18 +22,6 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
     'SI_gen_hidden_dim': tune.lograndint(2, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
 
-    # Expose helper choices that are always sampled (we keep them top-level so sample_from can read them)
-    'SI_layer_norm_choice': tune.choice(['batch', 'instance', 'none']),
-    'SI_gen_final_activ_choice': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
-
-    # Dependent values resolved from helper choices (use sample_from to read SI_normalize)
-    'SI_layer_norm': tune.sample_from(
-        lambda spec: spec.config['SI_layer_norm_choice'] if spec.config.get('SI_normalize') else 'none'
-    ), # Layer normalization type ('none' ensures absolute scale preserved when not normalizing)
-    'SI_gen_final_activ': tune.sample_from(
-        lambda spec: spec.config['SI_gen_final_activ_choice'] if spec.config.get('SI_normalize') else None
-    ), # Final activation choices (None when not normalizing for quantitative outputs)
-
     # Discriminator Network
     'SI_disc_hidden_dim': tune.lograndint(10, 30),              # Discriminator channel scaling factor
     'SI_disc_patchGAN': tune.choice([True, False]),             # Use PatchGAN or not
@@ -54,16 +31,27 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_disc_b2': tune.loguniform(0.1, 0.999),
     'SI_disc_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]), # Possible options: tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.BCEWithLogitsLoss()]),
 }
-# --- End replacement for config_RAY_SI ---
+
+config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
+    ## Data Loading ##
+    'SI_normalize': False,
+    'SI_output_scale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if SI_normalize=False.
+    'SI_layer_norm_choice': tune.choice(['group', 'none']),
+    'SI_gen_final_activ_choice': tune.choice([nn.ReLU(), None]),
+}
+
+config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
+    'SI_normalize': True,
+    'SI_output_scale_fixed': 1,
+    'SI_layer_norm_choice': tune.choice(['batch', 'instance', 'group', 'none']),
+    'SI_gen_final_activ_choice': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
+}
 
 
-# --- Begin replacement for config_RAY_IS (flattened, dependent choices) ---
+
 config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     ## Data Loading ##
-    'IS_normalize': tune.choice([True, False]), # Normalize outputs or not
-    'IS_scale': 90*90,
-    'IS_output_scale_learnable': tune.choice([True, False]),
-    'IS_output_scale_init': tune.loguniform(1e-6, 1e3),
+    'IS_output_scale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if IS_normalize=False.
 
     # Generator Network
     'IS_gen_mult': tune.uniform(1.1, 4),
