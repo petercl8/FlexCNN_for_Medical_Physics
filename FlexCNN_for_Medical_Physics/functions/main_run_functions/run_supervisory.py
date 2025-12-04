@@ -156,7 +156,11 @@ def run_SUP(config, paths, settings):
         ### Loop Over Batches ###
         #########################
         
-        for sino_ground, sino_ground_scaled, image_ground, image_ground_scaled in iter(dataloader):
+        for sino_scaled, act_map_scaled, *recon_data in iter(dataloader):
+            # Unpack optional reconstructions if provided
+            FORE_recon = recon_data[0] if len(recon_data) > 0 else None
+            oblique_recon = recon_data[1] if len(recon_data) > 1 else None
+            
             # Times
             _ = display_times('loader time', time_init_loader, show_times)             # _ is a dummy variable that isn't used in this loop
             time_init_full = display_times('FULL STEP TIME', time_init_full, 
@@ -164,11 +168,11 @@ def run_SUP(config, paths, settings):
             
             # Inputs/targets
             if train_SI:
-                target = image_ground_scaled
-                input_ = sino_ground_scaled
+                target = act_map_scaled
+                input_ = sino_scaled
             else:
-                target = sino_ground_scaled
-                input_ = image_ground_scaled
+                target = sino_scaled
+                input_ = act_map_scaled
 
             # Forward/optimize
             if run_mode in ('tune', 'train'):
@@ -227,12 +231,19 @@ def run_SUP(config, paths, settings):
 
             # If Testing, we calculate and store reconstructions and metrics in a dataframe #
             if run_mode == 'test':
-                test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_FBP_MSE, mean_FBP_SSIM, mean_MLEM_MSE, mean_MLEM_SSIM, FBP_output, MLEM_output = \
-                    reconstruct_images_and_update_test_dataframe(input_, CNN_output, image_ground_scaled, test_dataframe, config, compute_MLEM=False)
+                test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
+                    reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_map_scaled, test_dataframe, config, compute_MLEM=False, FORE_recon=FORE_recon, oblique_recon=oblique_recon)
 
             if run_mode == 'visualize':
-                FBP_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
-                MLEM_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
+                if FORE_recon is not None:
+                    recon1_output = FORE_recon
+                else:
+                    recon1_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
+                
+                if oblique_recon is not None:
+                    recon2_output = oblique_recon
+                else:
+                    recon2_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
 
             _ = display_times('metrics time', time_init_metrics, show_times)
 
@@ -265,13 +276,13 @@ def run_SUP(config, paths, settings):
 
                 if run_mode == 'test':
                     print('==================Testing==================')
-                    print(f'mean_CNN_MSE/mean_MLEM_MSE/mean_FBP_MSE : {mean_CNN_MSE}/{mean_MLEM_MSE}/{mean_FBP_MSE}')
-                    print(f'mean_CNN_SSIM/mean_MLEM_SSIM/mean_FBP_SSIM: {mean_CNN_SSIM}/{mean_MLEM_SSIM}/{mean_FBP_SSIM}')
+                    print(f'mean_CNN_MSE/mean_recon2_MSE/mean_recon1_MSE : {mean_CNN_MSE}/{mean_recon2_MSE}/{mean_recon1_MSE}')
+                    print(f'mean_CNN_SSIM/mean_recon2_SSIM/mean_recon1_SSIM: {mean_CNN_SSIM}/{mean_recon2_SSIM}/{mean_recon1_SSIM}')
                     print('===========================================')
                     print('Input')
                     show_single_unmatched_tensor(input_[0:9])
-                    print('Target/Output/MLEM/FBP:')
-                    show_multiple_matched_tensors(target[0:9], CNN_output[0:9], MLEM_output[0:9], FBP_output[0:9])
+                    print('Target/Output/Recon2/Recon1:')
+                    show_multiple_matched_tensors(target[0:9], CNN_output[0:9], recon2_output[0:9], recon1_output[0:9])
 
                 if run_mode == 'visualize':
                     visualize_offset = settings.get('visualize_offset', 0)
@@ -281,8 +292,8 @@ def run_SUP(config, paths, settings):
                     else:
                         print('Input:')
                         show_single_unmatched_tensor(input_[0:visualize_batch_size])
-                        print('Target/ML-EM/FBP/Output:')
-                        show_multiple_matched_tensors(target[0:visualize_batch_size], MLEM_output[0:visualize_batch_size], FBP_output[0:visualize_batch_size], CNN_output[0:visualize_batch_size])
+                        print('Target/Recon2/Recon1/Output:')
+                        show_multiple_matched_tensors(target[0:visualize_batch_size], recon2_output[0:visualize_batch_size], recon1_output[0:visualize_batch_size], CNN_output[0:visualize_batch_size])
 
                 if save_state:
                     print('Saving model!')

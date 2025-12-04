@@ -68,17 +68,17 @@ def run_GAN(config, paths, settings):
         time_init_full = time.time()
 
         ## Loop Over Batches ##
-        for sino, sino_ground_scaled, image, image_ground_scaled in iter(dataloader): # Dataloader returns the batches. Loop over batches within epochs.
+        for sino_scaled, act_map_scaled, *recon_data in iter(dataloader): # Dataloader returns the batches. Loop over batches within epochs.
 
             print(f'FULL step (time): {(time.time()-time_init_full)*1000}')
             time_init_full = time.time()
 
             if train_SI==True:
-                real=image_ground_scaled
-                noise=sino_ground_scaled
+                real=act_map_scaled
+                noise=sino_scaled
             else:
-                real=sino_ground_scaled
-                noise=image_ground_scaled
+                real=sino_scaled
+                noise=act_map_scaled
 
             #print(f'Real Type: {real.dtype}, Real Shape:  {real.shape}')
             #print(f'Noise Type: {noise.dtype}, Noise Shape:  {noise.shape}')

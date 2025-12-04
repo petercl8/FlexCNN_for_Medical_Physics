@@ -11,3 +11,12 @@ Yes, that makes sense. Let's discuss how the data is structured. Currently, I ha
 Prompt 3:
 
 Great question. Even though the dataloader currently returns the unscaled sinogram and images, I don't believe these are currently used in the code. If you could varify this, I would appreciate it. If they are not, then we could simplify things and only return four total tensors. The activity map and reconstructions are all the same size but I would like to the code to take into account situations where they aren't. They can all be scaled to be the same size in the dataloader.
+
+Prompt 4:
+Yes, exactly. And let's also change the nomenclature. I'm thinking something like act_map_scaled. Some functions will need to be updated
+
+Prompt 5:
+That sounds good. We'll also need to update the metrics code. Could you look through this code (#file:metrics_wrappers.py , maybe #metrics.py) and propose changes?
+
+Prompt 6:
+I like the new function signature and logic flow inside the function. However, let's use generic names like Recon1/Recon2. Let's change the return signature accordingly (generic names) and update run_SUP(). Recon paths can go in the paths dict.
