@@ -39,7 +39,8 @@ config_SUP_SI={
   "sino_channels": 3,
   "image_channels":1,
   "image_size":90,
-  "train_SI": True
+  "train_SI": True,
+  "network_type": "SUP",
 }
 
 
