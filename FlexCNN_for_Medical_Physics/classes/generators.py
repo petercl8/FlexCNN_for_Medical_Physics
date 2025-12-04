@@ -64,8 +64,6 @@ class Generator(nn.Module):
             self.final_activation = config['SI_gen_final_activ']    # {nn.Tanh(), nn.Sigmoid(), None}
                                                                     # Type of activation function employed at the very end of network
             self.normalize=config['SI_normalize']                   # {True, False} : Normalization
-            self.scale=config['SI_fixedScale']                           # Scale factor by which the output is multiplied,
-                                                                    #    if the output is first normalized
 
             ## The following variables are used in the network constructor, and not the forward() method, so there is no need for instance variables.
 
@@ -83,7 +81,6 @@ class Generator(nn.Module):
         else:
             self.final_activation = config['IS_gen_final_activ']
             self.normalize=config['IS_normalize']
-            self.scale=config['IS_fixedScale']
 
             neck=config['IS_gen_neck']
             exp_kernel=config['IS_exp_kernel']
