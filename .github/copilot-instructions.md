@@ -12,9 +12,9 @@ This notebook is located here: ./FlexCNN_Medical_Physics/stitching_notebook.ipyn
 - Avoid matlotlib unless necessary for specific customizations. Prefer Pandas built-in plotting functions for simplicity.
 - Prefer modern Python (3.6+) features like f-strings and type hints
 - Do not implement a defensive programming style. Assume inputs are valid unless there is a high likelihood of user error.
-- When modifying existing code, match the existing style unless there is a compelling reason to change it
-- When modifying lists of parameters, maintain the existing order unless there is a compelling reason to change it
-- When modifying dictionaries, maintain the existing key order unless there is a compelling reason to change it
+- When modifying existing code, match the existing style unless there is a compelling reason to change it.
+- When modifying lists of parameters, maintain the existing order unless there is a compelling reason to change it[]
+- When modifying dictionaries, maintain the existing key order unless there is a compelling reason to change it[]
 
 ## Naming Conventions
 - When deriving new code from existing code, keep variable and function names the same.

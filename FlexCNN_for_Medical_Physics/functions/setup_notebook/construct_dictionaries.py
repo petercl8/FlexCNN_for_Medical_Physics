@@ -255,7 +255,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['train_display_step'] = train_opts['train_display_step'] # Used in compute_display_step()
     
     elif run_mode == 'test':
-        settings['augment'] = False
+        settings['augment'] = (None, False) # If testing, do not augment
         settings['shuffle'] = False
         settings['num_epochs'] = 1
         settings['load_state'] = True
@@ -267,7 +267,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         #settings['test_batch_size'] = test_opts['test_batch_size']
     
     elif run_mode in ['visualize', 'none']:
-        settings['augment'] = False
+        settings['augment'] = (None, False) # If visualizing, do not augment
         settings['shuffle'] = viz_opts['visualize_shuffle']
         settings['num_epochs'] = 1
         settings['load_state'] = True
