@@ -1,12 +1,19 @@
 @echo off
 :: ===== Start Session =====
-:: Fetch latest changes from GitHub
+
+echo Checking for local changes...
+
+git diff-index --quiet HEAD --
+if %errorlevel% neq 0 (
+    echo WARNING: You have uncommitted local changes that will be discarded.
+    pause
+)
+
+echo Resetting repository to match GitHub...
+
 git fetch origin
-
-:: Switch to main branch locally
 git checkout main
+git reset --hard origin/main
+git clean -fd
 
-:: Merge remote changes
-git pull origin main
-
-echo Repository is up-to-date.
+echo Repository is now synced with GitHub.

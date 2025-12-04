@@ -90,7 +90,6 @@ def run_SUP(config, paths, settings):
 
     # Loss and scales
     sup_criterion = config['sup_criterion']
-    scale = config['SI_fixedScale'] if train_SI else config['SI_fixedScale']
 
 
     # Tuning/Test specific initializations
