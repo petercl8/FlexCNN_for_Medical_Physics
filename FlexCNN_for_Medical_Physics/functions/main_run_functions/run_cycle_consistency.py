@@ -79,14 +79,14 @@ def run_CYCLE(config, checkpoint_dirPath=None, load_state=False, save_state=Fals
         time_init_full = time.time()
         #time_init_loader = time.time()
 
-        for sino, sino_ground_scaled, image, image_ground_scaled in iter(dataloader): # Dataloader returns the batches. Loop over batches within epochs.
+        for sino_scaled, act_map_scaled, *recon_data in iter(dataloader): # Dataloader returns the batches. Loop over batches within epochs.
 
             #print(f'iter dataloader (time): {(time.time()-time_init_loader)*1000}')
             #print(f'FULL step (time): {(time.time()-time_init_full)*1000}')
             time_init_full = time.time()
 
-            real_S = sino_ground_scaled
-            real_I = image_ground_scaled
+            real_S = sino_scaled
+            real_I = act_map_scaled
 
             ## Update Networks ##
 
