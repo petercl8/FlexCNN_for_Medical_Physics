@@ -146,27 +146,41 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     # Mode-specific data file paths
     paths['tune_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_sino_file'])
     paths['tune_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_image_file'])
+    paths['tune_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon1_file']) if data_files.get('tune_recon1_file') is not None else None
+    paths['tune_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon2_file']) if data_files.get('tune_recon2_file') is not None else None
     paths['train_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_sino_file'])
     paths['train_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_image_file'])
+    paths['train_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['train_recon1_file']) if data_files.get('train_recon1_file') is not None else None
+    paths['train_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['train_recon2_file']) if data_files.get('train_recon2_file') is not None else None
     paths['test_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_sino_file'])
     paths['test_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_image_file'])
+    paths['test_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['test_recon1_file']) if data_files.get('test_recon1_file') is not None else None
+    paths['test_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['test_recon2_file']) if data_files.get('test_recon2_file') is not None else None
     
     # Active paths and checkpoint filename selection
     if run_mode == 'tune':
         paths['sino_path'] = paths['tune_sino_path']
         paths['image_path'] = paths['tune_image_path']
+        paths['recon1_path'] = paths['tune_recon1_path']
+        paths['recon2_path'] = paths['tune_recon2_path']
         checkpoint_file = ''
     elif run_mode == 'train':
         paths['sino_path'] = paths['train_sino_path']
         paths['image_path'] = paths['train_image_path']
+        paths['recon1_path'] = paths['train_recon1_path']
+        paths['recon2_path'] = paths['train_recon2_path']
         checkpoint_file = mode_files['train_checkpoint_file']
     elif run_mode == 'test':
         if test_set_type == 'test':
             paths['sino_path'] = paths['test_sino_path']
             paths['image_path'] = paths['test_image_path']
+            paths['recon1_path'] = paths['test_recon1_path']
+            paths['recon2_path'] = paths['test_recon2_path']
         elif test_set_type == 'train':
             paths['sino_path'] = paths['train_sino_path']
             paths['image_path'] = paths['train_image_path']
+            paths['recon1_path'] = paths['train_recon1_path']
+            paths['recon2_path'] = paths['train_recon2_path']
         else:
             raise ValueError(f"Test_set_type not 'test' or 'train': {test_set_type}")
         checkpoint_file = mode_files['test_checkpoint_file']
@@ -174,9 +188,13 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         if visualize_type == 'test':
             paths['sino_path'] = paths['test_sino_path']
             paths['image_path'] = paths['test_image_path']
+            paths['recon1_path'] = paths['test_recon1_path']
+            paths['recon2_path'] = paths['test_recon2_path']
         elif visualize_type == 'train':
             paths['sino_path'] = paths['train_sino_path']
             paths['image_path'] = paths['train_image_path']
+            paths['recon1_path'] = paths['train_recon1_path']
+            paths['recon2_path'] = paths['train_recon2_path']
         else:
             raise ValueError(f"Visualize_type not 'test' or 'train': {visualize_type}")
         checkpoint_file = mode_files['visualize_checkpoint_file']
