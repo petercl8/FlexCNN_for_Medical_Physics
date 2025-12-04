@@ -110,7 +110,8 @@ def run_SUP(config, paths, settings):
     # Data loader
     dataloader = DataLoader(
         NpArrayDataSet(image_path=paths['image_path'], sino_path=paths['sino_path'], config=config,
-                       augment=augment, offset=offset, num_examples=num_examples, sample_division=sample_division, device=device),
+                       augment=augment, offset=offset, num_examples=num_examples, sample_division=sample_division, device=device,
+                       FORE_recon_path=paths.get('FORE_recon_path', None), oblique_recon_path=paths.get('oblique_recon_path', None)),
         batch_size=batch_size,
         shuffle=shuffle
     )
