@@ -27,7 +27,7 @@ config_SUP_SI={
   "SI_gen_neck": 5,
   "SI_gen_z_dim": 344,
   "SI_layer_norm": "batch",
-  "SI_normalize": False,
+  "SI_normalize": True,
   "SI_pad_mode": "zeros",
   "SI_fixedScale": 8100,
   "batch_size": 47,
@@ -41,6 +41,7 @@ config_SUP_SI={
   "image_size":90,
   "train_SI": True,
   "network_type": "SUP",
+  "SI_fixedScale": 1,
 }
 
 

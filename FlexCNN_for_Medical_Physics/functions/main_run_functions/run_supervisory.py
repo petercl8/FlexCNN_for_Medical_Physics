@@ -87,10 +87,7 @@ def run_SUP(config, paths, settings):
     tune_dataframe_fraction = settings.get('tune_dataframe_fraction', 1.0)
     tune_max_t = settings.get('tune_max_t', 0)
     tune_restore= settings.get('tune_restore', False)
-
-    # Loss and scales
     sup_criterion = config['sup_criterion']
-
 
     # Tuning/Test specific initializations
     if run_mode == 'tune':
@@ -101,7 +98,7 @@ def run_SUP(config, paths, settings):
             tune_dataframe = pd.read_csv(tune_dataframe_path)
 
     if run_mode == 'test':
-        test_dataframe = pd.DataFrame({'MSE (Network)' : [],  'MSE (FBP)': [],  'MSE (ML-EM)': [], 'SSIM (Network)' : [], 'SSIM (FBP)': [], 'SSIM (ML-EM)': []})
+        test_dataframe = pd.DataFrame({'MSE (Network)' : [],  'MSE (Recon1)': [],  'MSE (Recon2)': [], 'SSIM (Network)' : [], 'SSIM (Recon1)': [], 'SSIM (Recon2)': []})
 
     # Model and optimizer
     gen = Generator(config=config, gen_SI=train_SI).to(device)
@@ -111,7 +108,7 @@ def run_SUP(config, paths, settings):
     dataloader = DataLoader(
         NpArrayDataSet(image_path=paths['image_path'], sino_path=paths['sino_path'], config=config,
                        augment=augment, offset=offset, num_examples=num_examples, sample_division=sample_division, device=device,
-                       FORE_recon_path=paths.get('recon1_path', None), oblique_recon_path=paths.get('recon2_path', None)),
+                       recon1_path=paths.get('recon1_path', None), recon2_path=paths.get('recon2_path', None)),
         batch_size=batch_size,
         shuffle=shuffle
     )
@@ -159,8 +156,8 @@ def run_SUP(config, paths, settings):
         
         for sino_scaled, act_map_scaled, *recon_data in iter(dataloader):
             # Unpack optional reconstructions if provided
-            FORE_recon = recon_data[0] if len(recon_data) > 0 else None
-            oblique_recon = recon_data[1] if len(recon_data) > 1 else None
+            recon1 = recon_data[0] if len(recon_data) > 0 else None
+            recon2 = recon_data[1] if len(recon_data) > 1 else None
             
             # Times
             _ = display_times('loader time', time_init_loader, show_times)             # _ is a dummy variable that isn't used in this loop
@@ -233,16 +230,16 @@ def run_SUP(config, paths, settings):
             # If Testing, we calculate and store reconstructions and metrics in a dataframe #
             if run_mode == 'test':
                 test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
-                    reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_map_scaled, test_dataframe, config, compute_MLEM=False, FORE_recon=FORE_recon, oblique_recon=oblique_recon)
+                    reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_map_scaled, test_dataframe, config, compute_MLEM=False, recon1=recon1, recon2=recon2)
 
             if run_mode == 'visualize':
-                if FORE_recon is not None:
-                    recon1_output = FORE_recon
+                if recon1 is not None:
+                    recon1_output = recon1
                 else:
                     recon1_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
                 
-                if oblique_recon is not None:
-                    recon2_output = oblique_recon
+                if recon2 is not None:
+                    recon2_output = recon2
                 else:
                     recon2_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
 

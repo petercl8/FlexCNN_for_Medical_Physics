@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 
 
 def plot_hist_1D(ax, dataframe, title, x_label, y_label, column_1, column_2, xlim, ylim, 
-                 bins=400, alpha=0.5, titlesize=13, fontsize=12
+                 bins=400, alpha=0.5, titlesize=13, fontsize=12,
+                 column_1_label=None, column_2_label=None
 ):
     """
     Plot overlaid histograms for two dataframe columns within specified limits.
@@ -28,6 +29,8 @@ def plot_hist_1D(ax, dataframe, title, x_label, y_label, column_1, column_2, xli
         Title font size (default 13).
     fontsize : int
         Axis label and tick font size (default 12).
+    column_1_label, column_2_label : str or None
+        Custom legend labels for the columns. If None, uses column names directly.
 
     Notes
     -----
@@ -41,7 +44,17 @@ def plot_hist_1D(ax, dataframe, title, x_label, y_label, column_1, column_2, xli
     df = df[df[column_2] > xlim[0]]
     df = df[df[column_2] < xlim[1]]
 
-    df[[column_1, column_2]].plot.hist(
+    # Create a dataframe with custom labels if provided
+    if column_1_label is not None or column_2_label is not None:
+        plot_df = df[[column_1, column_2]].copy()
+        if column_1_label is not None:
+            plot_df.rename(columns={column_1: column_1_label}, inplace=True)
+        if column_2_label is not None:
+            plot_df.rename(columns={column_2: column_2_label}, inplace=True)
+    else:
+        plot_df = df[[column_1, column_2]]
+
+    plot_df.plot.hist(
         xlim=xlim,
         ylim=ylim,
         bins=bins,
@@ -57,7 +70,8 @@ def plot_hist_1D(ax, dataframe, title, x_label, y_label, column_1, column_2, xli
 def plot_hist_2D(ax, dataframe, title, x_label, y_label,
     x_column, y_column,
     xlim=(0, 1), ylim=(0, 1), gridsize=None,
-    titlesize=13, fontsize=12, ticksize=10
+    titlesize=13, fontsize=12, ticksize=10,
+    x_column_label=None, y_column_label=None
 ):
     """
     Plot a hexbin (2D histogram) for two dataframe columns and draw diagonal line.
@@ -82,6 +96,8 @@ def plot_hist_2D(ax, dataframe, title, x_label, y_label,
         Axis label font size (default 12).
     ticksize : int
         Tick label font size (default 10).
+    x_column_label, y_column_label : str or None
+        Custom legend labels for the columns. If None, uses column names directly.
 
     Notes
     -----
@@ -95,10 +111,28 @@ def plot_hist_2D(ax, dataframe, title, x_label, y_label,
     df = df[df[y_column] > ylim[0]]
     df = df[df[y_column] < ylim[1]]
 
-    df.plot.hexbin(
+    # Create a dataframe with custom labels if provided
+    if x_column_label is not None or y_column_label is not None:
+        plot_df = df[[x_column, y_column]].copy()
+        if x_column_label is not None:
+            plot_df.rename(columns={x_column: x_column_label}, inplace=True)
+            x_col_for_plot = x_column_label
+        else:
+            x_col_for_plot = x_column
+        if y_column_label is not None:
+            plot_df.rename(columns={y_column: y_column_label}, inplace=True)
+            y_col_for_plot = y_column_label
+        else:
+            y_col_for_plot = y_column
+    else:
+        plot_df = df[[x_column, y_column]]
+        x_col_for_plot = x_column
+        y_col_for_plot = y_column
+
+    plot_df.plot.hexbin(
         ax=ax,
-        x=x_column,
-        y=y_column,
+        x=x_col_for_plot,
+        y=y_col_for_plot,
         xlim=xlim,
         ylim=ylim,
         gridsize=gridsize,
