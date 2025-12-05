@@ -123,15 +123,11 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         mode_files: dict with keys: train_checkpoint_file, test_checkpoint_file, visualize_checkpoint_file,
                     tune_csv_file, test_csv_file
         run_mode: 'tune', 'train', 'test', or 'visualize'
-        test_set_type: 'test' or 'train'
-        visualize_type: 'test' or 'train'
     
     Returns:
         paths dict with directory paths, mode-specific data paths, active sino/image paths, checkpoint_path,
         tune/test dataframe paths.
     """
-    test_set_type = test_ops.get('testset_type', 'test')
-    visualize_type = viz_ops.get('visualize_type', 'test')
 
     paths = {}
     
@@ -171,32 +167,16 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         paths['recon2_path'] = paths['train_recon2_path']
         checkpoint_file = mode_files['train_checkpoint_file']
     elif run_mode == 'test':
-        if test_set_type == 'test':
-            paths['sino_path'] = paths['test_sino_path']
-            paths['image_path'] = paths['test_image_path']
-            paths['recon1_path'] = paths['test_recon1_path']
-            paths['recon2_path'] = paths['test_recon2_path']
-        elif test_set_type == 'train':
-            paths['sino_path'] = paths['train_sino_path']
-            paths['image_path'] = paths['train_image_path']
-            paths['recon1_path'] = paths['train_recon1_path']
-            paths['recon2_path'] = paths['train_recon2_path']
-        else:
-            raise ValueError(f"Test_set_type not 'test' or 'train': {test_set_type}")
+        paths['sino_path'] = paths['test_sino_path']
+        paths['image_path'] = paths['test_image_path']
+        paths['recon1_path'] = paths['test_recon1_path']
+        paths['recon2_path'] = paths['test_recon2_path']
         checkpoint_file = mode_files['test_checkpoint_file']
     elif run_mode in ['visualize', 'none']:
-        if visualize_type == 'test':
-            paths['sino_path'] = paths['test_sino_path']
-            paths['image_path'] = paths['test_image_path']
-            paths['recon1_path'] = paths['test_recon1_path']
-            paths['recon2_path'] = paths['test_recon2_path']
-        elif visualize_type == 'train':
-            paths['sino_path'] = paths['train_sino_path']
-            paths['image_path'] = paths['train_image_path']
-            paths['recon1_path'] = paths['train_recon1_path']
-            paths['recon2_path'] = paths['train_recon2_path']
-        else:
-            raise ValueError(f"Visualize_type not 'test' or 'train': {visualize_type}")
+        paths['sino_path'] = paths['test_sino_path']
+        paths['image_path'] = paths['test_image_path']
+        paths['recon1_path'] = paths['test_recon1_path']
+        paths['recon2_path'] = paths['test_recon2_path']
         checkpoint_file = mode_files['visualize_checkpoint_file']
     else:
         raise ValueError(f"Unknown run_mode: {run_mode}")
@@ -222,9 +202,9 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         train_opts: dict with keys: train_augment, training_epochs, train_load_state, train_save_state,
                     train_show_times, train_sample_division, train_display_step
         test_opts: dict with keys: test_show_times, test_display_step, test_batch_size, test_chunk_size,
-                   testset_size, test_begin_at, test_compute_MLEM, testset_type, test_merge_dataframes,
+                   testset_size, test_begin_at, test_compute_MLEM, test_merge_dataframes,
                    test_shuffle, test_sample_division
-        viz_opts: dict with keys: visualize_shuffle, visualize_offset, visualize_batch_size, visualize_type
+        viz_opts: dict with keys: visualize_shuffle, visualize_offset, visualize_batch_size
         run_mode: 'tune', 'train', 'test', or 'visualize'
     
     Returns:

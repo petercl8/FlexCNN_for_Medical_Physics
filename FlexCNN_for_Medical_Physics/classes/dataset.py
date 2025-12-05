@@ -13,7 +13,7 @@ class NpArrayDataSet(Dataset):
     In the dataset used in our first two conference papers, the data repeat every 17500 steps but with different augmentations.
     For the dataset with FORE rebinning, the dataset contains no augmented examples; all augmentation is performed on the fly.
     '''
-    def __init__(self, image_path, sino_path, config, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda', recon1_path=None, recon2_path=None):
+    def __init__(self, image_path, sino_path, config, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda', recon1_path=None, recon2_path=None, recon1_scale=1.0, recon2_scale=1.0):
         '''
         image_path:         path to images (ground truth activity maps) in data set
         sino_path:          path to sinograms in data set
@@ -26,6 +26,8 @@ class NpArrayDataSet(Dataset):
         sample_division:    set to 1 to use every example, 2 to use every other example, etc. (Ex: if sample_division=2, the dataset will be half the size.)
         recon1_path:        (optional) path to pre-computed reconstruction 1. If None, reconstructions will be computed on-the-fly.
         recon2_path:        (optional) path to pre-computed reconstruction 2. If None, reconstructions will be computed on-the-fly.
+        recon1_scale:       (optional) scaling factor for recon1 to match ground truth quantitatively (if not normalizing). Default: 1.0
+        recon2_scale:       (optional) scaling factor for recon2 to match ground truth quantitatively (if not normalizing). Default: 1.0
         '''
 
         ## Load Data to Arrays ##
@@ -50,6 +52,8 @@ class NpArrayDataSet(Dataset):
         self.augment = augment
         self.sample_division = sample_division
         self.device = device
+        self.recon1_scale = recon1_scale
+        self.recon2_scale = recon2_scale
 
     def __len__(self):
         length = int(len(self.image_array)/self.sample_division)
@@ -65,7 +69,8 @@ class NpArrayDataSet(Dataset):
         sino_scaled, act_map_scaled, recon1, recon2 = NpArrayDataLoader(
             self.image_array, self.sino_array, self.config,
             augment=self.augment, index=idx, device=device_arg,
-            recon1_array=self.recon1_array, recon2_array=self.recon2_array)
+            recon1_array=self.recon1_array, recon2_array=self.recon2_array,
+            recon1_scale=self.recon1_scale, recon2_scale=self.recon2_scale)
 
         # Only return reconstructions if they exist (to avoid collate errors with None values)
         if recon1 is not None and recon2 is not None:
@@ -78,7 +83,7 @@ class NpArrayDataSet(Dataset):
             return sino_scaled, act_map_scaled
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, device='cuda', recon1_array=None, recon2_array=None):
+def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
     
     global resize_warned
 
@@ -96,6 +101,8 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     device:              device to place tensors on ('cuda' or 'cpu')
     recon1_array:        (optional) reconstruction 1 numpy array
     recon2_array:        (optional) reconstruction 2 numpy array
+    recon1_scale:        (optional) scaling factor for recon1 to match ground truth quantitatively
+    recon2_scale:        (optional) scaling factor for recon2 to match ground truth quantitatively
     '''
     ## Extract parameters from config ##
     network_type = config['network_type']
@@ -155,13 +162,16 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     recon1_multChannel_resize = transforms.Resize(size = (image_size, image_size), antialias=True)(recon1_multChannel) if recon1_multChannel is not None else None
     recon2_multChannel_resize = transforms.Resize(size = (image_size, image_size), antialias=True)(recon2_multChannel) if recon2_multChannel is not None else None
 
-
-
     ## (Optional) Normalize Resized Outputs Along Channel Dimension ##
     if SI_normalize:
+        # Normalize activity map and (possible) reconstructions
         a = torch.reshape(act_map_multChannel_resize, (image_channels,-1))
         a = nn.functional.normalize(a, p=1, dim = 1)
         act_map_multChannel_resize = torch.reshape(a, (image_channels, image_size, image_size))
+
+        # If normalizing, reconstruction scales should not be applied (normalized data are already matched)
+        recon1_scale = 1.0
+        recon2_scale = 1.0
         if recon1_multChannel_resize is not None:
             b = torch.reshape(recon1_multChannel_resize, (image_channels,-1))
             b = nn.functional.normalize(b, p=1, dim = 1)
@@ -203,10 +213,10 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     else:
         recon2_out = None
 
-    # Apply scaling (when normalize=False, fixedScale=1 so this has no effect)
+    # Apply scaling
     sino_scaled = IS_fixedScale * sino_out
     act_map_scaled = SI_fixedScale * act_map_out
-    recon1_scaled = SI_fixedScale * recon1_out if recon1_out is not None else None
-    recon2_scaled = SI_fixedScale * recon2_out if recon2_out is not None else None
+    recon1_scaled = (SI_fixedScale * recon1_scale * recon1_out) if recon1_out is not None else None
+    recon2_scaled = (SI_fixedScale * recon2_scale * recon2_out) if recon2_out is not None else None
 
     return sino_scaled.to(device), act_map_scaled.to(device), recon1_scaled.to(device) if recon1_scaled is not None else None, recon2_scaled.to(device) if recon2_scaled is not None else None
