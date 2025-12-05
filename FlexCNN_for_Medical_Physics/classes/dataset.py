@@ -129,7 +129,7 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
         SI_normalize=config['SI_normalize']
         SI_fixedScale=config['SI_fixedScale']
         IS_normalize=config['IS_normalize']
-        IS_fixedScale=config['IS_fixedScale']
+        IS_fixedScale=config['IS_fixedScale']#
 
 
     ## Select Data, Convert to Pytorch Tensors ##
