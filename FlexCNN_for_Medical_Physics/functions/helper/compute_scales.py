@@ -1,13 +1,15 @@
 import numpy as np
 
-def compute_reconstruction_scales(paths, sample_mode='full', sample_size=1000):
+def compute_reconstruction_scales(paths, dataset='train', sample_mode='full', sample_size=1000):
     """
-    Compute scaling factors on the training set to make reconstructions quantitatively match ground truth.
+    Compute scaling factors to make reconstructions quantitatively match ground truth.
 
-    This should be run once per dataset; the training set is largest and avoids using ground-truth test data.
+    Use the training set by default (largest, avoids contaminating test ground truth). Optionally compute from
+    the test set to compare scale drift.
 
     Args:
         paths: paths dictionary from setup_paths() containing data file paths
+        dataset: 'train' (default) or 'test' – which set to sample
         sample_mode: 'full' (use entire dataset) or 'even' (evenly spaced samples)
         sample_size: if sample_mode='even', number of samples to use
 
@@ -16,13 +18,20 @@ def compute_reconstruction_scales(paths, sample_mode='full', sample_size=1000):
 
     Example:
         # After running setup_paths() in notebook:
-        scales = compute_reconstruction_scales(paths, sample_mode='full')
+        scales = compute_reconstruction_scales(paths, dataset='train', sample_mode='full')
         recon1_scale = scales['recon1_scale']
         recon2_scale = scales['recon2_scale']
     """
-    image_path = paths['train_image_path']
-    recon1_path = paths['train_recon1_path']
-    recon2_path = paths['train_recon2_path']
+    if dataset == 'train':
+        image_path = paths['train_image_path']
+        recon1_path = paths['train_recon1_path']
+        recon2_path = paths['train_recon2_path']
+    elif dataset == 'test':
+        image_path = paths['test_image_path']
+        recon1_path = paths['test_recon1_path']
+        recon2_path = paths['test_recon2_path']
+    else:
+        raise ValueError("dataset must be 'train' or 'test'")
     
     # Load arrays with memory mapping
     image_array = np.load(image_path, mmap_mode='r')
