@@ -67,7 +67,15 @@ class NpArrayDataSet(Dataset):
             augment=self.augment, index=idx, device=device_arg,
             recon1_array=self.recon1_array, recon2_array=self.recon2_array)
 
-        return sino_scaled, act_map_scaled, recon1, recon2
+        # Only return reconstructions if they exist (to avoid collate errors with None values)
+        if recon1 is not None and recon2 is not None:
+            return sino_scaled, act_map_scaled, recon1, recon2
+        elif recon1 is not None:
+            return sino_scaled, act_map_scaled, recon1
+        elif recon2 is not None:
+            return sino_scaled, act_map_scaled, recon2
+        else:
+            return sino_scaled, act_map_scaled
 
 
 def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, device='cuda', recon1_array=None, recon2_array=None):
