@@ -203,10 +203,10 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     else:
         recon2_out = None
 
-    # Apply scaling if normalized
-    sino_scaled = IS_fixedScale * sino_out if IS_normalize else sino_out
-    act_map_scaled = SI_fixedScale * act_map_out if SI_normalize else act_map_out
-    recon1_scaled = SI_fixedScale * recon1_out if (SI_normalize and recon1_out is not None) else recon1_out
-    recon2_scaled = SI_fixedScale * recon2_out if (SI_normalize and recon2_out is not None) else recon2_out
+    # Apply scaling (when normalize=False, fixedScale=1 so this has no effect)
+    sino_scaled = IS_fixedScale * sino_out
+    act_map_scaled = SI_fixedScale * act_map_out
+    recon1_scaled = SI_fixedScale * recon1_out if recon1_out is not None else None
+    recon2_scaled = SI_fixedScale * recon2_out if recon2_out is not None else None
 
     return sino_scaled.to(device), act_map_scaled.to(device), recon1_scaled.to(device) if recon1_scaled is not None else None, recon2_scaled.to(device) if recon2_scaled is not None else None

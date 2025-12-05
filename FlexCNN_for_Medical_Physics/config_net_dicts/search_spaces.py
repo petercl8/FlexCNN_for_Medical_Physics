@@ -35,10 +35,12 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
 config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
     ## Data Loading ##
     'SI_normalize': False,
-    'SI_learnedScale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if SI_normalize=False. While SI_learnedScale_init is a hyperparamter, the actual scale is a learned parameter                                                                
+    'SI_fixedScale': 1,                                          # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
+    'SI_learnedScale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if SI_normalize=False. While SI_learnedScale_init is a hyperparamter, the actual scale is a learned parameter
     'SI_layer_norm': tune.choice(['none']),            # Could also add "group" normalization if you make it go into num_channels evenly.
     'SI_gen_final_activ': tune.choice([nn.ReLU(), None]),
 }
+
 config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
     'SI_normalize': True,
     'SI_fixedScale': 1,
@@ -70,10 +72,12 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
 config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
     ## Data Loading ##
     'IS_normalize': False,
-    'IS_learnedScale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if IS_normalize=False. While IS_learnedScale_init is a hyperparamter, the actual scale is a learned parameter                                                                
+    'IS_fixedScale': 1,        
+    'IS_learnedScale_init': tune.loguniform(1e-6, 1e3),         # Initial guess for learned multiplier. Only used if IS_normalize=False. While IS_learnedScale_init is a hyperparamter, the actual scale is a learned parameter                                  # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
     'IS_layer_norm': tune.choice(['group', 'none']),
     'IS_gen_final_activ': tune.choice([nn.ReLU(), None]),
 }
+
 config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
     'IS_normalize': True,
     'IS_fixedScale': 1,
