@@ -106,11 +106,22 @@ def run_SUP(config, paths, settings):
 
     # Data loader
     dataloader = DataLoader(
-        NpArrayDataSet(image_path=paths['image_path'], sino_path=paths['sino_path'], config=config,
-                       augment=augment, offset=offset, num_examples=num_examples, sample_division=sample_division, device=device,
-                       recon1_path=paths.get('recon1_path', None), recon2_path=paths.get('recon2_path', None)),
+        NpArrayDataSet(
+            image_path=paths['image_path'],
+            sino_path=paths['sino_path'],
+            config=config,
+            augment=augment,
+            offset=offset,
+            num_examples=num_examples,
+            sample_division=sample_division,
+            device=device,
+            recon1_path=paths.get('recon1_path', None),
+            recon2_path=paths.get('recon2_path', None),
+            recon1_scale=settings.get('recon1_scale', 1.0),
+            recon2_scale=settings.get('recon2_scale', 1.0),
+        ),
         batch_size=batch_size,
-        shuffle=shuffle
+        shuffle=shuffle,
     )
 
     # Checkpoint handling

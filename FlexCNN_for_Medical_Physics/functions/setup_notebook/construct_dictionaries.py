@@ -110,7 +110,6 @@ def construct_config(
 
     return config
 
-
 def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     """
     Build all path-related configuration.
@@ -119,7 +118,7 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         base_dirs: dict with keys: project_dirPath, plot_dirName, checkpoint_dirName, tune_storage_dirName,
                    tune_dataframe_dirName, test_dataframe_dirName, data_dirName
         data_files: dict with keys: tune_sino_file, tune_image_file, train_sino_file, train_image_file,
-                    test_sino_file, test_image_file
+                    test_sino_file, test_image_file, visualize_sino_file, visualize_image_file, and optional recon files
         mode_files: dict with keys: train_checkpoint_file, test_checkpoint_file, visualize_checkpoint_file,
                     tune_csv_file, test_csv_file
         run_mode: 'tune', 'train', 'test', or 'visualize'
@@ -152,6 +151,10 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['test_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_image_file'])
     paths['test_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['test_recon1_file']) if data_files.get('test_recon1_file') is not None else None
     paths['test_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['test_recon2_file']) if data_files.get('test_recon2_file') is not None else None
+    paths['visualize_sino_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_sino_file'])
+    paths['visualize_image_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_image_file'])
+    paths['visualize_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_recon1_file']) if data_files.get('visualize_recon1_file') is not None else None
+    paths['visualize_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_recon2_file']) if data_files.get('visualize_recon2_file') is not None else None
     
     # Active paths and checkpoint filename selection
     if run_mode == 'tune':
@@ -173,10 +176,10 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         paths['recon2_path'] = paths['test_recon2_path']
         checkpoint_file = mode_files['test_checkpoint_file']
     elif run_mode in ['visualize', 'none']:
-        paths['sino_path'] = paths['test_sino_path']
-        paths['image_path'] = paths['test_image_path']
-        paths['recon1_path'] = paths['test_recon1_path']
-        paths['recon2_path'] = paths['test_recon2_path']
+        paths['sino_path'] = paths['visualize_sino_path']
+        paths['image_path'] = paths['visualize_image_path']
+        paths['recon1_path'] = paths['visualize_recon1_path']
+        paths['recon2_path'] = paths['visualize_recon2_path']
         checkpoint_file = mode_files['visualize_checkpoint_file']
     else:
         raise ValueError(f"Unknown run_mode: {run_mode}")
@@ -189,7 +192,6 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['test_dataframe_path'] = os.path.join(paths['test_dataframe_dirPath'], f"{mode_files['test_csv_file']}.csv")
     
     return paths
-
 
 def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts, viz_opts):
     """
@@ -216,6 +218,8 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
     settings['run_mode'] = run_mode
     settings['device'] = common_settings['device']
     settings['num_examples'] = common_settings.get('num_examples', -1)
+    settings['recon1_scale'] = common_settings.get('recon1_scale', 1.0)
+    settings['recon2_scale'] = common_settings.get('recon2_scale', 1.0)
     
     # Mode-specific
     if run_mode == 'tune':
