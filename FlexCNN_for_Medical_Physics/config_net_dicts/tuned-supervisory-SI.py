@@ -16,31 +16,32 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 # 1x90x90, Tuned for MSE - fc6 #
 
 
-# 3x180x180 --> 1x90x90, Tuned for SSIM 
+# 3x180x180 --> 1x180x180, Tuned for SSIM 
 config_SUP_SI = {
+  "train_SI": True,
   "SI_dropout": False,
   "SI_exp_kernel": 4,
   "SI_gen_fill": 0,
   "SI_gen_final_activ": nn.Tanh(),
   "SI_gen_hidden_dim": 23,
   "SI_gen_mult": 1.6605902406330195,
-  "SI_gen_neck": 5,
+  "SI_gen_neck": 1,
   "SI_gen_z_dim": 789,
   "SI_layer_norm": "instance",
-  "SI_normalize": True,
   "SI_pad_mode": "zeros",
   "batch_size": 71,
   "gen_b1": 0.2082092731474774,
   "gen_b2": 0.27147903136187507,
   "gen_lr": 0.0005481469822215635,
   "sup_criterion": nn.MSELoss(),
-  "image_size":90,
-  "sino_size":180,
+  "network_type": "SUP",
   "image_channels":1,
   "sino_channels": 3,
-  "train_SI": True,
-  "network_type": "SUP",
+  "image_size":180,
+  "sino_size":180,
+  "SI_normalize": True,
   "SI_fixedScale": 8100,
+  "SI_skip_mode": "none",
   }
 
 '''
