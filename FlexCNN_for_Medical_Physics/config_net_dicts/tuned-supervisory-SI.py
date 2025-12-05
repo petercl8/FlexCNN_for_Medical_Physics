@@ -29,7 +29,6 @@ config_SUP_SI = {
   "SI_layer_norm": "instance",
   "SI_normalize": True,
   "SI_pad_mode": "zeros",
-  "SI_fixedScale": 8100,
   "batch_size": 71,
   "gen_b1": 0.2082092731474774,
   "gen_b2": 0.27147903136187507,
@@ -41,7 +40,7 @@ config_SUP_SI = {
   "sino_channels": 3,
   "train_SI": True,
   "network_type": "SUP",
-  "SI_fixedScale": 1,
+  "SI_fixedScale": 8100,
   }
 
 '''
@@ -58,7 +57,6 @@ config_SUP_SI = {
   "SI_layer_norm": "instance",
   "SI_normalize": True,
   "SI_pad_mode": "zeros",
-  "SI_fixedScale": 8100,
   "batch_size": 71,
   "gen_b1": 0.2082092731474774,
   "gen_b2": 0.27147903136187507,
@@ -70,7 +68,7 @@ config_SUP_SI = {
   "image_size":90,
   "train_SI": True, 
   "network_type": "SUP"
-  "SI_fixedScale": 1,
+  "SI_fixedScale": 8100,
 }
 '''
 '''
