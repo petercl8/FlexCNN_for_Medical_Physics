@@ -51,6 +51,11 @@ def run_SUP(config, paths, settings):
     offset = settings.get('offset', 0)
     num_examples = settings.get('num_examples', -1)
     sample_division = settings.get('sample_division', 1)
+    
+    # Convert batch_base2_exponent to batch_size for tune/train modes
+    if 'batch_base2_exponent' in config and settings['run_mode'] in ('tune', 'train'):
+        config['batch_size'] = 2 ** config['batch_base2_exponent']
+    
     batch_size = config['batch_size']
 
     print('Dataset offset:', offset)

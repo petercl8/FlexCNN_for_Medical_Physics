@@ -89,7 +89,7 @@ config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
 
 config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning
     # NEW: New parameters added to config_RAY_SI (related to generator optimizer)
-    'batch_size': tune.choice([32, 64, 128, 256, 512]), # tune.lograndint(30, 400),
+    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
     'gen_lr': tune.loguniform(1e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': tune.loguniform(0.1, 0.999),
@@ -111,7 +111,7 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
 
 config_RAY_GAN = { # This is MERGED with either config_RAY_IS or config_RAY_SI to form a single dictionary for a generative adversarial network.
     # NEW
-    'batch_size': tune.choice([32, 64, 128, 256, 512]),  #tune.lograndint(30, 400),
+    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
     'gen_lr': tune.loguniform(1e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': 0.999, #tune.loguniform(0.1, 0.999),
@@ -129,7 +129,7 @@ config_GAN_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/co
     'gen_adv_criterion': nn.MSELoss(), #tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.BCEWithLogitsLoss()]),
     'IS_disc_lr': tune.loguniform(1e-4,1e-2),
     'SI_disc_lr': tune.loguniform(1e-4,1e-2),
-    'batch_size': tune.choice([32, 64, 128, 256, 512]),
+    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
     'gen_lr': tune.loguniform(0.5e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': 0.999, #tune.loguniform(0.1, 0.999),
@@ -142,7 +142,7 @@ config_SUP_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/co
     'lambda_sup': 1,
     'lambda_cycle':  tune.uniform(0, 10),
     # OVERWRITES
-    'batch_size': tune.choice([32, 64, 128, 256, 512]),
+    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
     'gen_lr': tune.loguniform(0.5e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
     'gen_b2': tune.loguniform(0.1, 0.999),

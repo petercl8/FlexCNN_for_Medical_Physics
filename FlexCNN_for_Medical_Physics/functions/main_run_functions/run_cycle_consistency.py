@@ -9,6 +9,11 @@ def run_CYCLE(config, checkpoint_dirPath=None, load_state=False, save_state=Fals
     '''
 
     ## Grab Stuff from Config Dict. ##
+    # Convert batch_base2_exponent to batch_size for tune/train modes
+    # Note: run_CYCLE doesn't receive settings dict, so we check if exponent key exists
+    if 'batch_base2_exponent' in config:
+        config['batch_size'] = 2 ** config['batch_base2_exponent']
+    
     batch_size = config['batch_size']
     gen_b1 = config['gen_b1']
     gen_b2 = config['gen_b2']
