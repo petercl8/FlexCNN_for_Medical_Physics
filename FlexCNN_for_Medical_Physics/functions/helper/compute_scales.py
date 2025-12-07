@@ -1,11 +1,11 @@
 import numpy as np
 
-def compute_reconstruction_scales_simple(paths, dataset='train'):
+def compute_quantitative_reconstruction_scale(paths, dataset='train'):
     """
-    Compute simple scaling factors to match reconstructions to ground truth.
+    Compute the global scaling factor to match reconstructions to ground truth.
     
     Computes the ratio of total ground truth activity to total reconstruction activity
-    across the entire dataset. This is the simplest approach with no sampling or capping.
+    across the entire dataset. This single global scale is used for quantitative matching.
     
     Args:
         paths: paths dictionary from setup_paths() containing data file paths
@@ -63,13 +63,13 @@ def compute_reconstruction_scales_simple(paths, dataset='train'):
     return scales
 
 
-def compute_reconstruction_scales(paths, dataset='train', sample_mode='full', sample_size=1000, ratio_cap_multiple=None):
+def analyze_reconstruction_scale_distribution(paths, dataset='train', sample_mode='full', sample_size=1000, ratio_cap_multiple=None):
     """
-    Compute scaling factors (mean and std) to match reconstructions to ground truth.
+    Analyze the distribution of per-example reconstruction scaling ratios.
 
-    Uses per-example sums so ratios and spread are visible. Optionally caps ratios at
-    (ratio_cap_multiple * uncapped median ratio) to blunt near-zero denominators.
-    Reports both uncapped and capped mean/std so the impact of capping is visible.
+    Uses per-example sums to compute individual scaling ratios, revealing spread and outliers.
+    Optionally caps ratios at (ratio_cap_multiple * uncapped median ratio) to blunt near-zero
+    denominators. Reports both uncapped and capped statistics to assess scaling consistency.
 
     Args:
         paths: paths dictionary from setup_paths() containing data file paths
@@ -86,7 +86,7 @@ def compute_reconstruction_scales(paths, dataset='train', sample_mode='full', sa
         recon1_max_capped_ratio, recon2_max_capped_ratio
 
     Example:
-        scales = compute_reconstruction_scales(paths, dataset='train', sample_mode='full', ratio_cap_multiple=5)
+        scales = analyze_reconstruction_scale_distribution(paths, dataset='train', sample_mode='full', ratio_cap_multiple=5)
         recon1_capped_mean = scales['recon1_capped_mean']
         recon2_capped_mean = scales['recon2_capped_mean']
     """
