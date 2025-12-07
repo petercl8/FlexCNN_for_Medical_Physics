@@ -53,6 +53,13 @@ def compute_reconstruction_scales_simple(paths, dataset='train'):
     else:
         scales['recon2_scale'] = 1.0
     
+    # Print results
+    print(f"\nSimple scaling factors for {dataset} dataset:")
+    if scales['recon1_scale'] != 1.0:
+        print(f"  recon1_scale: {scales['recon1_scale']:.6f}")
+    if scales['recon2_scale'] != 1.0:
+        print(f"  recon2_scale: {scales['recon2_scale']:.6f}")
+    
     return scales
 
 
