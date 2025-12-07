@@ -37,6 +37,8 @@ from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
     compute_display_step,
     get_tune_session
 )
+from FlexCNN_for_Medical_Physics.functions.helper.evaluation_data import eval_data, get_eval_batch
+from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_NEMA_hot, ROI_NEMA_cold
 
 # Module logger for optional Tune debug output
 logger = logging.getLogger(__name__)
@@ -155,6 +157,9 @@ def run_SUP(config, paths, settings):
     mean_CNN_MSE = 0
     mean_CNN_CUSTOM = 0
     report_num = 1 # First report to RayTune is report_num = 1
+    
+    # Evaluation cache (for 'val' and 'qa' modes, or 'same' mode caching)
+    eval_cache = {}
 
     # Timing
     time_init_full = time.time() # This is reset at the display time so that the full step time is displayed (see below).
@@ -267,10 +272,23 @@ def run_SUP(config, paths, settings):
                 example_num = batch_step * batch_size
 
                 if run_mode == 'tune' and session is not None:
-                    session.report({'MSE': mean_CNN_MSE, 'SSIM': mean_CNN_SSIM, 'CUSTOM': mean_CNN_CUSTOM, 'example_num': example_num, 'batch_step': batch_step, 'epoch': epoch})
+                    # Get evaluation batch (loads data, assigns inputs/targets, moves to device, generates output)
+                    eval_input, eval_target, eval_output, eval_cache = get_eval_batch(
+                        gen, paths, config, settings, eval_cache,
+                        current_batch=(sino_scaled, act_map_scaled),
+                        device=device,
+                        train_SI=train_SI
+                    )
+                    
+                    # Report metrics computed on evaluation data
+                    report_MSE = calculate_metric(eval_target, eval_output, MSE)
+                    report_SSIM = calculate_metric(eval_target, eval_output, SSIM)
+                    report_CUSTOM = custom_metric(eval_target, eval_output)
+                    
+                    session.report({'MSE': report_MSE, 'SSIM': report_SSIM, 'CUSTOM': report_CUSTOM, 'example_num': example_num, 'batch_step': batch_step, 'epoch': epoch})
 
                     if int(tune_dataframe_fraction * tune_max_t) == report_num:
-                        tune_dataframe = update_tune_dataframe(tune_dataframe, tune_dataframe_path, gen, config, mean_CNN_MSE, mean_CNN_SSIM, mean_CNN_CUSTOM)
+                        tune_dataframe = update_tune_dataframe(tune_dataframe, tune_dataframe_path, gen, config, report_MSE, report_SSIM, report_CUSTOM)
                     report_num += 1
 
                 if run_mode == 'train':

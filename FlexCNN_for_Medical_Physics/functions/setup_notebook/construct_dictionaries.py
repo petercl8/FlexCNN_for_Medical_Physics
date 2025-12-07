@@ -145,6 +145,10 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['tune_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon2_file']) if data_files.get('tune_recon2_file') is not None else None
     paths['tune_val_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_sino_file']) if data_files.get('tune_val_sino_file') is not None else None
     paths['tune_val_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_image_file']) if data_files.get('tune_val_image_file') is not None else None
+    paths['tune_qa_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_sino_file']) if data_files.get('tune_qa_sino_file') is not None else None
+    paths['tune_qa_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_image_file']) if data_files.get('tune_qa_image_file') is not None else None
+    paths['tune_qa_backMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_backMask_file']) if data_files.get('tune_qa_backMask_file') is not None else None
+    paths['tune_qa_hotMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_hotMask_file']) if data_files.get('tune_qa_hotMask_file') is not None else None
     paths['train_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_sino_file'])
     paths['train_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_image_file'])
     paths['train_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['train_recon1_file']) if data_files.get('train_recon1_file') is not None else None
@@ -246,7 +250,8 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['tune_examples_per_report'] = tune_opts.get('tune_examples_per_report')
         settings['tune_augment'] = tune_opts['tune_augment']
         settings['tune_debug'] = tune_opts.get('tune_debug', False)
-        settings['tune_cross_validation'] = tune_opts.get('tune_cross_validation', False)
+        settings['tune_report_for'] = tune_opts.get('tune_report_for', 'same')
+        settings['eval_batch_size'] = tune_opts.get('eval_batch_size', 32)
 
     elif run_mode == 'train':
         settings['augment'] = train_opts['train_augment']
