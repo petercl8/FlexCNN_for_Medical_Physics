@@ -217,7 +217,11 @@ def run_SUP(config, paths, settings):
                         grad_norm = sum(p.grad.detach().norm().item() for p in gen.parameters() if p.grad is not None)
                     except Exception:
                         grad_norm = float('nan')
-                    logger.debug(f"[TUNE_DEBUG] epoch={epoch} batch_step={batch_step} loss={gen_loss.item():.6f} param_norm={param_norm:.6f} grad_norm={grad_norm:.6f} device={device}")
+                    try:
+                        output_scale = torch.exp(gen.log_output_scale).item() if getattr(gen, 'output_scale_learnable', False) else gen.fixed_output_scale.item()
+                    except Exception:
+                        output_scale = float('nan')
+                    logger.debug(f"[TUNE_DEBUG] epoch={epoch} batch_step={batch_step} loss={gen_loss.item():.6f} param_norm={param_norm:.6f} grad_norm={grad_norm:.6f} output_scale={output_scale:.6f} device={device}")
 
                 # Keep track of the average generator loss
                 mean_gen_loss += gen_loss.item() / display_step
