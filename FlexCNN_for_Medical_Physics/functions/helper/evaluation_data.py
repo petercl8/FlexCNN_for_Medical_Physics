@@ -1,15 +1,17 @@
 """
 Helpers for evaluation data loading during tuning.
 
-Supports three evaluation modes:
-- 'same': report on current training batch (no separate loader)
+Supports two evaluation modes:
 - 'val': report on fixed validation batch (deterministic, cached)
-- 'qa': report on QA phantom data with masks (stub for future CRC metrics)
+- 'qa': report on QA phantom data with masks (for CRC metrics)
 """
 
 import numpy as np
 import torch
 from FlexCNN_for_Medical_Physics.classes.dataset import NpArrayDataSet
+from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, custom_metric
+from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric
+from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_NEMA_hot, ROI_NEMA_cold
 
 def load_validation_batch(paths, config, settings):
     """
@@ -21,7 +23,7 @@ def load_validation_batch(paths, config, settings):
     Args:
         paths: dict with 'tune_val_sino_path', 'tune_val_image_path'
         config: dict with 'image_size', 'sino_size', 'image_channels', 'sino_channels'
-        settings: dict with 'eval_batch_size' (e.g., 32)
+        settings: dict with 'tune_eval_batch_size' (e.g., 32)
     
     Returns:
         dict with keys 'sino' and 'image' (both tensors on CPU)
@@ -35,7 +37,7 @@ def load_validation_batch(paths, config, settings):
             "tune_report_for='val' requires tune_val_sino_file and tune_val_image_file to be set in the notebook."
         )
     
-    eval_batch_size = settings.get('eval_batch_size', 32)
+    tune_eval_batch_size = settings.get('tune_eval_batch_size', 512)
     
     # Load full validation set
     val_dataset = NpArrayDataSet(
@@ -53,153 +55,208 @@ def load_validation_batch(paths, config, settings):
     
     # Deterministically sample a fixed batch
     np.random.seed(42)  # Fixed seed ensures same indices across all trials
-    indices = np.random.choice(len(val_dataset), size=eval_batch_size, replace=False)
+    indices = np.random.choice(len(val_dataset), size=tune_eval_batch_size, replace=False)
     
     # Extract the batch
     sino_batch = []
     image_batch = []
     for idx in indices:
         sino, image = val_dataset[idx][:2]  # Unpack sino, image (ignore recon1/recon2)
-        sino_batch.append(sino)
-        image_batch.append(image)
+        sino_batch.append(sino) # Creates a list of tensors
+        image_batch.append(image) # Creates a list of tensors
     
     return {
-        'sino': torch.stack(sino_batch),
-        'image': torch.stack(image_batch),
+        'sino': torch.stack(sino_batch), # Stack list of tensors into a single tensor
+        'image': torch.stack(image_batch), # Stack list of tensors into a single tensor
     }
 
 def load_qa_phantom_data(paths, config):
     """
-    Load QA phantom sinogram and masks.
+    Load QA phantom sinogram, ground truth image, and masks.
     
     QA phantoms are used to compute contrast recovery coefficients (CRC) and other
-    QA-specific metrics. Unlike validation, we don't need ground truth images since
-    CRC is computed directly from the reconstructed images and the masks.
+    QA-specific metrics. The QA image is used as ground truth reference for ROI metric calculations.
+    Separate background masks are used for hot and cold lesion calculations.
     
     Loads to CPU; caller handles device placement.
     
     Args:
-        paths: dict with 'tune_qa_sino_path', 'tune_qa_backMask_path', 'tune_qa_hotMask_path'
+        paths: dict with 'tune_qa_sino_path', 'tune_qa_image_path', 'tune_qa_hotMask_path', 
+               'tune_qa_hotBackgroundMask_path', 'tune_qa_coldMask_path', 'tune_qa_coldBackgroundMask_path'
         config: dict with 'image_size', 'sino_size', 'image_channels', 'sino_channels'
     
     Returns:
-        dict with keys 'sino', 'backMask', 'hotMask' (all tensors on CPU)
+        dict with keys 'sino', 'image', 'hotMask', 'hotBackgroundMask', 'coldMask', 'coldBackgroundMask' 
+        (all tensors on CPU)
     
     Raises:
         ValueError: if QA paths are not set
     """
     # Check paths
     if (paths.get('tune_qa_sino_path') is None or 
-        paths.get('tune_qa_backMask_path') is None or 
-        paths.get('tune_qa_hotMask_path') is None):
+        paths.get('tune_qa_image_path') is None or 
+        paths.get('tune_qa_hotMask_path') is None or
+        paths.get('tune_qa_hotBackgroundMask_path') is None or
+        paths.get('tune_qa_coldMask_path') is None or
+        paths.get('tune_qa_coldBackgroundMask_path') is None):
         raise ValueError(
-            "tune_report_for='qa' requires tune_qa_sino_file, tune_qa_backMask_file, and tune_qa_hotMask_file to be set in the notebook."
+            "tune_report_for='qa' requires tune_qa_sino_file, tune_qa_image_file, tune_qa_hotMask_file, "
+            "tune_qa_hotBackgroundMask_file, tune_qa_coldMask_file, and tune_qa_coldBackgroundMask_file to be set in the notebook."
         )
     
-    # Load QA sinogram and masks
+    # Load QA sinogram, ground truth image, and masks
     sino_qa = np.load(paths['tune_qa_sino_path'], mmap_mode='r')
-    backMask = np.load(paths['tune_qa_backMask_path'], mmap_mode='r')
+    image_qa = np.load(paths['tune_qa_image_path'], mmap_mode='r')
     hotMask = np.load(paths['tune_qa_hotMask_path'], mmap_mode='r')
+    hotBackgroundMask = np.load(paths['tune_qa_hotBackgroundMask_path'], mmap_mode='r')
+    coldMask = np.load(paths['tune_qa_coldMask_path'], mmap_mode='r')
+    coldBackgroundMask = np.load(paths['tune_qa_coldBackgroundMask_path'], mmap_mode='r')
     
     # Convert to tensors on CPU
     return {
         'sino': torch.from_numpy(sino_qa).float(),
-        'backMask': torch.from_numpy(backMask).float(),
+        'image': torch.from_numpy(image_qa).float(),
         'hotMask': torch.from_numpy(hotMask).float(),
+        'hotBackgroundMask': torch.from_numpy(hotBackgroundMask).float(),
+        'coldMask': torch.from_numpy(coldMask).float(),
+        'coldBackgroundMask': torch.from_numpy(coldBackgroundMask).float(),
     }
 
-def eval_data(paths, config, settings, current_batch=None):
+def get_eval_data(paths, config, settings, cache):
     """
-    Load evaluation data based on tune_report_for setting.
+    Load and cache evaluation data based on tune_report_for setting.
     
-    Returns a dict with 'sino' key (and either 'image' for val/same, or masks for qa).
-    Note: Does NOT cache—caching is handled by get_eval_batch().
+    Simple cached loader that returns raw data dict. Does NOT handle device placement,
+    input/target assignment, or network evaluation. That logic is in evaluate_val() and evaluate_qa().
     
     Args:
         paths: dict with all data paths
         config: dict with network config
         settings: dict with 'tune_report_for' and 'eval_batch_size'
-        current_batch: tuple (sino_scaled, act_map_scaled) for 'same' mode; required if tune_report_for='same'
+        cache: dict to store/retrieve cached data
     
     Returns:
-        dict with 'sino' and either 'image' (for val/same) or 'backMask'/'hotMask' (for qa)
+        cache: dict containing cached data with keys:
+            - 'sino': sinogram tensor (CPU)
+            - 'image': ground truth image (CPU) for both 'val' and 'qa' modes
+            - 'tune_eval_batch_size', 'tune_qa_hot_weight': cached parameters
+            - 'backMask', 'hotMask', 'coldMask': masks (CPU) for 'qa' mode
     
     Raises:
-        ValueError: if tune_report_for is invalid or current_batch is None when needed
+        ValueError: if tune_report_for is invalid
     """
-    tune_report_for = settings.get('tune_report_for', 'same')
+    tune_report_for = settings.get('tune_report_for', 'val')
     
-    if tune_report_for == 'same':
-        if current_batch is None:
-            raise ValueError("tune_report_for='same' requires current_batch to be provided.")
-        sino_scaled, act_map_scaled = current_batch
-        return {'sino': sino_scaled, 'image': act_map_scaled}
-    elif tune_report_for == 'val':
-        return load_validation_batch(paths, config, settings)
-    elif tune_report_for == 'qa':
-        return load_qa_phantom_data(paths, config)
-    else:
-        raise ValueError(
-            f"Invalid tune_report_for='{tune_report_for}'. "
-            "Must be 'same', 'val', or 'qa'."
-        )
+    # Load data on first call and cache it. Otherwise, return cached data.
+    if 'data_loaded' not in cache:
+        if tune_report_for == 'val':
+            data_dict = load_validation_batch(paths, config, settings)
+        elif tune_report_for == 'qa':
+            data_dict = load_qa_phantom_data(paths, config)
+        else:
+            raise ValueError(
+                f"Invalid tune_report_for='{tune_report_for}'. "
+                "Must be 'val' or 'qa'."
+            )
+        
+        # Store in cache
+        cache.update(data_dict) # Merges dictionaries
+        cache['data_loaded'] = True
+    
+    return cache
 
 
-def get_eval_batch(gen, paths, config, settings, cache, current_batch=None, device='cpu', train_SI=True):
+def evaluate_val(gen, cache, device, train_SI):
     """
-    Complete evaluation pipeline: load data, assign inputs/targets, move to device, generate network output.
-    
-    Handles all caching: 
-    - First call: loads data, moves to device, assigns inputs/targets, caches them, generates output
-    - Subsequent calls: reuses cached eval_input/target, only regenerates eval_output
+    Evaluate network on validation data and compute standard metrics (MSE, SSIM, CUSTOM).
+    Moves data to device on first call and overwrites CPU copies to avoid duplication.
     
     Args:
         gen: Generator network (in eval mode)
-        paths: dict with all data paths
-        config: dict with network config
-        settings: dict with 'tune_report_for' and 'eval_batch_size'
-        cache: dict to store/retrieve cached data (populated with 'eval_input', 'eval_target', and mode-specific keys)
-        current_batch: tuple (sino_scaled, act_map_scaled) for 'same' mode
+        cache: dict with cached 'sino' and 'image' tensors (initially on CPU)
         device: torch device to move tensors to
         train_SI: bool, True for sino→image, False for image→sino
     
     Returns:
-        (eval_input, eval_target, eval_output, cache): 
-            eval_input/target/output are tensors on device
-            cache is populated with cached data
+        dict with metric results: {'MSE': float, 'SSIM': float, 'CUSTOM': float}
     """
-    tune_report_for = settings.get('tune_report_for', 'same')
+    # Move once: overwrite CPU tensors to avoid dual copies when device is not CPU
+    if 'data_on_device' not in cache:
+        cache['sino'] = cache['sino'].to(device)
+        cache['image'] = cache['image'].to(device)
+        cache['data_on_device'] = True
     
-    # Load evaluation data on first call; reuse loaded data on subsequent calls
-    if 'eval_data_dict' not in cache:
-        cache['eval_data_dict'] = eval_data(paths, config, settings, current_batch=current_batch)
-    eval_data_dict = cache['eval_data_dict']
+    eval_sino = cache['sino']
+    eval_image = cache['image']
     
-    # Initialize eval_input and eval_target on first call; reuse on subsequent calls
-    if 'eval_input' not in cache:
-        # Move sinogram to device
-        eval_sino = eval_data_dict['sino'].to(device)
-        
-        # Handle different data types
-        if 'image' in eval_data_dict:
-            # val or same mode: has ground truth image
-            eval_image = eval_data_dict['image'].to(device)
-            if train_SI:
-                cache['eval_target'] = eval_image
-                cache['eval_input'] = eval_sino
-            else:
-                cache['eval_target'] = eval_sino
-                cache['eval_input'] = eval_image
-        else:
-            # qa mode: no ground truth image, only sino and masks
-            cache['eval_target'] = None
-            cache['eval_input'] = eval_sino
+    # Assign inputs/targets based on train_SI
+    if train_SI:
+        eval_input = eval_sino
+        eval_target = eval_image
+    else:
+        eval_input = eval_image
+        eval_target = eval_sino
     
-    eval_input = cache['eval_input']
-    eval_target = cache['eval_target']
-    
-    # Generate network output (only part that changes on each report)
+    # Generate network output
     with torch.no_grad():
         eval_output = gen(eval_input)
     
-    return eval_input, eval_target, eval_output, cache
+    # Compute metrics
+    return {
+        'MSE': calculate_metric(eval_target, eval_output, MSE),
+        'SSIM': calculate_metric(eval_target, eval_output, SSIM),
+        'CUSTOM': custom_metric(eval_target, eval_output)
+    }
+
+
+def evaluate_qa(gen, cache, device, settings):
+    """
+    Evaluate network on QA phantom data and compute CRC metrics.
+    Moves data to device on first call and overwrites CPU copies to avoid duplication.
+    Computes ROI_NEMA_hot, ROI_NEMA_cold, and a weighted aggregate.
+    
+    Args:
+        gen: Generator network (in eval mode)
+        cache: dict with cached tensors (initially on CPU):
+               'sino', 'image', 'hotMask', 'hotBackgroundMask', 'coldMask', 'coldBackgroundMask'
+        device: torch device to move tensors to
+        settings: dict with optional 'tune_qa_hot_weight' (default 0.5)
+    
+    Returns:
+        dict with metric results: {'ROI_NEMA_hot': float, 'ROI_NEMA_cold': float, 'ROI_NEMA_weighted': float}
+    """
+    # Move once: overwrite CPU tensors to avoid dual copies when device is not CPU
+    if 'data_on_device' not in cache:
+        cache['sino'] = cache['sino'].to(device)
+        cache['image'] = cache['image'].to(device)
+        cache['hotMask'] = cache['hotMask'].to(device)
+        cache['hotBackgroundMask'] = cache['hotBackgroundMask'].to(device)
+        cache['coldMask'] = cache['coldMask'].to(device)
+        cache['coldBackgroundMask'] = cache['coldBackgroundMask'].to(device)
+        cache['data_on_device'] = True
+    
+    eval_sino = cache['sino']
+    eval_image = cache['image']
+    hotMask = cache['hotMask']
+    hotBackgroundMask = cache['hotBackgroundMask']
+    coldMask = cache['coldMask']
+    coldBackgroundMask = cache['coldBackgroundMask']
+    
+    # Generate network output (sino → reconstructed image)
+    with torch.no_grad():
+        eval_output = gen(eval_sino)
+    
+    # Compute ROI metrics with separate background masks
+    hot = ROI_NEMA_hot(eval_image, eval_output, hotBackgroundMask, hotMask)
+    cold = ROI_NEMA_cold(eval_output, coldBackgroundMask, coldMask)
+    
+    # Weighted aggregate
+    hot_weight = settings.get('tune_qa_hot_weight', 0.5)
+    cold_weight = 1.0 - hot_weight
+    weighted = hot_weight * hot + cold_weight * cold
+    
+    return {
+        'ROI_NEMA_hot': hot,
+        'ROI_NEMA_cold': cold,
+        'ROI_NEMA_weighted': weighted
+    }

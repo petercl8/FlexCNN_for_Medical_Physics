@@ -37,8 +37,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
     compute_display_step,
     get_tune_session
 )
-from FlexCNN_for_Medical_Physics.functions.helper.evaluation_data import eval_data, get_eval_batch
-from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_NEMA_hot, ROI_NEMA_cold
+from FlexCNN_for_Medical_Physics.functions.helper.evaluation_data import get_eval_data, evaluate_val, evaluate_qa
 
 # Module logger for optional Tune debug output
 logger = logging.getLogger(__name__)
@@ -272,23 +271,36 @@ def run_SUP(config, paths, settings):
                 example_num = batch_step * batch_size
 
                 if run_mode == 'tune' and session is not None:
-                    # Get evaluation batch (loads data, assigns inputs/targets, moves to device, generates output)
-                    eval_input, eval_target, eval_output, eval_cache = get_eval_batch(
-                        gen, paths, config, settings, eval_cache,
-                        current_batch=(sino_scaled, act_map_scaled),
-                        device=device,
-                        train_SI=train_SI
-                    )
+                    # Load evaluation data (cached after first call)
+                    eval_cache = get_eval_data(paths, config, settings, eval_cache)
                     
-                    # Report metrics computed on evaluation data
-                    report_MSE = calculate_metric(eval_target, eval_output, MSE)
-                    report_SSIM = calculate_metric(eval_target, eval_output, SSIM)
-                    report_CUSTOM = custom_metric(eval_target, eval_output)
-                    
-                    session.report({'MSE': report_MSE, 'SSIM': report_SSIM, 'CUSTOM': report_CUSTOM, 'example_num': example_num, 'batch_step': batch_step, 'epoch': epoch})
+                    # Evaluate based on mode
+                    tune_report_for = settings.get('tune_report_for', 'val')
+                    if tune_report_for == 'val':
+                        metrics = evaluate_val(gen, eval_cache, device, train_SI)
 
-                    if int(tune_dataframe_fraction * tune_max_t) == report_num:
-                        tune_dataframe = update_tune_dataframe(tune_dataframe, tune_dataframe_path, gen, config, report_MSE, report_SSIM, report_CUSTOM)
+                        # Update dataframe at specified fraction
+                        if int(tune_dataframe_fraction * tune_max_t) == report_num:
+                            tune_dataframe = update_tune_dataframe(
+                                tune_dataframe, tune_dataframe_path, gen, config,
+                                metrics.get('MSE'), metrics.get('SSIM'), metrics.get('CUSTOM')
+                            )
+
+                    elif tune_report_for == 'qa':
+                        metrics = evaluate_qa(gen, eval_cache, device, settings)
+                    else:
+                        raise ValueError(f"Invalid tune_report_for='{tune_report_for}'")
+                    
+                    # Add metadata to metrics
+                    metrics.update({
+                        'example_num': example_num,
+                        'batch_step': batch_step,
+                        'epoch': epoch
+                    })
+                    
+                    # Report to Ray Tune
+                    session.report(metrics)
+
                     report_num += 1
 
                 if run_mode == 'train':
