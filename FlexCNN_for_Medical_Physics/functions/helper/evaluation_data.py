@@ -209,7 +209,7 @@ def evaluate_val(gen, cache, device, train_SI):
     }
 
 
-def evaluate_qa(gen, cache, device, settings):
+def evaluate_qa(gen, cache, device, settings, use_ground_truth_rois=False):
     """
     Evaluate network on QA phantom data and compute CRC metrics.
     Moves data to device on first call and overwrites CPU copies to avoid duplication.
@@ -244,8 +244,11 @@ def evaluate_qa(gen, cache, device, settings):
     
     # Generate network output (sino → reconstructed image)
     with torch.no_grad():
-        eval_output = gen(eval_sino)
-    
+        network_output = gen(eval_sino)
+
+    # Optionally substitute ground truth for ROI checks to validate mask correctness
+    eval_output = eval_image if use_ground_truth_rois else network_output
+
     # Compute ROI metrics with separate background masks
     hot = ROI_NEMA_hot(eval_image, eval_output, hotBackgroundMask, hotMask)
     cold = ROI_NEMA_cold(eval_output, coldBackgroundMask, coldMask)
