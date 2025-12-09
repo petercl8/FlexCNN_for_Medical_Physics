@@ -62,9 +62,13 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     cpus_per_trial = tune_opts.get('cpus_per_trial', 2)
     gpus_per_trial = tune_opts.get('gpus_per_trial', num_GPUs)
 
-    ray.init(ignore_reinit_error=True, num_cpus=num_CPUs, num_gpus=num_GPUs)
-
     os.environ.pop("AIR_VERBOSITY", None)
+
+    # Disable Ray metrics exporter/dashboard to avoid RPC retry stalls in restricted envs
+    os.environ["RAY_METRICS_EXPORT_PORT"] = "0"
+    os.environ.setdefault("RAY_PROMETHEUS_MULTIPROC_DIR", os.path.join(base_dirs.get('project_dirPath', os.getcwd()), "ray_prometheus"))
+
+    ray.init(ignore_reinit_error=True, num_cpus=num_CPUs, num_gpus=num_GPUs, include_dashboard=False)
 
     # Extract tune_storage_dirPath directly from paths
     tune_storage_dirPath = paths['tune_storage_dirPath']
@@ -117,7 +121,6 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         metric=optim_metric,
         mode=min_max,
     )
-
 
 
     ## Trial Scheduler and Run Config ##
@@ -203,7 +206,8 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         tuner = tune.Tuner.restore(
             path=os.path.join(tune_storage_dirPath, tune_exp_name),  # Path where previous run is checkpointed
             trainable=trainable_with_resources,
-            resume_unfinished=False
+            resume_unfinished=True,
+            resume_errored=True
         )
 
     result_grid: ResultGrid = tuner.fit()
