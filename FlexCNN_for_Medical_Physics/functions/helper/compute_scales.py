@@ -220,3 +220,52 @@ def analyze_reconstruction_scale_distribution(paths, dataset='train', sample_mod
         )
 
     return scales
+
+
+def compute_average_activity_per_image(paths, dataset='train'):
+    """
+    Compute the average total activity per image across the dataset.
+    
+    Calculates the mean of per-image sums (total activity per image) to provide
+    a typical scale for the data. Useful for setting initial learned scale ranges.
+    
+    Args:
+        paths: paths dictionary from setup_paths() containing data file paths
+        dataset: 'train' (default) or 'test'
+    
+    Returns:
+        float: mean activity per image
+    
+    Example:
+        avg_activity = compute_average_activity_per_image(paths, dataset='train')
+        print(f"Average activity per image: {avg_activity:.6f}")
+    """
+    # Select paths based on dataset
+    if dataset == 'train':
+        image_path = paths['train_image_path']
+    elif dataset == 'test':
+        image_path = paths['test_image_path']
+    else:
+        raise ValueError("dataset must be 'train' or 'test'")
+    
+    # Load ground truth images
+    image_array = np.load(image_path, mmap_mode='r')
+    
+    # Compute per-image activity sums
+    flat = image_array.reshape(len(image_array), -1)
+    per_image_sums = flat.sum(axis=1)
+    
+    # Compute average
+    avg_activity = float(per_image_sums.mean())
+    std_activity = float(per_image_sums.std())
+    min_activity = float(per_image_sums.min())
+    max_activity = float(per_image_sums.max())
+    
+    # Print results
+    print(f"\nActivity statistics for {dataset} dataset ({len(image_array)} images):")
+    print(f"  Average activity per image: {avg_activity:.6f}")
+    print(f"  Std dev activity per image: {std_activity:.6f}")
+    print(f"  Min activity per image: {min_activity:.6f}")
+    print(f"  Max activity per image: {max_activity:.6f}")
+    
+    return avg_activity
