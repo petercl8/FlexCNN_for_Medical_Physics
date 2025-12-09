@@ -108,7 +108,22 @@ def run_SUP(config, paths, settings):
 
     # Model and optimizer
     gen = Generator(config=config, gen_SI=train_SI).to(device)
-    gen_opt = torch.optim.Adam(gen.parameters(), lr=config['gen_lr'], betas=(config['gen_b1'], config['gen_b2']))
+
+    # Optimizer with separate group for learnable output scale
+    betas = (config['gen_b1'], config['gen_b2'])
+    base_lr = config['gen_lr']
+    scale_lr_mult = settings.get('output_scale_lr_mult', 10.0)
+    if getattr(gen, 'output_scale_learnable', False):
+        scale_param = [gen.log_output_scale]
+        main_params = [p for n, p in gen.named_parameters() if n != 'log_output_scale']
+        gen_opt = torch.optim.Adam(
+            [
+                {'params': main_params, 'lr': base_lr, 'betas': betas},
+                {'params': scale_param, 'lr': scale_lr_mult * base_lr, 'betas': betas, 'weight_decay': 0.0},
+            ]
+        )
+    else:
+        gen_opt = torch.optim.Adam(gen.parameters(), lr=base_lr, betas=betas)
 
     # Data loader
     dataloader = DataLoader(
