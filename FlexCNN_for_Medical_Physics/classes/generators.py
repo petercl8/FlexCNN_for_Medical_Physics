@@ -277,7 +277,7 @@ def expand_block(in_channels, out_channels, kernel_size=3, stride=2, padding=0, 
 
     dropout = nn.Dropout() if drop else nn.Sequential()
 
-    block1 = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding, padding_mode=padding_mode)
+    block1 = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding, padding_mode='zeros')
     if fill == 0:
         block2 = nn.Sequential()
     elif fill == 1:
