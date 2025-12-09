@@ -112,7 +112,7 @@ def run_SUP(config, paths, settings):
     # Optimizer with separate group for learnable output scale
     betas = (config['gen_b1'], config['gen_b2'])
     base_lr = config['gen_lr']
-    scale_lr_mult = settings.get('output_scale_lr_mult', 1000.0)
+    scale_lr_mult = settings.get('output_scale_lr_mult', 10.0)
     if getattr(gen, 'output_scale_learnable', False):
         scale_param = [gen.log_output_scale]
         main_params = [p for n, p in gen.named_parameters() if n != 'log_output_scale']
