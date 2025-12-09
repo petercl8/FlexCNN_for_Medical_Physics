@@ -39,7 +39,7 @@ config_SUP_SI = {
   "sino_channels": 3,
   "image_size":180,
   "sino_size":180,
-  "SI_normalize": True,
+  "SI_normalize": False, # Default: 'true'
   "SI_fixedScale": 8100,
   "SI_skip_mode": "concat", # Options: 'none', 'add', 'concat' (default 'none')
   }
