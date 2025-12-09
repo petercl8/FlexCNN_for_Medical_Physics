@@ -20,12 +20,12 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 config_SUP_SI = {
   "train_SI": True,
   "SI_dropout": False,
-  "SI_exp_kernel": 3, # Options: 3, 4 (default 4)
-  "SI_gen_fill": 1, # Options: 0,1,2 (default 0)
+  "SI_exp_kernel": 4, # Options: 3, 4 (default 4)
+  "SI_gen_fill": 0, # Options: 0,1,2 (default 0)
   "SI_gen_final_activ": nn.Tanh(),
   "SI_gen_hidden_dim": 23,
   "SI_gen_mult": 1.6605902406330195,
-  "SI_gen_neck": 6, # Options: 1, 6, 11 (default 1)
+  "SI_gen_neck": 1, # Options: 1, 6, 11 (default 1)
   "SI_gen_z_dim": 789,
   "SI_layer_norm": "instance",
   "SI_pad_mode": "zeros",
