@@ -25,7 +25,7 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.Tanh(),
   "SI_gen_hidden_dim": 23,
   "SI_gen_mult": 1.6605902406330195,
-  "SI_gen_neck": 11, # Options: 1, 6, 11 (default 1)
+  "SI_gen_neck": 1, # Options: 1, 6, 11 (default 1)
   "SI_gen_z_dim": 789,
   "SI_layer_norm": "instance",
   "SI_pad_mode": "zeros",
@@ -39,9 +39,9 @@ config_SUP_SI = {
   "sino_channels": 3,
   "image_size":180,
   "sino_size":180,
-  "SI_normalize": False, # Default: 'true'
+  "SI_normalize": True, # Default: 'true'
   "SI_fixedScale": 8100,
-  "SI_skip_mode": "concat", # Options: 'none', 'add', 'concat' (default 'none')
+  "SI_skip_mode": "none", # Options: 'none', 'add', 'concat' (default 'none')
   }
 
 '''
