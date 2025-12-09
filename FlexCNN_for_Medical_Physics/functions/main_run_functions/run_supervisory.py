@@ -318,6 +318,14 @@ def run_SUP(config, paths, settings):
                     else:
                         raise ValueError(f"Invalid tune_report_for='{tune_report_for}'")
                     
+                    # Check for NaN and terminate if found
+                    metric_to_check = settings.get('tune_metric', 'SSIM')  # or 'ROI_NEMA_weighted', etc.
+                    if metric_to_check in metrics and (
+                        metrics[metric_to_check] is None or 
+                        torch.isnan(torch.tensor(metrics[metric_to_check])).item()
+                    ):
+                        raise ValueError(f"NaN detected in {metric_to_check}, terminating trial")
+    
                     # Add metadata to metrics
                     metrics.update({
                         'example_num': example_num,
