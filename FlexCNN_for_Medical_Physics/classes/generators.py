@@ -231,7 +231,9 @@ def contract_block(in_channels, out_channels, kernel_size, stride, padding=0, pa
     elif norm == 'instance':
         norm_layer = nn.InstanceNorm2d(out_channels)
     elif norm == 'group':
-        num_groups = min(8, out_channels)
+        num_groups = max(1, min(8, out_channels))
+        while out_channels % num_groups != 0:
+            num_groups -= 1
         norm_layer = nn.GroupNorm(num_groups, out_channels)
     else:
         norm_layer = nn.Sequential()
@@ -270,7 +272,9 @@ def expand_block(in_channels, out_channels, kernel_size=3, stride=2, padding=0, 
     elif norm == 'instance':
         norm_layer = nn.InstanceNorm2d(out_channels)
     elif norm == 'group':
-        num_groups = min(8, out_channels)
+        num_groups = max(1, min(8, out_channels))
+        while out_channels % num_groups != 0:
+            num_groups -= 1
         norm_layer = nn.GroupNorm(num_groups, out_channels)
     else:
         norm_layer = nn.Sequential()

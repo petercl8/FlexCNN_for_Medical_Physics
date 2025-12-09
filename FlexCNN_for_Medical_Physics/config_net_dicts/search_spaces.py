@@ -1,6 +1,9 @@
 from torch import nn
 from ray import tune
 
+# Data-driven initialization bounds (from compute_average_activity_per_image analysis)
+MEAN_ACTIVITY = 144617
+
 #################################################################################################################################################################
 ## (config_RAY_SI OR config_RAY_IS) gets combined with (config_RAY_SUP or config_RAY_GAN) to form a single hyperparameter space for searching a single network ##
 #################################################################################################################################################################
@@ -37,9 +40,9 @@ config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     ## Data Loading ##
     'SI_normalize': False,
     'SI_fixedScale': 1,                                          # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
-    'SI_learnedScale_init': tune.loguniform(1e3, 1e6),         # Initial guess for learned multiplier. Only used if SI_normalize=False. While SI_learnedScale_init is a hyperparamter, the actual scale is a learned parameter
-    'SI_layer_norm': tune.choice(['none']),            # Could also add "group" normalization if you make it go into num_channels evenly.
-    'SI_gen_final_activ': tune.choice([nn.ReLU(), None]),
+    'SI_learnedScale_init': tune.loguniform(MEAN_ACTIVITY * 0.5, MEAN_ACTIVITY * 2.0),  # Data-driven bounds: 50%-200% of mean activity
+    'SI_layer_norm': tune.choice(['none', 'instance', 'group']),            # Could also add "group" normalization if you make it go into num_channels evenly.
+    'SI_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU()]),
 }
 
 config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
@@ -75,16 +78,16 @@ config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     ## Data Loading ##
     'IS_normalize': False,
     'IS_fixedScale': 1,        
-    'IS_learnedScale_init': tune.loguniform(1e3, 1e6),         # Initial guess for learned multiplier. Only used if IS_normalize=False. While IS_learnedScale_init is a hyperparamter, the actual scale is a learned parameter                                  # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
-    'IS_layer_norm': tune.choice(['group', 'none']),
-    'IS_gen_final_activ': tune.choice([nn.ReLU(), None]),
+    'IS_learnedScale_init': tune.loguniform(MEAN_ACTIVITY * 0.5, MEAN_ACTIVITY * 2.0),  # Data-driven bounds: 50%-200% of mean activity
+    'IS_layer_norm': tune.choice(['none', 'instance', 'group']),
+    'IS_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU()]),
 }
 
 config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
     'IS_normalize': True,
     'IS_fixedScale': 1,
     'IS_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
-    'IS_gen_final_activ': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
+    'IS_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
 }
 
 config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning

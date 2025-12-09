@@ -109,7 +109,8 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         metric_columns=[optim_metric, 'batch_step', 'example_num'],
         parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],  # keep narrow
         sort_by_metric=True,       # sort by chosen metric
-        metric=[optim_metric],
+        metric=optim_metric,
+        mode=min_max,
     )
 
     ## Trial Scheduler and Run Config ##
