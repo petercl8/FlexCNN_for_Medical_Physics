@@ -5,7 +5,8 @@ Tests all 18 combinations of SI_exp_kernel, SI_skip_mode, and SI_gen_neck.
 
 import torch
 import sys
-sys.path.insert(0, '/content/FlexCNN_for_Medical_Physics')
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from FlexCNN_for_Medical_Physics.classes.generators import Generator
 
