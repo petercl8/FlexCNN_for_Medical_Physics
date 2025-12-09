@@ -1,4 +1,3 @@
-from networkx import config
 from FlexCNN_for_Medical_Physics.classes.generators import Generator
 from FlexCNN_for_Medical_Physics.classes.discriminators import Disc_I_90, Disc_S_90
 
