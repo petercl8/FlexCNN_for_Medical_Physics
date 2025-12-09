@@ -13,6 +13,30 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_generative_adv
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_cycle_consistency import run_CYCLE
 
 
+class SortedCLIReporter(CLIReporter):
+    """CLIReporter subclass that sorts trials by a specified metric."""
+    
+    def __init__(self, metric=None, mode="max", **kwargs):
+        super().__init__(**kwargs)
+        self.metric = metric
+        self.mode = mode
+    
+    def report(self, trials, done, info):
+        # Sort trials by metric if specified
+        if self.metric and trials:
+            ascending = (self.mode == "min")
+            try:
+                trials = sorted(
+                    trials,
+                    key=lambda t: t.last_result.get(self.metric, float('inf') if ascending else float('-inf')),
+                    reverse=(not ascending)
+                )
+            except (AttributeError, TypeError):
+                pass  # If sorting fails, just use unsorted trials
+        
+        # Call parent's report with sorted trials
+        super().report(trials, done, info)
+
 def tune_exp():
     print("placeholder")
 
@@ -104,10 +128,9 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     print('===================')
 
     ## Reporters ##
-    reporter = CLIReporter(
-        metric_columns=[optim_metric, 'batch_step'],
+    reporter = SortedCLIReporter(
+        metric_columns=[optim_metric, 'batch_step', 'example_num'],
         parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],
-        sort_by_metric=True,
         metric=optim_metric,
         mode=min_max,
     )
