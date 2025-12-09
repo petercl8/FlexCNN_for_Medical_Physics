@@ -62,14 +62,9 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     cpus_per_trial = tune_opts.get('cpus_per_trial', 2)
     gpus_per_trial = tune_opts.get('gpus_per_trial', num_GPUs)
 
+    ray.init(ignore_reinit_error=True, num_cpus=num_CPUs, num_gpus=num_GPUs)
+
     os.environ.pop("AIR_VERBOSITY", None)
-
-    # Disable Ray metrics exporter agent (port/Prometheus) to avoid RPC retry spam in restricted environments
-    os.environ["RAY_METRICS_EXPORT_PORT"] = "0"
-    if "RAY_PROMETHEUS_MULTIPROC_DIR" not in os.environ:
-        os.environ["RAY_PROMETHEUS_MULTIPROC_DIR"] = os.path.join(base_dirs.get('project_dirPath', os.getcwd()), "ray_prometheus")
-
-    ray.init(ignore_reinit_error=True, num_cpus=num_CPUs, num_gpus=num_GPUs, include_dashboard=False)
 
     # Extract tune_storage_dirPath directly from paths
     tune_storage_dirPath = paths['tune_storage_dirPath']
@@ -105,18 +100,25 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     print('===================')
 
     ## Reporters ##
-    reporter1 = CLIReporter(
-        metric_columns=[optim_metric, 'batch_step'])
-
-    # compact, sorted notebook reporter — paste into tune.py replacing reporter1
-    reporter = JupyterNotebookReporter(
-        overwrite=True,
-        metric_columns=[optim_metric, 'batch_step', 'example_num'],
-        parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],  # keep narrow
-        sort_by_metric=True,       # sort by chosen metric
+    reporter = CLIReporter(
+        metric_columns=[optim_metric, 'batch_step'],
+        parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],
+        sort_by_metric=True,
         metric=optim_metric,
         mode=min_max,
     )
+
+    # Optional notebook reporter template (not currently used)
+    notebook_reporter_template = JupyterNotebookReporter(
+        overwrite=True,
+        metric_columns=[optim_metric, 'batch_step', 'example_num'],
+        parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],
+        sort_by_metric=True,
+        metric=optim_metric,
+        mode=min_max,
+    )
+
+
 
     ## Trial Scheduler and Run Config ##
     if tune_scheduler == 'ASHA':
@@ -201,8 +203,7 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         tuner = tune.Tuner.restore(
             path=os.path.join(tune_storage_dirPath, tune_exp_name),  # Path where previous run is checkpointed
             trainable=trainable_with_resources,
-            resume_unfinished=True,
-            resume_errored=True
+            resume_unfinished=False
         )
 
     result_grid: ResultGrid = tuner.fit()
