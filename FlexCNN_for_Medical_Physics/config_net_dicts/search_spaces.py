@@ -3,6 +3,7 @@ from ray import tune
 
 # Data-driven initialization bounds (from compute_average_activity_per_image analysis)
 MEAN_ACTIVITY = 144617
+MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalized scaling
 
 #################################################################################################################################################################
 ## (config_RAY_SI OR config_RAY_IS) gets combined with (config_RAY_SUP or config_RAY_GAN) to form a single hyperparameter space for searching a single network ##
@@ -40,9 +41,9 @@ config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     ## Data Loading ##
     'SI_normalize': False,
     'SI_fixedScale': 1,                                          # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
-    'SI_learnedScale_init': tune.loguniform(MEAN_ACTIVITY * 0.5, MEAN_ACTIVITY * 2.0),  # Data-driven bounds: 50%-200% of mean activity
+    'SI_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'SI_layer_norm': tune.choice(['none', 'instance', 'group']),            # Could also add "group" normalization if you make it go into num_channels evenly.
-    'SI_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU()]),
+    'SI_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
 }
 
 config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
@@ -78,9 +79,9 @@ config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     ## Data Loading ##
     'IS_normalize': False,
     'IS_fixedScale': 1,        
-    'IS_learnedScale_init': tune.loguniform(MEAN_ACTIVITY * 0.5, MEAN_ACTIVITY * 2.0),  # Data-driven bounds: 50%-200% of mean activity
+    'IS_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'IS_layer_norm': tune.choice(['none', 'instance', 'group']),
-    'IS_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU()]),
+    'IS_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
 }
 
 config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
