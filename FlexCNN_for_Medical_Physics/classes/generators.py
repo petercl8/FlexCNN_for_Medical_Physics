@@ -152,10 +152,10 @@ class Generator(nn.Module):
     def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, pad, fill, norm, drop):
         if exp_kernel == 3:
             stage_params = [
-                (3, 2, 0, 1),  # 11 -> 23
+                (3, 2, 0, 0),  # 11 -> 23
                 (3, 2, 1, 0),  # 23 -> 45
-                (3, 2, 1, 0),  # 45 -> 90
-                (3, 2, 1, 0),  # 90 -> 180
+                (3, 2, 1, 1),  # 45 -> 90
+                (3, 2, 1, 1),  # 90 -> 180
             ]
         elif exp_kernel == 4:
             stage_params = [
