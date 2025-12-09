@@ -41,7 +41,7 @@ config_SUP_SI = {
   "sino_size":180,
   "SI_normalize": True,
   "SI_fixedScale": 8100,
-  "SI_skip_mode": "add", # Options: 'none', 'add', 'concat' (default 'none')
+  "SI_skip_mode": "concat", # Options: 'none', 'add', 'concat' (default 'none')
   }
 
 '''
