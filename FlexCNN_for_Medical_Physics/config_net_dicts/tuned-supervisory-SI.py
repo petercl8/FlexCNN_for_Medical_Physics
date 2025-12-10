@@ -12,9 +12,49 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-
-
-{
+## highCountImage-->actMap, tuned for SSIM
+config_SUP_SI = {
+  "IS_disc_adv_criterion": 1,
+  "IS_disc_b1": 1,
+  "IS_disc_b2": 1,
+  "IS_disc_hidden_dim": 1,
+  "IS_disc_lr": 1,
+  "IS_disc_patchGAN": 1,
+  "SI_disc_adv_criterion": 1,
+  "SI_disc_b1": 1,
+  "SI_disc_b2": 1,
+  "SI_disc_hidden_dim": 1,
+  "SI_disc_lr": 1,
+  "SI_disc_patchGAN": 1,
+  "SI_dropout": true,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": nn.LeakyReLU(),
+  "SI_gen_hidden_dim": 29,
+  "SI_gen_mult": 3.378427521450207,
+  "SI_gen_neck": 1,
+  "SI_gen_z_dim": 2069,
+  "SI_layer_norm": "group",
+  "SI_learnedScale_init": 6.7836194674698165,
+  "SI_normalize": False,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "concat",
+  "batch_base2_exponent": 6,
+  "gen_b1": 0.42565713596651117,
+  "gen_b2": 0.6898108744928462,
+  "gen_lr": 0.0002493478013431121,
+  "image_channels": 1,
+  "image_size": 180,
+  "network_type": "SUP",
+  "sino_channels": 1,
+  "sino_size": 180,
+  "sup_criterion": nn.MSELoss(),
+  "train_SI": True
+}
+'''
+## highCountSino-->actMap, tuned for SSIM
+config_SUP_SI = {
   "IS_disc_adv_criterion": 1,
   "IS_disc_b1": 1,
   "IS_disc_b2": 1,
@@ -53,12 +93,12 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
   "sup_criterion": nn.MSELoss(),
   "train_SI": True
 }
+'''
 
 
 
-## THESE NETWORKS WERE ALL TUNED ON THE OLDER 90X90 DATASET
-
-# 3x180x180 --> 1x180x180, Tuned for SSIM 
+'''
+# 3x180x180 --> 1x180x180, Tuned for SSIM on OLDER dataset
 config_SUP_SI = {
   "train_SI": True,
   "SI_dropout": False,
@@ -85,88 +125,4 @@ config_SUP_SI = {
   "SI_fixedScale": 8100,
   "SI_skip_mode": "none", # Options: 'none', 'add', 'concat' (default 'none')
   }
-
-'''
-# 3x90x90 --> 1x90x90, Tuned for SSIM 
-config_SUP_SI = {
-  "SI_dropout": False,
-  "SI_exp_kernel": 4,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": nn.Tanh(),
-  "SI_gen_hidden_dim": 23,
-  "SI_gen_mult": 1.6605902406330195,
-  "SI_gen_neck": 5,
-  "SI_gen_z_dim": 789,
-  "SI_layer_norm": "instance",
-  "SI_normalize": True,
-  "SI_pad_mode": "zeros",
-  "batch_size": 71,
-  "gen_b1": 0.2082092731474774,
-  "gen_b2": 0.27147903136187507,
-  "gen_lr": 0.0005481469822215635,
-  "sup_criterion": nn.MSELoss(),
-  "sino_size":90,
-  "sino_channels": 3,
-  "image_channels":1,
-  "image_size":90,
-  "train_SI": True, 
-  "network_type": "SUP"
-  "SI_fixedScale": 8100,
-}
-'''
-'''
-# 3x90x90-->1x90x90, Tuned for Local Distributions Metric, 10x10 window, stride 8 (b5c)
-config_SUP_SI={
-  "SI_dropout": False,
-  "SI_exp_kernel": 4,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": None,
-  "SI_gen_hidden_dim": 9,
-  "SI_gen_mult": 2.1547197646081444,
-  "SI_gen_neck": 5,
-  "SI_gen_z_dim": 344,
-  "SI_layer_norm": "batch",
-  "SI_normalize": True,
-  "SI_pad_mode": "zeros",
-  "SI_fixedScale": 8100,
-  "batch_size": 47,
-  "gen_b1": 0.31108788447029295,
-  "gen_b2": 0.3445239707919786,
-  "gen_lr": 0.0007561178182660596,
-  "sup_criterion": nn.L1Loss(),
-  "sino_size":180,
-  "sino_channels": 3,
-  "image_channels":1,
-  "image_size":90,
-  "train_SI": True,
-  "network_type": "SUP",
-  "SI_fixedScale": 1,
-}
-'''
-'''
-# 1x90x90, Tuned for Local Distributions Metric, 5x5 window, stride 2
-config_SUP_SI={
-  "SI_dropout": True,
-  "SI_exp_kernel": 3,
-  "SI_gen_fill": 2,
-  "SI_gen_final_activ": nn.Sigmoid(),
-  "SI_gen_hidden_dim": 18,
-  "SI_gen_mult": 2.4691388140182475,
-  "SI_gen_neck": 11,
-  "SI_gen_z_dim": 444,
-  "SI_layer_norm": "instance",
-  "SI_normalize": True,
-  "SI_pad_mode": "zeros",
-  "SI_fixedScale": 8100,
-  "batch_size": 33,
-  "gen_b1": 0.8199882799898334,
-  "gen_b2": 0.1207854128656507,
-  "gen_lr": 0.0001095057659925285,
-  "sup_criterion": nn.BCEWithLogitsLoss()
-  "sino_size":180,
-  "sino_channels": 3,
-  "image_channels":1,
-  "image_size":90,
-  "train_SI": True
-}
 '''
