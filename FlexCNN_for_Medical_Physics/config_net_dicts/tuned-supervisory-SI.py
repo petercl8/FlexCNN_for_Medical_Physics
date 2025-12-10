@@ -11,21 +11,9 @@ You also don't need to worry about "Search Spaces", as this is simply a dictiona
 Feel free to look at it though, to see how I set up the search space. The last section (Set Correct Config) is where the configuration dictionary gets assigned.
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
-
+'''
 ## highCountImage-->actMap, tuned for SSIM
 config_SUP_SI = {
-  "IS_disc_adv_criterion": 1,
-  "IS_disc_b1": 1,
-  "IS_disc_b2": 1,
-  "IS_disc_hidden_dim": 1,
-  "IS_disc_lr": 1,
-  "IS_disc_patchGAN": 1,
-  "SI_disc_adv_criterion": 1,
-  "SI_disc_b1": 1,
-  "SI_disc_b2": 1,
-  "SI_disc_hidden_dim": 1,
-  "SI_disc_lr": 1,
-  "SI_disc_patchGAN": 1,
   "SI_dropout": True,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
@@ -53,20 +41,9 @@ config_SUP_SI = {
   "train_SI": True
 }
 '''
+
 ## highCountSino-->actMap, tuned for SSIM
 config_SUP_SI = {
-  "IS_disc_adv_criterion": 1,
-  "IS_disc_b1": 1,
-  "IS_disc_b2": 1,
-  "IS_disc_hidden_dim": 1,
-  "IS_disc_lr": 1,
-  "IS_disc_patchGAN": 1,
-  "SI_disc_adv_criterion": 1,
-  "SI_disc_b1": 1,
-  "SI_disc_b2": 1,
-  "SI_disc_hidden_dim": 1,
-  "SI_disc_lr": 1,
-  "SI_disc_patchGAN": 1,
   "SI_dropout": False,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
@@ -93,8 +70,6 @@ config_SUP_SI = {
   "sup_criterion": nn.MSELoss(),
   "train_SI": True
 }
-'''
-
 
 
 '''
