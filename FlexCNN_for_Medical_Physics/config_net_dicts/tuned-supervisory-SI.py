@@ -26,7 +26,7 @@ config_SUP_SI = {
   "SI_disc_hidden_dim": 1,
   "SI_disc_lr": 1,
   "SI_disc_patchGAN": 1,
-  "SI_dropout": true,
+  "SI_dropout": True,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
