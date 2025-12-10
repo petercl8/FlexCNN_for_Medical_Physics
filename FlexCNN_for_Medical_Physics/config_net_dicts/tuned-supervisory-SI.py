@@ -11,7 +11,7 @@ You also don't need to worry about "Search Spaces", as this is simply a dictiona
 Feel free to look at it though, to see how I set up the search space. The last section (Set Correct Config) is where the configuration dictionary gets assigned.
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
-'''
+
 ## highCountImage-->actMap, tuned for SSIM
 config_SUP_SI = {
   "SI_dropout": True,
@@ -40,8 +40,8 @@ config_SUP_SI = {
   "sup_criterion": nn.MSELoss(),
   "train_SI": True
 }
-'''
 
+'''
 ## highCountSino-->actMap, tuned for SSIM
 config_SUP_SI = {
   "SI_dropout": False,
@@ -70,7 +70,7 @@ config_SUP_SI = {
   "sup_criterion": nn.MSELoss(),
   "train_SI": True
 }
-
+'''
 
 '''
 # 3x180x180 --> 1x180x180, Tuned for SSIM on OLDER dataset

@@ -209,7 +209,7 @@ def evaluate_val(gen, cache, device, train_SI):
     }
 
 
-def evaluate_qa(gen, cache, device, settings, use_ground_truth_rois=False):
+def evaluate_qa(gen, cache, device, settings, use_ground_truth_rois=True):
     """
     Evaluate network on QA phantom data and compute CRC metrics.
     Moves data to device on first call and overwrites CPU copies to avoid duplication.
