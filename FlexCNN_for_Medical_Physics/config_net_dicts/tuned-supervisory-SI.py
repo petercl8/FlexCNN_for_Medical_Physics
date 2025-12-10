@@ -12,9 +12,51 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-### Below networks were tuned on whole dataset ###
-# 1x90x90, Tuned for MSE - fc6 #
 
+
+{
+  "IS_disc_adv_criterion": 1,
+  "IS_disc_b1": 1,
+  "IS_disc_b2": 1,
+  "IS_disc_hidden_dim": 1,
+  "IS_disc_lr": 1,
+  "IS_disc_patchGAN": 1,
+  "SI_disc_adv_criterion": 1,
+  "SI_disc_b1": 1,
+  "SI_disc_b2": 1,
+  "SI_disc_hidden_dim": 1,
+  "SI_disc_lr": 1,
+  "SI_disc_patchGAN": 1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 1,
+  "SI_gen_final_activ": nn.LeakyReLU(),
+  "SI_gen_hidden_dim": 8,
+  "SI_gen_mult": 2.003683891151235,
+  "SI_gen_neck": 11,
+  "SI_gen_z_dim": 258,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 0.8270848915353621,
+  "SI_normalize": False,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "concat",
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.389118911125988,
+  "gen_b2": 0.2351938098613643,
+  "gen_lr": 0.00220256446257333,
+  "image_channels": 1,
+  "image_size": 180,
+  "network_type": "SUP",
+  "sino_channels": 3,
+  "sino_size": 180,
+  "sup_criterion": nn.MSELoss(),
+  "train_SI": True
+}
+
+
+
+## THESE NETWORKS WERE ALL TUNED ON THE OLDER 90X90 DATASET
 
 # 3x180x180 --> 1x180x180, Tuned for SSIM 
 config_SUP_SI = {
