@@ -247,7 +247,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['tune_restore'] = tune_opts.get('tune_restore', False)
         settings['tune_max_t'] = tune_opts.get('tune_max_t', 100)
         settings['tune_minutes'] = tune_opts.get('tune_minutes', 180)
-        settings['tune_for'] = tune_opts['tune_for']
+        settings['tune_metric'] = tune_opts['tune_metric']
         settings['tune_even_reporting'] = tune_opts.get('tune_even_reporting', False)
         settings['tune_batches_per_report'] = tune_opts.get('tune_batches_per_report')
         settings['tune_examples_per_report'] = tune_opts.get('tune_examples_per_report')

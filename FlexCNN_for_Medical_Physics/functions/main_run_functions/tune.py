@@ -28,7 +28,7 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         Runtime settings (run_mode, device, batch_size, etc.).
     tune_opts : dict
         Tuning-specific options with keys:
-        'tune_for', 'tune_minutes', 'tune_exp_name', 'tune_scheduler',
+        'tune_metric', 'tune_minutes', 'tune_exp_name', 'tune_scheduler',
         'tune_restore', 'tune_max_t', 'grace_period', 'num_CPUs', 'num_GPUs'.
     base_dirs : dict
         Base directory paths (project_dirPath, etc.).
@@ -48,7 +48,7 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
 
 
     # Extract tune options
-    tune_for = tune_opts['tune_for']
+    tune_metric = tune_opts['tune_metric']
     tune_minutes = tune_opts['tune_minutes']
     tune_exp_name = tune_opts['tune_exp_name']
     tune_scheduler = tune_opts.get('tune_scheduler', 'ASHA')
@@ -72,26 +72,26 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     tune_storage_dirPath = paths['tune_storage_dirPath']
 
     ## What am I tuning for? ##
-    if tune_for == 'MSE':  # Values for these metric labels are passed to RayTune in the training function: session.report(.)
+    if tune_metric == 'MSE':  # Values for these metric labels are passed to RayTune in the training function: session.report(.)
         optim_metric = 'MSE'
         min_max = 'min'  # minimise MSE
-    elif tune_for == 'SSIM':
+    elif tune_metric == 'SSIM':
         optim_metric = 'SSIM'
         min_max = 'max'  # maximize SSIM
-    elif tune_for == 'CUSTOM':
+    elif tune_metric == 'CUSTOM':
         optim_metric = 'CUSTOM'
         min_max = 'min'
-    elif tune_for == 'ROI_NEMA_hot':
+    elif tune_metric == 'ROI_NEMA_hot':
         optim_metric = 'ROI_NEMA_hot'
         min_max = 'max'  # maximize hot lesion contrast recovery
-    elif tune_for == 'ROI_NEMA_cold':
+    elif tune_metric == 'ROI_NEMA_cold':
         optim_metric = 'ROI_NEMA_cold'
         min_max = 'max'  # maximize cold lesion contrast recovery
-    elif tune_for == 'ROI_NEMA_weighted':
+    elif tune_metric == 'ROI_NEMA_weighted':
         optim_metric = 'ROI_NEMA_weighted'
         min_max = 'max'  # maximize weighted combination of hot/cold
     else:
-        raise ValueError(f"Unsupported tune_for='{tune_for}'. Expected 'MSE', 'SSIM', 'CUSTOM', 'ROI_NEMA_hot', 'ROI_NEMA_cold', or 'ROI_NEMA_weighted'.")
+        raise ValueError(f"Unsupported tune_metric='{tune_metric}'. Expected 'MSE', 'SSIM', 'CUSTOM', 'ROI_NEMA_hot', 'ROI_NEMA_cold', or 'ROI_NEMA_weighted'.")
 
     print('===================')
     print('tune_max_t:', tune_max_t)
