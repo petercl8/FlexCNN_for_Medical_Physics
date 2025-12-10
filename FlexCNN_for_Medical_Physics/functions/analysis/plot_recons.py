@@ -34,8 +34,8 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
         # Build tensors for this image array
         i = 0
         for idx in indexes:
-            sino_ground, sino_ground_scaled, image_ground, image_ground_scaled = NpArrayDataLoader(
-                image_array, sino_array, config, augment=False, index=idx, device=device
+            sino_ground_scaled, image_ground_scaled = NpArrayDataLoader(
+                image_array, sino_array, config, augment=(None, False), index=idx, device=device
             )
 
             if first_sino:
@@ -83,11 +83,13 @@ def CNN_reconstruct(sino_tensor, config, checkpoint_name, paths, device):
         return gen(sino_tensor).detach()
 
 def PlotPhantomRecons(image_array_names, sino_array_name, config, paths_dict, indexes, checkpointName, fig_size, device):
+
     image_tensors, sino_tensor = BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict, indexes, device)
     CNN_output = CNN_reconstruct(sino_tensor, config, checkpointName, paths_dict, device)
     show_multiple_unmatched_tensors(*image_tensors, CNN_output, fig_size=fig_size)
 
     return image_tensors, sino_tensor
+
 '''
 OLDER VERSION BELOW - TO BE DEPRECATED
 
