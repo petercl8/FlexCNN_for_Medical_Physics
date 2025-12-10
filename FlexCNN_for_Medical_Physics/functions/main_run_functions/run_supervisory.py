@@ -351,8 +351,8 @@ def run_SUP(config, paths, settings):
                     #print('Input:')
                     #show_single_unmatched_tensor(input_[0:3])
                     print('Target/Output:')
-                    show_multiple_matched_tensors(target[0:9], CNN_output[0:9])
-                    #show_multiple_matched_tensors(target[0:9], CNN_output[0:9], recon1[0:9], recon2[0:9])
+                    show_multiple_matched_tensors(target[0:8], CNN_output[0:8])
+                    #show_multiple_matched_tensors(target[0:8], CNN_output[0:8], recon1[0:8], recon2[0:8])
 
                 if run_mode == 'test':
                     print('==================Testing==================')
