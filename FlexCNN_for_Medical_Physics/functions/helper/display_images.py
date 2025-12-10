@@ -79,7 +79,7 @@ def show_single_unmatched_tensor(image_tensor, grid=False, cmap='inferno', fig_s
 
     plt.show()
 
-def show_multiple_unmatched_tensors(*image_tensors, cmap='inferno', fig_size=1.5):
+def show_multiple_unmatched_tensors(*image_tensors, cmap='inferno', fig_size=2.5):
     """
     Like show_multiple_matched_tensors, but each image gets its own normalization.
     No matching of min/max across tensors.
