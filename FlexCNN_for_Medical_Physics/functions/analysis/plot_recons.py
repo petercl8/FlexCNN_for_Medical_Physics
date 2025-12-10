@@ -34,7 +34,7 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
         # Build tensors for this image array
         i = 0
         for idx in indexes:
-            sino_ground_scaled, image_ground_scaled = NpArrayDataLoader(
+            sino_ground_scaled, image_ground_scaled, _, _ = NpArrayDataLoader(
                 image_array, sino_array, config, augment=(None, False), index=idx, device=device
             )
 
