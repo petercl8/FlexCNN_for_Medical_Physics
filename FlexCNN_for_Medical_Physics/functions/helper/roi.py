@@ -1,3 +1,5 @@
+import numpy as np
+
 def ROI_NEMA_hot(ground_truth_tensor, reconstruction_tensor, background_mask, hot_mask):
    
     background_truth =          np.sum(np.multiply(background_mask.numpy(), ground_truth_tensor.numpy())) # You must convert tensors to numpy arrays before multiplication
