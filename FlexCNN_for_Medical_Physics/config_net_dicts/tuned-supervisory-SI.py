@@ -21,13 +21,13 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.LeakyReLU(),
   "SI_gen_hidden_dim": 29,
   "SI_gen_mult": 3.378427521450207,
-  "SI_gen_neck": 11, # 1 = smallest
+  "SI_gen_neck": 1, # 1 = smallest
   "SI_gen_z_dim": 2069,
   "SI_layer_norm": "group",
   "SI_learnedScale_init": 6.7836194674698165,
   "SI_normalize": False,
   "SI_pad_mode": "zeros",
-  "SI_skip_mode": "concat",
+  "SI_skip_mode": "add", # concat
   "batch_base2_exponent": 6,
   "gen_b1": 0.42565713596651117,
   "gen_b2": 0.6898108744928462,
