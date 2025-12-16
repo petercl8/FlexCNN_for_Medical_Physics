@@ -138,7 +138,7 @@ class Generator(nn.Module):
             )
 
         # neck=6: Medium bottleneck (5x5 spatial), upsamples back to 11x11 for skip merge
-        if neck == 6:
+        if neck == 5:
             return nn.Sequential(
                 contract_block(dim_2, dim_3, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (11+2-4)/2+1 = 5
                 contract_block(dim_3, dim_3, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
@@ -158,7 +158,7 @@ class Generator(nn.Module):
                 contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (11+4-5)/1+1 = 11 (constant)
             )
 
-        raise ValueError('neck must be one of {1, 6, 11}')
+        raise ValueError('neck must be one of {1, 5, 11}')
 
     def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, pad, fill, norm, drop):
         # Expanding Path: 11 -> 23 -> 45 -> 90 -> 180
