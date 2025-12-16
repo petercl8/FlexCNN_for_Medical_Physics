@@ -30,7 +30,7 @@ base_config = {
 
 exp_kernels = [3, 4]
 skip_modes = ['none', 'add', 'concat']
-neck_values = [1, 6, 11]
+neck_values = [1, 5, 11]
 
 print("=" * 100)
 print("GENERATOR GEOMETRY VERIFICATION")
@@ -40,7 +40,7 @@ all_pass = True
 
 for exp_kernel in exp_kernels:
     for skip_mode in skip_modes:
-        for neck in [1, 6, 11]:
+        for neck in [1, 5, 11]:
             config = base_config.copy()
             config['SI_exp_kernel'] = exp_kernel
             config['SI_skip_mode'] = skip_mode

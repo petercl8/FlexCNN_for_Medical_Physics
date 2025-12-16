@@ -112,57 +112,70 @@ class Generator(nn.Module):
         if input_size != 180:
             raise ValueError('This generator is configured for 180x180 inputs and outputs.')
 
+        # Contracting Path: 180 -> 90 -> 45 -> 23 -> 11
+        # Conv2d formula: H_out = floor((H_in + 2*padding - kernel) / stride) + 1
         self.contract_blocks = nn.ModuleList([
-            contract_block(in_chan, dim_0, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-            contract_block(dim_0, dim_1, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-            contract_block(dim_1, dim_2, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-            contract_block(dim_2, dim_2, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
+            contract_block(in_chan, dim_0, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (180+2-3)/2+1 = 90
+            contract_block(dim_0, dim_1, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),    # H = (90+2-3)/2+1 = 45
+            contract_block(dim_1, dim_2, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),    # H = (45+2-3)/2+1 = 23
+            contract_block(dim_2, dim_2, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),    # H = (23+2-4)/2+1 = 11
         ])
 
         self.neck = self._build_neck(neck, dim_2, dim_3, dim_4, z_dim, pad, fill, norm, drop)
         self.expand_blocks = self._build_expand(exp_kernel, out_chan, dim_0, dim_1, dim_2, pad, fill, norm, drop)
 
     def _build_neck(self, neck, dim_2, dim_3, dim_4, z_dim, pad, fill, norm, drop):
+        # neck=1: Narrowest bottleneck (1x1), upsamples back to 11x11 for skip merge
         if neck == 1:
+            # ConvTranspose2d formula: H_out = (H_in-1)*stride + kernel - 2*padding + output_padding
             return nn.Sequential(
-                contract_block(dim_2, dim_2, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-                contract_block(dim_2, dim_2, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-                contract_block(dim_2, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),
-                expand_block(z_dim, dim_2, 3, stride=2, padding=0, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-                expand_block(dim_2, dim_2, 3, stride=2, padding=1, output_padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-                expand_block(dim_2, dim_2, 3, stride=2, padding=1, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),
+                contract_block(dim_2, dim_3, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (11+2-4)/2+1 = 5
+                contract_block(dim_3, dim_4, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+2-3)/2+1 = 3
+                contract_block(dim_4, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),     # H = (3+0-3)/1+1 = 1
+                expand_block(z_dim, dim_4, 3, stride=2, padding=0, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (1-1)*2+3-0+0 = 3
+                expand_block(dim_4, dim_3, 4, stride=2, padding=2, output_padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (3-1)*2+4-4+1 = 5
+                expand_block(dim_3, dim_2, 3, stride=2, padding=0, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-0+0 = 11
             )
 
+        # neck=6: Medium bottleneck (5x5 spatial), upsamples back to 11x11 for skip merge
         if neck == 6:
             return nn.Sequential(
-                contract_block(dim_2, dim_2, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-                contract_block(dim_2, dim_2, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-                expand_block(dim_2, dim_2, 3, stride=2, padding=1, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),
+                contract_block(dim_2, dim_3, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (11+2-4)/2+1 = 5
+                contract_block(dim_3, dim_3, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
+                contract_block(dim_3, dim_3, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
+                contract_block(dim_3, dim_3, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
+                contract_block(dim_3, dim_3, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
+                expand_block(dim_3, dim_2, 3, stride=2, padding=0, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-0+0 = 11
             )
 
+        # neck=11: Widest bottleneck (11x11 spatial), constant-size layers with kernel=5 for spatial information flow
         if neck == 11:
             return nn.Sequential(
-                contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-                contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),
-                contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),
+                contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (11+4-5)/1+1 = 11 (constant)
+                contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (11+4-5)/1+1 = 11 (constant)
+                contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (11+4-5)/1+1 = 11 (constant)
+                contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (11+4-5)/1+1 = 11 (constant)
+                contract_block(dim_2, dim_2, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (11+4-5)/1+1 = 11 (constant)
             )
 
         raise ValueError('neck must be one of {1, 6, 11}')
 
     def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, pad, fill, norm, drop):
+        # Expanding Path: 11 -> 23 -> 45 -> 90 -> 180
+        # ConvTranspose2d formula: H_out = (H_in-1)*stride + kernel - 2*padding + output_padding
         if exp_kernel == 3:
             stage_params = [
-                (3, 2, 0, 0),  # 11 -> 23
-                (3, 2, 1, 0),  # 23 -> 45
-                (3, 2, 1, 1),  # 45 -> 90
-                (3, 2, 1, 1),  # 90 -> 180
+                (3, 2, 0, 0),  # 11 -> 23:  H = (11-1)*2+3-0+0 = 23
+                (3, 2, 1, 0),  # 23 -> 45:  H = (23-1)*2+3-2+0 = 45
+                (3, 2, 1, 1),  # 45 -> 90:  H = (45-1)*2+3-2+1 = 90
+                (3, 2, 1, 1),  # 90 -> 180: H = (90-1)*2+3-2+1 = 180
             ]
         elif exp_kernel == 4:
             stage_params = [
-                (4, 2, 1, 1),  # 11 -> 23
-                (4, 2, 2, 1),  # 23 -> 45
-                (4, 2, 1, 0),  # 45 -> 90
-                (4, 2, 1, 0),  # 90 -> 180
+                (4, 2, 1, 1),  # 11 -> 23:  H = (11-1)*2+4-2+1 = 23
+                (4, 2, 2, 1),  # 23 -> 45:  H = (23-1)*2+4-4+1 = 45
+                (4, 2, 1, 0),  # 45 -> 90:  H = (45-1)*2+4-2+0 = 90
+                (4, 2, 1, 0),  # 90 -> 180: H = (90-1)*2+4-2+0 = 180
             ]
         else:
             raise ValueError('exp_kernel must be 3 or 4')
