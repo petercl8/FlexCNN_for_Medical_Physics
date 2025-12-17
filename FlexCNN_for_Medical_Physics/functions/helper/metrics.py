@@ -2,8 +2,6 @@ import torch
 import numpy as np
 from skimage.metrics import structural_similarity
 from .cropping import crop_image_tensor_with_corner
-from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentMetric
-
 
 ######################
 ## Metric Functions ##
@@ -73,17 +71,81 @@ def MAE(image_A, image_B):
 
     return torch.mean(torch.abs(image_A-image_B)).item()
 
-# Instantiate once at import time
-eval_metric_instance = PatchwiseMomentMetric(
-    patch_size=5, stride=2, max_moment=3, scale='mean'
-)
+
+def custom_patchwise_metric_detailed(batch_A, batch_B,
+                                     patch_size=5,
+                                     stride=2,
+                                     max_moment=3,
+                                     scale='mean',
+                                     weights=None,
+                                     return_per_moment=False):
+    """
+    Compute a patchwise moment metric between two image batches.
+    
+    Args:
+        batch_A (torch.Tensor): predicted images, shape [B,C,H,W]
+        batch_B (torch.Tensor): target images, same shape
+        patch_size (int): size of patches
+        stride (int): stride between patches
+        max_moment (int): number of moments to compare
+        scale (str): 'mean' or 'std' for higher moment scaling
+        weights (list or None): optional weights for each moment
+        return_per_moment (bool): if True, return a dict of per-moment scores
+    
+    Returns:
+        float or dict: mean patchwise moment difference across all moments (default),
+                       or dict of per-moment scores if return_per_moment=True
+    """
+    if weights is None:
+        weights = [1.0] * max_moment
+
+    B, C, H, W = batch_A.shape
+    p = patch_size
+    s = stride
+
+    pred_patches = batch_A.unfold(2, p, s).unfold(3, p, s).contiguous().view(B, C, -1, p*p)
+    target_patches = batch_B.unfold(2, p, s).unfold(3, p, s).contiguous().view(B, C, -1, p*p)
+
+    per_moment_scores = {}
+    total_score = 0.0
+
+    for k in range(1, max_moment+1):
+        target_mean = target_patches.mean(dim=-1, keepdim=True)
+        pred_mean = pred_patches.mean(dim=-1, keepdim=True)
+
+        if k == 1:
+            moment_diff = torch.abs(pred_mean - target_mean).mean(dim=-1)
+        else:
+            pred_c = pred_patches - pred_mean
+            target_c = target_patches - target_mean
+            pred_m = (pred_c ** k).mean(dim=-1)
+            target_m = (target_c ** k).mean(dim=-1)
+
+            if scale == 'std':
+                sigma = torch.sqrt((target_c**2).mean(dim=-1) + 1e-6)
+                pred_m = pred_m / (sigma**k + 1e-6)
+                target_m = target_m / (sigma**k + 1e-6)
+            elif scale == 'mean':
+                mean_val = target_mean.squeeze(-1) + 1e-6
+                pred_m = pred_m / (mean_val**k)
+                target_m = target_m / (mean_val**k)
+
+            moment_diff = torch.abs(pred_m - target_m).mean(dim=-1)
+
+        score = weights[k-1] * moment_diff.mean()
+        per_moment_scores[k] = score.cpu().item()
+        total_score += score
+
+    if return_per_moment:
+        return per_moment_scores
+    else:
+        return total_score.cpu().item()
+
 
 # Wrap in a function for a simple interface
 def custom_metric(batch_A, batch_B):
-    with torch.no_grad():
-        scores = eval_metric_instance(batch_A, batch_B)
-    mean_score = sum(v.cpu().item() for v in scores.values()) / len(scores)
-    return mean_score
+    return custom_patchwise_metric_detailed(batch_A, batch_B)
+
 
 ###############################################
 ## Average or a Batch Metrics: Good for GANs ##
