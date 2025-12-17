@@ -13,26 +13,26 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-## highCountImage-->actMap, tuned for LDM
+## highCountImage-->actMap, tuned for SSIM
 config_SUP_SI = {
-  "SI_dropout": True,
-  "SI_exp_kernel": 4,
+   "SI_dropout": False,
+  "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
-  "SI_gen_fill": 2,
-  "SI_gen_final_activ": nn.Sigmoid(),
-  "SI_gen_hidden_dim": 3,
-  "SI_gen_mult": 1.5834552842663059,
-  "SI_gen_neck": 1,
-  "SI_gen_z_dim": 433,
+  "SI_gen_fill": 1,
+  "SI_gen_final_activ": nn.ELU(alpha=1.0),
+  "SI_gen_hidden_dim": 29,
+  "SI_gen_mult": 1.5090047574838394,
+  "SI_gen_neck": 11,
+  "SI_gen_z_dim": 486,
   "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 10.493912836511512,
+  "SI_learnedScale_init": 20.45467480669682,
   "SI_normalize": False,
-  "SI_pad_mode": "reflect",
-  "SI_skip_mode": "concat",
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.15605575342312855,
-  "gen_b2": 0.1640338874109351,
-  "gen_lr": 0.0009543409669851077,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "none",
+  "batch_base2_exponent": 6,
+  "gen_b1": 0.34632557248900636,
+  "gen_b2": 0.10963336318792913,
+  "gen_lr": 0.0005750756280291565,
   "image_channels": 1,
   "image_size": 180,
   "network_type": "SUP",
@@ -69,36 +69,6 @@ config_SUP_SI = {
   "sino_channels": 1,
   "sino_size": 180,
   "sup_criterion": nn.MSELoss(), # nn.MSELoss()
-  "train_SI": True
-}
-'''
-'''
-## highCountSino-->actMap, tuned for SSIM
-config_SUP_SI = {
-  "SI_dropout": False,
-  "SI_exp_kernel": 3,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 1,
-  "SI_gen_final_activ": nn.LeakyReLU(),
-  "SI_gen_hidden_dim": 8,
-  "SI_gen_mult": 2.003683891151235,
-  "SI_gen_neck": 11,
-  "SI_gen_z_dim": 258,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 0.8270848915353621,
-  "SI_normalize": False,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "concat",
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.389118911125988,
-  "gen_b2": 0.2351938098613643,
-  "gen_lr": 0.00220256446257333,
-  "image_channels": 1,
-  "image_size": 180,
-  "network_type": "SUP",
-  "sino_channels": 3,
-  "sino_size": 180,
-  "sup_criterion": nn.MSELoss(),
   "train_SI": True
 }
 '''
