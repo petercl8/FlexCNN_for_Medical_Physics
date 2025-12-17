@@ -38,7 +38,7 @@ config_SUP_SI = {
   "network_type": "SUP",
   "sino_channels": 1,
   "sino_size": 180,
-  "sup_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean'), # nn.MSELoss()
+  "sup_criterion": nn.MSELoss(), # nn.MSELoss()
   "train_SI": True
 }
 
