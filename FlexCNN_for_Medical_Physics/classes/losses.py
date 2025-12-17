@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss
 
 class PatchwiseMomentLoss(nn.Module):
     def __init__(self, patch_size=8, stride=4, max_moment=3, 
@@ -50,3 +49,13 @@ class PatchwiseMomentLoss(nn.Module):
             loss += self.weights[k-1] * moment_loss
 
         return loss
+
+
+class CombinedLoss(nn.Module):
+    def __init__(self, alpha=0.5):
+        super().__init__()
+        self.alpha = alpha
+        self.moment_loss = PatchwiseMomentLoss(...)
+        self.pixel_loss = nn.L1Loss()
+    def forward(self, pred, target):
+        return self.alpha*self.pixel_loss(pred, target) + (1-self.alpha)*self.moment_loss(pred, target)
