@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 
 class PatchwiseMomentLoss(nn.Module):
+    '''
+    Implement by adding the following to appropriate loss entires in the search dicts:
+        PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale)  
+    '''
     def __init__(self, patch_size=8, stride=4, max_moment=3, 
                  scale='mean', eps=1e-6, weights=None):
         super().__init__()

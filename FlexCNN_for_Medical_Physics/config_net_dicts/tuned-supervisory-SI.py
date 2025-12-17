@@ -13,7 +13,7 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-## highCountImage-->actMap, tuned for SSIM (wrong augmentation)
+## highCountImage-->actMap, tuned for SSIM, Augugment: II
 config_SUP_SI = {
    "SI_dropout": False,
   "SI_exp_kernel": 3,
