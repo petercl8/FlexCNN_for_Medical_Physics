@@ -144,7 +144,8 @@ def custom_patchwise_metric_detailed(batch_A, batch_B,
 
 # Wrap in a function for a simple interface
 def custom_metric(batch_A, batch_B):
-    return custom_patchwise_metric_detailed(batch_A, batch_B)
+    return 0
+    #return custom_patchwise_metric_detailed(batch_A, batch_B)
 
 
 ###############################################
