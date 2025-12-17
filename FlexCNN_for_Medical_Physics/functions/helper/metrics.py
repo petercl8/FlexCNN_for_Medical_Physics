@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from skimage.metrics import structural_similarity
 from .cropping import crop_image_tensor_with_corner
+from FlexxCNN_for_Medical_Physics.classes.losses import PatchwiseMomentMetric
+
 
 ######################
 ## Metric Functions ##
@@ -71,97 +73,17 @@ def MAE(image_A, image_B):
 
     return torch.mean(torch.abs(image_A-image_B)).item()
 
-def calculate_moments(batch_A, batch_B, window_size = 10, stride=10, dataframe=False):
-    '''
-    Function to return the three statistical moment scores for two image tensors.
-    '''
-    ## Nested Functions ##
+# Instantiate once at import time
+eval_metric_instance = PatchwiseMomentMetric(
+    patch_size=5, stride=2, max_moment=3, scale='mean'
+)
 
-    def compare_moments(win_A, win_B, moment):
-        def compute_moment(win, moment, axis=1):
-            mean_value = np.mean(win, axis=axis)
-            if moment == 1:
-                return mean_value
-            else:
-                mean_array = np.array([mean_value] * win.shape[1]).T  # The square brackets in win.shape[1] mean the value is repeated spatially
-                moment = np.mean((win - mean_array)**moment, axis=1)
-                return moment
-
-        batch_size = win_A.shape[0]
-
-
-        reshape_A = (torch.reshape(win_A, (batch_size, -1))).detach().cpu().numpy()
-        reshape_B = (torch.reshape(win_B, (batch_size, -1))).detach().cpu().numpy()
-
-        moment_A = compute_moment(reshape_A, moment=moment)
-        moment_B = compute_moment(reshape_B, moment=moment)
-        moment_score = np.mean(np.absolute(moment_A-moment_B)/(np.absolute(moment_A)+0.1))
-
-        '''
-        print('===============================')
-        print('MOMENT: ', moment)
-        print('moment_A shape: ', moment_A.shape)
-        print('moment_A mean: ', np.mean(moment_A))
-        print('moment_B shape: ', moment_B.shape)
-        print('moment_B mean: ', np.mean(moment_B))
-        print('moment_score, |moment_A-moment_B|/(moment_A+0.1) : ', moment_score)
-        '''
-        return moment_score
-
-    ## Code ##
-    image_size = batch_A.shape[2]
-
-    num_windows = int((image_size)/stride) # Maximum number of windows occurs when: stride = window_size.
-    while (num_windows-1)*stride + window_size > image_size: # Solve for the number of windows (crops)
-        num_windows += -1
-
-    moment_1_running_score = 0
-    moment_2_running_score = 0
-    moment_3_running_score = 0
-
-    for i in range(0, num_windows):
-        for j in range(0, num_windows):
-            corner = (i*stride, j*stride)
-
-            win_A = crop_image_tensor_with_corner(batch_A, window_size, corner)
-            win_B = crop_image_tensor_with_corner(batch_B, window_size, corner)
-
-            moment_1_score = compare_moments(win_A, win_B, moment=1)
-            moment_2_score = compare_moments(win_A, win_B, moment=2)
-            moment_3_score = compare_moments(win_A, win_B, moment=3)
-
-            moment_1_running_score += moment_1_score
-            moment_2_running_score += moment_2_score
-            moment_3_running_score += moment_3_score
-
-    return moment_1_running_score, moment_2_running_score, moment_3_running_score
-
-def LDM(batch_A, batch_B):
-    '''
-    Calculate the local distributions metric (LDM) for two batches of images
-    '''
-
-    score_1, score_2, score_3 = calculate_moments(batch_A, batch_B, window_size=5, stride=5)
-
-    score_1 = score_1*1
-    score_2 = score_2*1
-    score_3 = score_3*1
-
-    '''
-    print('Scores')
-    print('====================')
-    print(score_1)
-    print(score_2)
-    print(score_3)
-    '''
-
-    return score_1+score_2+score_3
-
+# Wrap in a function for a simple interface
 def custom_metric(batch_A, batch_B):
-    return 0
-    #return MSE(batch_A, batch_B)
-
-
+    with torch.no_grad():
+        scores = eval_metric_instance(batch_A, batch_B)
+    mean_score = sum(v.cpu().item() for v in scores.values()) / len(scores)
+    return mean_score
 
 ###############################################
 ## Average or a Batch Metrics: Good for GANs ##
