@@ -13,7 +13,7 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-## highCountImage-->actMap, tuned for SSIM, Augugment: II
+## highCountSino-->actMap, tuned for SSIM, Augugment: II
 config_SUP_SI = {
    "SI_dropout": False,
   "SI_exp_kernel": 3,
@@ -43,7 +43,38 @@ config_SUP_SI = {
 }
 
 '''
-## highCountImage-->actMap, tuned for SSIM
+## highCountSino-->actMap, tuned for SSIM, Augugment: SI
+config_SUP_SI = {
+  "SI_dropout": False,
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": nn.Sigmoid(),
+  "SI_gen_hidden_dim": 19,
+  "SI_gen_mult": 2.065329728174869,
+  "SI_gen_neck": 5,
+  "SI_gen_z_dim": 1181,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 4.2047521440377285,
+  "SI_normalize": False,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "add",
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.22046050861804858,
+  "gen_b2": 0.152643657443423,
+  "gen_lr": 0.00099063275528607,
+  "image_channels": 1,
+  "image_size": 180,
+  "network_type": "SUP",
+  "sino_channels": 3,
+  "sino_size": 180,
+  "sup_criterion": nn.MSELoss(),
+  "train_SI": True
+}
+'''
+
+'''
+## highCountImage-->actMap, tuned for SSIM, Augment: II (defective network)
 config_SUP_SI = {
   "SI_dropout": True,
   "SI_exp_kernel": 3,
