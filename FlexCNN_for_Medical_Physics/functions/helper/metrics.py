@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from skimage.metrics import structural_similarity
 from .cropping import crop_image_tensor_with_corner
-from FlexxCNN_for_Medical_Physics.classes.losses import PatchwiseMomentMetric
+from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentMetric
 
 
 ######################
