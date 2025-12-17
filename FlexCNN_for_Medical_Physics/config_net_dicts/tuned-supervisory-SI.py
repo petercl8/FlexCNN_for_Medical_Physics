@@ -1,4 +1,5 @@
 from torch import nn
+from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss
 
 ## Supervisory
 '''
@@ -21,13 +22,13 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.LeakyReLU(),
   "SI_gen_hidden_dim": 29,
   "SI_gen_mult": 3.378427521450207,
-  "SI_gen_neck": 5, # 1 = smallest
+  "SI_gen_neck": 1, # 1 = smallest
   "SI_gen_z_dim": 2069,
   "SI_layer_norm": "group",
   "SI_learnedScale_init": 6.7836194674698165,
   "SI_normalize": False,
   "SI_pad_mode": "zeros",
-  "SI_skip_mode": "none", # concat
+  "SI_skip_mode": "concat", # concat
   "batch_base2_exponent": 6,
   "gen_b1": 0.42565713596651117,
   "gen_b2": 0.6898108744928462,
@@ -37,7 +38,7 @@ config_SUP_SI = {
   "network_type": "SUP",
   "sino_channels": 1,
   "sino_size": 180,
-  "sup_criterion": nn.MSELoss(),
+  "sup_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean'), # nn.MSELoss()
   "train_SI": True
 }
 

@@ -1,9 +1,17 @@
 from torch import nn
 from ray import tune
+from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss
 
 # Data-driven initialization bounds (from compute_average_activity_per_image analysis)
 MEAN_ACTIVITY = 144617
 MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalized scaling
+
+# Parameters for PatchwiseMomentLoss (used in config_RAY_SUP)
+patch_size=5  # 8
+stride=2      # 4
+max_moment=3  # 3
+scale='mean'  # 'mean' or 'std'
+
 
 #################################################################################################################################################################
 ## (config_RAY_SI OR config_RAY_IS) gets combined with (config_RAY_SUP or config_RAY_GAN) to form a single hyperparameter space for searching a single network ##
@@ -97,7 +105,8 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'gen_lr': tune.loguniform(1e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': tune.loguniform(0.1, 0.999),
-    'sup_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss(), nn.L1Loss(), nn.KLDivLoss(reduction='batchmean')]), # Not SI or IS because used for both
+    'sup_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss(), nn.L1Loss(), nn.KLDivLoss(reduction='batchmean'),
+                                  PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale)]), # Not SI or IS because this is used for both
     # OVERWRITES: overwrites values from config_RAY_SI or config_RAY_IS. This is done so time isn't wasted looking for unused hyperparameters.
     'SI_disc_hidden_dim': 1,
     'SI_disc_patchGAN': 1,
