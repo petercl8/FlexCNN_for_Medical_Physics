@@ -52,13 +52,13 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     tune_minutes = tune_opts['tune_minutes']
     tune_exp_name = tune_opts['tune_exp_name']
     tune_scheduler = tune_opts.get('tune_scheduler', 'ASHA')
-    tune_restore = tune_opts.get('tune_restore', False)
-    tune_max_t = tune_opts.get('tune_max_t', 40)
-    grace_period = tune_opts.get('grace_period', 1)
-    num_CPUs = tune_opts.get('num_CPUs', 1)
-    num_GPUs = tune_opts.get('num_GPUs', 0)
-    cpus_per_trial = tune_opts.get('cpus_per_trial', 2)
-    gpus_per_trial = tune_opts.get('gpus_per_trial', num_GPUs)
+    tune_restore = tune_opts.get('tune_restore')
+    tune_max_t = tune_opts.get('tune_max_t')
+    grace_period = tune_opts.get('tune_grace_period')
+    num_CPUs = tune_opts.get('num_CPUs')
+    num_GPUs = tune_opts.get('num_GPUs')
+    cpus_per_trial = tune_opts.get('cpus_per_trial')
+    gpus_per_trial = tune_opts.get('gpus_per_trial')
 
     os.environ.pop("AIR_VERBOSITY", None)
 
