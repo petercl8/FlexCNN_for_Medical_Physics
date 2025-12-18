@@ -76,8 +76,8 @@ def patchwise_distribution_metric(batch_pred,
                             batch_target,
                             moments=[1,2],
                             moment_weights={1:4, 2:1.0, 3:1.0},   # dict, e.g., {2:1.0, 3:0.001}
-                            patch_size=16,
-                            stride=8,
+                            patch_size=8,
+                            stride=4,
                             eps=1e-6,
                             patch_weighting='scaled',  # 'scaled', 'energy', 'mean', 'none'
                             patch_weight_min=0.33,
