@@ -9,18 +9,17 @@ from torch.utils.data import DataLoader
 from FlexCNN_for_Medical_Physics.classes.generators import Generator
 from FlexCNN_for_Medical_Physics.classes.dataset import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
+
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import (
     calculate_metric,
     reconstruct_images_and_update_test_dataframe,
     update_tune_dataframe
 )
 
-
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import (
     reconstruct_images_and_update_test_dataframe,
     update_tune_dataframe
 )
-
 
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import (
     SSIM,
