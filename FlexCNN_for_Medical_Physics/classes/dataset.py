@@ -3,7 +3,6 @@ from torch import nn
 from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
-from .augment_data import AugmentSinoImageData, AugmentImageImageData
 from .augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
