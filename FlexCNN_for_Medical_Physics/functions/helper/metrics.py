@@ -188,7 +188,7 @@ def patchwise_moment_metric(batch_pred,
 def custom_metric(batch_A, batch_B):
     return patchwise_moment_metric(batch_A,
                             batch_B,
-                            moments=[2,3],
+                            moments=[1,2,3],
                             moment_weights={2:1.0, 3:0.001},   # dict, e.g., {2:1.0, 3:0.001}
                             patch_size=16,
                             stride=8,
