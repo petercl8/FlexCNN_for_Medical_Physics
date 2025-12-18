@@ -75,7 +75,7 @@ def MAE(image_A, image_B):
 def patchwise_distribution_metric(batch_pred,
                             batch_target,
                             moments=[1,2],
-                            moment_weights=None,
+                            moment_weights={1:10, 2:1.0, 3:1.0},   # dict, e.g., {2:1.0, 3:0.001}
                             patch_size=16,
                             stride=8,
                             eps=1e-6,
