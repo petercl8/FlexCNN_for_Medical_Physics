@@ -26,7 +26,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.metrics import (
     SSIM,
     MSE,
     custom_metric,
-    patchwise_distribution_metric
+    patchwise_moment_metric
 )
 from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import (
@@ -170,7 +170,6 @@ def run_SUP(config, paths, settings):
     mean_gen_loss = 0
     mean_CNN_SSIM = 0
     mean_CNN_MSE = 0
-    mean_CNN_CUSTOM = 0
     report_num = 1 # First report to RayTune is report_num = 1
     
     # Evaluation cache (for 'val' and 'qa' modes, or 'same' mode caching)
@@ -270,11 +269,6 @@ def run_SUP(config, paths, settings):
                 mean_CNN_SSIM += calculate_metric(target, CNN_output, SSIM) / display_step # The SSIM function can only take single images as inputs, not batches, so we use a wrapper function and pass batches to it.
                 mean_CNN_MSE += calculate_metric(target, CNN_output, MSE) / display_step # The MSE function can take either single images or batches. We use the wrapper for consistency.
 
-                time_init_custom = time.time()
-                # Custom metrics can take a long time to calculate, so we don't use a wrapper (which would loop through individual images in calculations. If not using this metric, set it to zero in the code base.)
-                mean_CNN_CUSTOM += custom_metric(target, CNN_output) / display_step
-                _ = display_times('Custom metric time', time_init_custom, show_times)
-
             # If Testing, we calculate and store reconstructions and metrics in a dataframe #
             if run_mode == 'test':
                 test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
@@ -350,11 +344,10 @@ def run_SUP(config, paths, settings):
                     print(f'mean_gen_loss: {mean_gen_loss}')
                     print(f'mean_CNN_MSE : {mean_CNN_MSE}')
                     print(f'mean_CNN_SSIM: {mean_CNN_SSIM}')
-                    print(f'mean-CNN_CUSTOM {mean_CNN_CUSTOM}')
                     print('===========================================')
                     print('Last Batch MSE: ', calculate_metric(target, CNN_output, MSE))
                     print('Last Batch SSIM: ', calculate_metric(target, CNN_output, SSIM))
-                    print('Last Batch LDM: ', patchwise_distribution_metric(target, CNN_output, return_per_moment=True))
+                    print('Last Batch LDM: ', patchwise_moment_metric(target, CNN_output, return_per_moment=True))
                     #print('Input:')
                     #show_single_unmatched_tensor(input_[0:3])
                     print('Target/Output:')
@@ -390,7 +383,6 @@ def run_SUP(config, paths, settings):
                 mean_gen_loss = 0
                 mean_CNN_SSIM = 0
                 mean_CNN_MSE = 0
-                mean_CNN_CUSTOM = 0
                 _ = display_times('visualization time', time_init_visualization, show_times)
 
             # Reset loader timer
