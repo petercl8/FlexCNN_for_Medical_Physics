@@ -72,74 +72,102 @@ def MAE(image_A, image_B):
     return torch.mean(torch.abs(image_A-image_B)).item()
 
 
-def custom_patchwise_metric_detailed(batch_A, batch_B,
-                                     patch_size=5,
-                                     stride=2,
-                                     max_moment=3,
-                                     scale='mean',
-                                     weights=None,
-                                     return_per_moment=False):
-    """
-    Compute a patchwise moment metric between two image batches.
-    
-    Args:
-        batch_A (torch.Tensor): predicted images, shape [B,C,H,W]
-        batch_B (torch.Tensor): target images, same shape
-        patch_size (int): size of patches
-        stride (int): stride between patches
-        max_moment (int): number of moments to compare
-        scale (str): 'mean' or 'std' for higher moment scaling
-        weights (list or None): optional weights for each moment
-        return_per_moment (bool): if True, return a dict of per-moment scores
-    
-    Returns:
-        float or dict: mean patchwise moment difference across all moments (default),
-                       or dict of per-moment scores if return_per_moment=True
-    """
-    if weights is None:
-        weights = [1.0] * max_moment
+import torch
 
-    B, C, H, W = batch_A.shape
+
+def patchwise_moment_metric(batch_pred,
+                            batch_target,
+                            moments=[2,3],
+                            patch_size=16,
+                            stride=8,
+                            eps=1e-6,
+                            patch_weighting='mean',  # 'mean', 'energy', 'none'
+                            return_per_moment=False):
+    """
+    Compute a patchwise moment metric for quantitative reconstructions.
+
+    Args:
+        batch_pred (torch.Tensor): [B, C, H, W] predicted images
+        batch_target (torch.Tensor): [B, C, H, W] target images
+        moments (list of int): which central moments to compute, e.g., [2,3]
+        patch_size (int): size of square patches
+        stride (int): stride between patches
+        eps (float): small number to avoid division by zero
+        patch_weighting (str): 'mean', 'energy', or 'none'
+        return_per_moment (bool): if True, return per-moment dict along with scalar
+
+    Returns:
+        total_metric (float): weighted mean metric across moments and patches
+        per_moment_dict (dict): per-moment metric (CPU floats), optional
+    """
+    B, C, H, W = batch_pred.shape
     p = patch_size
     s = stride
 
-    pred_patches = batch_A.unfold(2, p, s).unfold(3, p, s).contiguous().view(B, C, -1, p*p)
-    target_patches = batch_B.unfold(2, p, s).unfold(3, p, s).contiguous().view(B, C, -1, p*p)
+    # Determine number of patches that fully fit
+    num_patches_h = (H - p) // s + 1
+    num_patches_w = (W - p) // s + 1
 
-    per_moment_scores = {}
-    total_score = 0.0
+    if num_patches_h <= 0 or num_patches_w <= 0:
+        raise ValueError("Patch size larger than image dimensions.")
 
-    for k in range(1, max_moment+1):
+    # Slice to only full patches
+    max_h = s * (num_patches_h - 1) + p
+    max_w = s * (num_patches_w - 1) + p
+    batch_pred = batch_pred[:, :, :max_h, :max_w]
+    batch_target = batch_target[:, :, :max_h, :max_w]
+
+    # Extract patches: [B, C, num_patches, patch_size*patch_size]
+    pred_patches = batch_pred.unfold(2, p, s).unfold(3, p, s)
+    target_patches = batch_target.unfold(2, p, s).unfold(3, p, s)
+    num_patches = num_patches_h * num_patches_w
+
+    pred_patches = pred_patches.contiguous().view(B, C, num_patches, -1)
+    target_patches = target_patches.contiguous().view(B, C, num_patches, -1)
+
+    # Compute patch weights
+    if patch_weighting == 'mean':
+        patch_mean = target_patches.mean(dim=-1)  # [B, C, num_patches]
+        image_mean = batch_target.mean(dim=[2,3], keepdim=True) + eps  # [B, C, 1, 1]
+        weights = (patch_mean / image_mean).clamp(min=0.0)
+    elif patch_weighting == 'energy':
+        patch_energy = (target_patches**2).mean(dim=-1)
+        total_energy = patch_energy.sum(dim=-1, keepdim=True) + eps
+        weights = patch_energy / total_energy
+    else:
+        weights = torch.ones_like(target_patches.mean(dim=-1))
+
+    weights = weights / (weights.sum(dim=-1, keepdim=True) + eps)  # normalize per image/channel
+
+    per_moment_dict = {}
+    total_metric = 0.0
+
+    for k in moments:
+        # Compute central moments
         target_mean = target_patches.mean(dim=-1, keepdim=True)
         pred_mean = pred_patches.mean(dim=-1, keepdim=True)
 
-        if k == 1:
-            moment_diff = torch.abs(pred_mean - target_mean).mean(dim=-1)
-        else:
-            pred_c = pred_patches - pred_mean
-            target_c = target_patches - target_mean
-            pred_m = (pred_c ** k).mean(dim=-1)
-            target_m = (target_c ** k).mean(dim=-1)
+        target_c = target_patches - target_mean
+        pred_c = pred_patches - pred_mean
 
-            if scale == 'std':
-                sigma = torch.sqrt((target_c**2).mean(dim=-1) + 1e-6)
-                pred_m = pred_m / (sigma**k + 1e-6)
-                target_m = target_m / (sigma**k + 1e-6)
-            elif scale == 'mean':
-                mean_val = target_mean.squeeze(-1) + 1e-6
-                pred_m = pred_m / (mean_val**k)
-                target_m = target_m / (mean_val**k)
+        target_m = (target_c**k).mean(dim=-1)  # [B, C, num_patches]
+        pred_m = (pred_c**k).mean(dim=-1)
 
-            moment_diff = torch.abs(pred_m - target_m).mean(dim=-1)
+        # Relative difference
+        rel_diff = torch.abs(pred_m - target_m) / (torch.abs(target_m) + eps)
 
-        score = weights[k-1] * moment_diff.mean()
-        per_moment_scores[k] = score.cpu().item()
-        total_score += score
+        # Weighted mean across patches, channels, batch
+        weighted_diff = (rel_diff * weights).sum(dim=-1).mean(dim=[0,1])
+        total_metric += weighted_diff
+        per_moment_dict[k] = weighted_diff.cpu().item()
+
+    # Average over moments
+    total_metric = total_metric / len(moments)
 
     if return_per_moment:
-        return per_moment_scores
+        return total_metric.cpu().item(), per_moment_dict
     else:
-        return total_score.cpu().item()
+        return total_metric.cpu().item()
 
 
 # Wrap in a function for a simple interface

@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
 from .augment_data import AugmentSinoImageData, AugmentImageImageData
+from .augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
@@ -140,9 +141,13 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
 
     ## Run Data Augmentation on Selected Data. ##
     if augment[0]=='SI':
-        act_map_multChannel, sinogram_multChannel = AugmentSinoImageData(act_map_multChannel, sinogram_multChannel, flip_channels=augment[1])
+        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
+            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
+        )
     if augment[0]=='II':
-        act_map_multChannel, sinogram_multChannel = AugmentImageImageData(act_map_multChannel, sinogram_multChannel, flip_channels=augment[1])
+        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
+            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
+        )
 
     ## Create A Set of Resized Outputs ##
 

@@ -37,7 +37,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
     compute_display_step,
     get_tune_session
 )
-from FlexCNN_for_Medical_Physics.functions.helper.evaluation_data import get_eval_data, evaluate_val, evaluate_qa
+from FlexCNN_for_Medical_Physics.functions.helper.evaluation_data_random import load_validation_batches, load_qa_batches, evaluate_val, evaluate_qa
 
 # Module logger for optional Tune debug output
 logger = logging.getLogger(__name__)
@@ -298,13 +298,14 @@ def run_SUP(config, paths, settings):
                 example_num = batch_step * batch_size
 
                 if run_mode == 'tune' and session is not None:
-                    # Load evaluation data (cached after first call)
-                    eval_cache = get_eval_data(paths, config, settings, eval_cache)
+                    # Set generator to eval mode for validation
+                    gen.eval()
                     
-                    # Evaluate based on mode
+                    # Load fresh random batches and evaluate
                     tune_report_for = settings.get('tune_report_for', 'val')
                     if tune_report_for == 'val':
-                        metrics = evaluate_val(gen, eval_cache, device, train_SI)
+                        batches = load_validation_batches(paths, config, settings)
+                        metrics = evaluate_val(gen, batches, device, train_SI)
 
                         # Update dataframe at specified fraction
                         if int(tune_dataframe_fraction * tune_max_t) == report_num:
@@ -314,9 +315,13 @@ def run_SUP(config, paths, settings):
                             )
 
                     elif tune_report_for == 'qa':
-                        metrics = evaluate_qa(gen, eval_cache, device, settings)
+                        batches = load_qa_batches(paths, config, settings)
+                        metrics = evaluate_qa(gen, batches, device, settings)
                     else:
                         raise ValueError(f"Invalid tune_report_for='{tune_report_for}'")
+                    
+                    # Restore generator to train mode
+                    gen.train()
                     
                     # Check for NaN and terminate if found
                     metric_to_check = settings.get('tune_metric', 'SSIM')  # or 'ROI_NEMA_weighted', etc.
@@ -348,6 +353,7 @@ def run_SUP(config, paths, settings):
                     print('===========================================')
                     print('Last Batch MSE: ', calculate_metric(target, CNN_output, MSE))
                     print('Last Batch SSIM: ', calculate_metric(target, CNN_output, SSIM))
+                    print('Last Batch Cusom: ', custom_metric(target, CNN_output, return_per_moment=False))
                     #print('Input:')
                     #show_single_unmatched_tensor(input_[0:3])
                     print('Target/Output:')
