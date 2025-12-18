@@ -76,8 +76,8 @@ import torch
 
 def patchwise_moment_metric(batch_pred,
                             batch_target,
-                            moments=[2,3],
-                            moment_weights={2:1.0, 3:0.001},   # dict, e.g., {2:1.0, 3:0.001}
+                            moments=[1,2,3],
+                            moment_weights={1:0.8, 2:1.0, 3:0.001},   # dict, e.g., {2:1.0, 3:0.001}
                             patch_size=16,
                             stride=8,
                             eps=1e-6,
