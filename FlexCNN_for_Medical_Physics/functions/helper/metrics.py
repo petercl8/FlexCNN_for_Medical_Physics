@@ -78,30 +78,13 @@ def patchwise_distribution_metric(batch_pred,
                             moment_weights={1:2, 2:1.0, 3:1.0},   # dict, e.g., {2:1.0, 3:0.001}
                             patch_size=8,
                             stride=4,
-                            eps=1e-6,
+                            eps=0.1,
                             patch_weighting='scaled',  # 'scaled', 'energy', 'mean', 'none'
                             patch_weight_min=0.33,
                             patch_weight_max=1.0,
                             return_per_moment=False):
     """
-    Patchwise moment metric with optional patch scaling and moment weights.
-
-    Args:
-        batch_pred (torch.Tensor): [B, C, H, W] predicted images
-        batch_target (torch.Tensor): [B, C, H, W] target images
-        moments (list of int): which central moments to compute
-        moment_weights (dict or None): optional per-moment weighting
-        patch_size (int): size of square patches
-        stride (int): stride between patches
-        eps (float): small value to avoid div by zero
-        patch_weighting (str): how to weight patches ('scaled', 'energy', 'mean', 'none')
-        patch_weight_min (float): min weight for scaled patch weighting
-        patch_weight_max (float): max weight for scaled patch weighting
-        return_per_moment (bool): if True, return dict with per-moment metrics
-
-    Returns:
-        total_metric (float): weighted average metric across moments and patches
-        per_moment_dict (dict, optional): per-moment metric values
+    Patchwise moment metric with improved patch weighting handling.
     """
     B, C, H, W = batch_pred.shape
     p, s = patch_size, stride
@@ -126,22 +109,21 @@ def patchwise_distribution_metric(batch_pred,
     # -------------------
     # Patch weighting
     # -------------------
+    patch_mean = target_patches.mean(dim=-1)
+    patch_min = patch_mean.min(dim=-1, keepdim=True)[0]
+    patch_max = patch_mean.max(dim=-1, keepdim=True)[0]
+
     if patch_weighting == 'scaled':
-        patch_mean = target_patches.mean(dim=-1)
-        patch_min = patch_mean.min(dim=-1, keepdim=True)[0]
-        patch_max = patch_mean.max(dim=-1, keepdim=True)[0] + eps
-        # scale between patch_weight_min and patch_weight_max
-        patch_weights = patch_weight_min + (patch_mean - patch_min) / (patch_max - patch_min) * (patch_weight_max - patch_weight_min)
+        # Scale between patch_weight_min and patch_weight_max per image
+        patch_weights = patch_weight_min + (patch_mean - patch_min) / (patch_max - patch_min + eps) * (patch_weight_max - patch_weight_min)
+        # Do NOT renormalize; already bounded
     elif patch_weighting == 'energy':
         patch_energy = (target_patches**2).mean(dim=-1)
-        total_energy = patch_energy.sum(dim=-1, keepdim=True) + eps
-        patch_weights = patch_energy / total_energy
+        patch_weights = patch_energy / (patch_energy.sum(dim=-1, keepdim=True) + eps)
     elif patch_weighting == 'mean':
-        patch_weights = target_patches.mean(dim=-1)
+        patch_weights = patch_mean / (patch_mean.sum(dim=-1, keepdim=True) + eps)
     else:
-        patch_weights = torch.ones_like(target_patches.mean(dim=-1))
-
-    patch_weights = patch_weights / (patch_weights.sum(dim=-1, keepdim=True) + eps)
+        patch_weights = torch.ones_like(patch_mean)
 
     # -------------------
     # Moment computation
@@ -153,8 +135,7 @@ def patchwise_distribution_metric(batch_pred,
 
     for k in moments:
         if k == 1:
-            # Mean
-            target_m = target_patches.mean(dim=-1)
+            target_m = patch_mean
             pred_m = pred_patches.mean(dim=-1)
         else:
             target_mean = target_patches.mean(dim=-1, keepdim=True)
@@ -185,12 +166,13 @@ def patchwise_distribution_metric(batch_pred,
         per_moment_dict[k] = weighted_moment_diff.cpu().item()
 
     # Normalize by sum of moment weights
-    total_metric = total_metric / sum(moment_weights.get(k, 1.0) for k in moments)
+    total_metric = total_metric / sum(moment_weights.get(k,1.0) for k in moments)
 
     if return_per_moment:
         return total_metric.cpu().item(), per_moment_dict
     else:
         return total_metric.cpu().item()
+
 
 
 
