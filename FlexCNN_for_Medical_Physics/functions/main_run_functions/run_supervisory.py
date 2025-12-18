@@ -353,7 +353,7 @@ def run_SUP(config, paths, settings):
                     print('===========================================')
                     print('Last Batch MSE: ', calculate_metric(target, CNN_output, MSE))
                     print('Last Batch SSIM: ', calculate_metric(target, CNN_output, SSIM))
-                    print('Last Batch Cusom: ', custom_metric(target, CNN_output, return_per_moment=False))
+                    print('Last Batch Cusom: ', custom_metric(target, CNN_output))
                     #print('Input:')
                     #show_single_unmatched_tensor(input_[0:3])
                     print('Target/Output:')
