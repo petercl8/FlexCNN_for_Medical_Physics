@@ -72,7 +72,7 @@ def MAE(image_A, image_B):
     return torch.mean(torch.abs(image_A-image_B)).item()
 
 
-def patchwise_distribution_metric(batch_pred,
+def patchwise_moment_metric(batch_pred,
                             batch_target,
                             moments=[1,2],
                             moment_weights={1:2, 2:1.0, 3:1.0},   # dict, e.g., {2:1.0, 3:0.001}
@@ -178,7 +178,7 @@ def patchwise_distribution_metric(batch_pred,
 
 # Wrap in a function for a simple interface
 def custom_metric(batch_A, batch_B):
-    return patchwise_distribution_metric(batch_A, batch_B)
+    return patchwise_moment_metric(batch_A, batch_B)
 
 
 ###############################################

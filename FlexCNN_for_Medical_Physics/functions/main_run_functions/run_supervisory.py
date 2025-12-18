@@ -25,7 +25,6 @@ from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import (
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import (
     SSIM,
     MSE,
-    custom_metric,
     patchwise_moment_metric
 )
 from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
@@ -383,6 +382,7 @@ def run_SUP(config, paths, settings):
                 mean_gen_loss = 0
                 mean_CNN_SSIM = 0
                 mean_CNN_MSE = 0
+
                 _ = display_times('visualization time', time_init_visualization, show_times)
 
             # Reset loader timer
