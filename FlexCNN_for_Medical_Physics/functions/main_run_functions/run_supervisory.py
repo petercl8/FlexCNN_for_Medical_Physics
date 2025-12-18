@@ -26,6 +26,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.metrics import (
     SSIM,
     MSE,
     custom_metric,
+    patchwise_moment_metric
 )
 from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import (
@@ -353,7 +354,7 @@ def run_SUP(config, paths, settings):
                     print('===========================================')
                     print('Last Batch MSE: ', calculate_metric(target, CNN_output, MSE))
                     print('Last Batch SSIM: ', calculate_metric(target, CNN_output, SSIM))
-                    print('Last Batch Cusom: ', custom_metric(target, CNN_output))
+                    print('Last Batch LDM: ', patchwise_moment_metric(target, CNN_output, return_per_moment=True))
                     #print('Input:')
                     #show_single_unmatched_tensor(input_[0:3])
                     print('Target/Output:')
