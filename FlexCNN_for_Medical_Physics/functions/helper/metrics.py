@@ -71,9 +71,6 @@ def MAE(image_A, image_B):
 
     return torch.mean(torch.abs(image_A-image_B)).item()
 
-
-import torch
-
 def patchwise_moment_metric(batch_pred,
                             batch_target,
                             moments=[1,2,3],
