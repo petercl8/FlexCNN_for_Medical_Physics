@@ -40,7 +40,6 @@ def ROI_NEMA_cold(reconstruction_tensor, background_mask, cold_mask):
     return x
 
 
-
 def ROI_simple_phantom(ground_truth_tensor, reconstruction_tensor, hot_mask):
     """
     Symmetric contrast recovery with separate error metrics:
