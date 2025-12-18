@@ -184,7 +184,6 @@ def patchwise_moment_metric(batch_pred,
         return total_metric.cpu().item()
 
 
-
 # Wrap in a function for a simple interface
 def custom_metric(batch_A, batch_B):
     return patchwise_moment_metric(batch_A,
