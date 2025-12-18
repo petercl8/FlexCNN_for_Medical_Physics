@@ -72,21 +72,25 @@ def MAE(image_A, image_B):
     return torch.mean(torch.abs(image_A-image_B)).item()
 
 
+import torch
+
 def patchwise_moment_metric(batch_pred,
                             batch_target,
                             moments=[2,3],
+                            moment_weights={2:1.0, 3:0.001},   # dict, e.g., {2:1.0, 3:0.001}
                             patch_size=16,
                             stride=8,
                             eps=1e-6,
                             patch_weighting='mean',  # 'mean', 'energy', 'none'
                             return_per_moment=False):
     """
-    Compute a patchwise moment metric for quantitative reconstructions.
+    Compute a patchwise moment metric with separate patch and moment weighting.
 
     Args:
         batch_pred (torch.Tensor): [B, C, H, W] predicted images
         batch_target (torch.Tensor): [B, C, H, W] target images
         moments (list of int): which central moments to compute, e.g., [2,3]
+        moment_weights (dict or None): {moment: weight}, defaults to 1 for all moments
         patch_size (int): size of square patches
         stride (int): stride between patches
         eps (float): small number to avoid division by zero
@@ -122,22 +126,31 @@ def patchwise_moment_metric(batch_pred,
     pred_patches = pred_patches.contiguous().view(B, C, num_patches, -1)
     target_patches = target_patches.contiguous().view(B, C, num_patches, -1)
 
+    # -------------------
     # Compute patch weights
+    # -------------------
     if patch_weighting == 'mean':
-        patch_mean = target_patches.mean(dim=-1)  # [B, C, num_patches]
-        image_mean = batch_target.mean(dim=[2,3], keepdim=True) + eps  # [B, C, 1, 1]
-        weights = (patch_mean / image_mean).clamp(min=0.0)
+        patch_means = target_patches.mean(dim=-1)  # [B, C, num_patches]
+        image_means = batch_target.mean(dim=[2,3], keepdim=True) + eps  # [B, C, 1, 1]
+        patch_weights = (patch_means / image_means).clamp(min=0.0)
     elif patch_weighting == 'energy':
         patch_energy = (target_patches**2).mean(dim=-1)
         total_energy = patch_energy.sum(dim=-1, keepdim=True) + eps
-        weights = patch_energy / total_energy
+        patch_weights = patch_energy / total_energy
     else:
-        weights = torch.ones_like(target_patches.mean(dim=-1))
+        patch_weights = torch.ones_like(target_patches.mean(dim=-1))
 
-    weights = weights / (weights.sum(dim=-1, keepdim=True) + eps)  # normalize per image/channel
+    patch_weights = patch_weights / (patch_weights.sum(dim=-1, keepdim=True) + eps)  # normalize per image/channel
 
+    # -------------------
+    # Moment-level metric computation
+    # -------------------
     per_moment_dict = {}
     total_metric = 0.0
+
+    # Default moment weights = 1 if not provided
+    if moment_weights is None:
+        moment_weights = {k: 1.0 for k in moments}
 
     for k in moments:
         # Compute central moments
@@ -153,18 +166,23 @@ def patchwise_moment_metric(batch_pred,
         # Relative difference
         rel_diff = torch.abs(pred_m - target_m) / (torch.abs(target_m) + eps)
 
-        # Weighted mean across patches, channels, batch
-        weighted_diff = (rel_diff * weights).sum(dim=-1).mean(dim=[0,1])
-        total_metric += weighted_diff
-        per_moment_dict[k] = weighted_diff.cpu().item()
+        # Weighted mean across patches (patch_weights), then batch/channels
+        weighted_patch_diff = (rel_diff * patch_weights).sum(dim=-1).mean(dim=[0,1])
 
-    # Average over moments
-    total_metric = total_metric / len(moments)
+        # Apply moment weight
+        weighted_moment_diff = weighted_patch_diff * moment_weights.get(k, 1.0)
+
+        total_metric += weighted_moment_diff
+        per_moment_dict[k] = weighted_moment_diff.cpu().item()
+
+    # Normalize by sum of moment weights
+    total_metric = total_metric / sum(moment_weights.get(k, 1.0) for k in moments)
 
     if return_per_moment:
         return total_metric.cpu().item(), per_moment_dict
     else:
         return total_metric.cpu().item()
+
 
 
 # Wrap in a function for a simple interface
