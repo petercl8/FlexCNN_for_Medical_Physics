@@ -71,99 +71,111 @@ def MAE(image_A, image_B):
 
     return torch.mean(torch.abs(image_A-image_B)).item()
 
-def patchwise_moment_metric(batch_pred,
+
+def patchwise_distribution_metric(batch_pred,
                             batch_target,
-                            moments=[1,2,3],
-                            moment_weights={1:60, 2:1.0, 3:0.001},   # dict, e.g., {2:1.0, 3:0.001}
+                            moments=[1,2],
+                            moment_weights=None,
                             patch_size=16,
                             stride=8,
-                            eps=0.1,
-                            patch_weighting='none',  # 'mean', 'energy', 'none'
+                            eps=1e-6,
+                            patch_weighting='scaled',  # 'scaled', 'energy', 'mean', 'none'
+                            patch_weight_min=0.25,
+                            patch_weight_max=1.0,
                             return_per_moment=False):
     """
-    Compute a patchwise moment metric with separate patch and moment weighting.
+    Patchwise moment metric with optional patch scaling and moment weights.
 
     Args:
         batch_pred (torch.Tensor): [B, C, H, W] predicted images
         batch_target (torch.Tensor): [B, C, H, W] target images
-        moments (list of int): which central moments to compute, e.g., [2,3]
-        moment_weights (dict or None): {moment: weight}, defaults to 1 for all moments
+        moments (list of int): which central moments to compute
+        moment_weights (dict or None): optional per-moment weighting
         patch_size (int): size of square patches
         stride (int): stride between patches
-        eps (float): small number to avoid division by zero
-        patch_weighting (str): 'mean', 'energy', or 'none'
-        return_per_moment (bool): if True, return per-moment dict along with scalar
+        eps (float): small value to avoid div by zero
+        patch_weighting (str): how to weight patches ('scaled', 'energy', 'mean', 'none')
+        patch_weight_min (float): min weight for scaled patch weighting
+        patch_weight_max (float): max weight for scaled patch weighting
+        return_per_moment (bool): if True, return dict with per-moment metrics
 
     Returns:
-        total_metric (float): weighted mean metric across moments and patches
-        per_moment_dict (dict): per-moment metric (CPU floats), optional
+        total_metric (float): weighted average metric across moments and patches
+        per_moment_dict (dict, optional): per-moment metric values
     """
     B, C, H, W = batch_pred.shape
-    p = patch_size
-    s = stride
+    p, s = patch_size, stride
 
-    # Determine number of patches that fully fit
+    # Only full patches
     num_patches_h = (H - p) // s + 1
     num_patches_w = (W - p) // s + 1
-
     if num_patches_h <= 0 or num_patches_w <= 0:
         raise ValueError("Patch size larger than image dimensions.")
-
-    # Slice to only full patches
     max_h = s * (num_patches_h - 1) + p
     max_w = s * (num_patches_w - 1) + p
     batch_pred = batch_pred[:, :, :max_h, :max_w]
     batch_target = batch_target[:, :, :max_h, :max_w]
 
-    # Extract patches: [B, C, num_patches, patch_size*patch_size]
+    # Extract patches
     pred_patches = batch_pred.unfold(2, p, s).unfold(3, p, s)
     target_patches = batch_target.unfold(2, p, s).unfold(3, p, s)
     num_patches = num_patches_h * num_patches_w
-
     pred_patches = pred_patches.contiguous().view(B, C, num_patches, -1)
     target_patches = target_patches.contiguous().view(B, C, num_patches, -1)
 
     # -------------------
-    # Compute patch weights
+    # Patch weighting
     # -------------------
-    if patch_weighting == 'mean':
-        patch_means = target_patches.mean(dim=-1)  # [B, C, num_patches]
-        image_means = batch_target.mean(dim=[2,3], keepdim=True) + eps  # [B, C, 1, 1]
-        patch_weights = (patch_means / image_means).clamp(min=0.0)
+    if patch_weighting == 'scaled':
+        patch_mean = target_patches.mean(dim=-1)
+        patch_min = patch_mean.min(dim=-1, keepdim=True)[0]
+        patch_max = patch_mean.max(dim=-1, keepdim=True)[0] + eps
+        # scale between patch_weight_min and patch_weight_max
+        patch_weights = patch_weight_min + (patch_mean - patch_min) / (patch_max - patch_min) * (patch_weight_max - patch_weight_min)
     elif patch_weighting == 'energy':
         patch_energy = (target_patches**2).mean(dim=-1)
         total_energy = patch_energy.sum(dim=-1, keepdim=True) + eps
         patch_weights = patch_energy / total_energy
+    elif patch_weighting == 'mean':
+        patch_weights = target_patches.mean(dim=-1)
     else:
         patch_weights = torch.ones_like(target_patches.mean(dim=-1))
 
-    patch_weights = patch_weights / (patch_weights.sum(dim=-1, keepdim=True) + eps)  # normalize per image/channel
+    patch_weights = patch_weights / (patch_weights.sum(dim=-1, keepdim=True) + eps)
 
     # -------------------
-    # Moment-level metric computation
+    # Moment computation
     # -------------------
     per_moment_dict = {}
     total_metric = 0.0
-
-    # Default moment weights = 1 if not provided
     if moment_weights is None:
-        moment_weights = {k: 1.0 for k in moments}
+        moment_weights = {k:1.0 for k in moments}
 
     for k in moments:
-        # Compute central moments
-        target_mean = target_patches.mean(dim=-1, keepdim=True)
-        pred_mean = pred_patches.mean(dim=-1, keepdim=True)
+        if k == 1:
+            # Mean
+            target_m = target_patches.mean(dim=-1)
+            pred_m = pred_patches.mean(dim=-1)
+        else:
+            target_mean = target_patches.mean(dim=-1, keepdim=True)
+            pred_mean = pred_patches.mean(dim=-1, keepdim=True)
+            target_c = target_patches - target_mean
+            pred_c = pred_patches - pred_mean
+            target_m = (target_c**k).mean(dim=-1)
+            pred_m = (pred_c**k).mean(dim=-1)
 
-        target_c = target_patches - target_mean
-        pred_c = pred_patches - pred_mean
-
-        target_m = (target_c**k).mean(dim=-1)  # [B, C, num_patches]
-        pred_m = (pred_c**k).mean(dim=-1)
+            # Optional compression for higher moments
+            if k == 2:
+                target_m = torch.sqrt(target_m + eps)
+                pred_m = torch.sqrt(pred_m + eps)
+            elif k == 3:
+                target_m = torch.sign(target_m) * torch.abs(target_m)**(1/3)
+                pred_m = torch.sign(pred_m) * torch.abs(pred_m)**(1/3)
 
         # Relative difference
         rel_diff = torch.abs(pred_m - target_m) / (torch.abs(target_m) + eps)
 
-        # Weighted mean across patches (patch_weights), then batch/channels
+        # Weighted by patch weights
         weighted_patch_diff = (rel_diff * patch_weights).sum(dim=-1).mean(dim=[0,1])
 
         # Apply moment weight
@@ -181,9 +193,10 @@ def patchwise_moment_metric(batch_pred,
         return total_metric.cpu().item()
 
 
+
 # Wrap in a function for a simple interface
 def custom_metric(batch_A, batch_B):
-    return patchwise_moment_metric(batch_A,
+    return patchwise_distribution_metric(batch_A,
                             batch_B,
                             moments=[1,2,3],
                             moment_weights={1:0.8, 2:1.0, 3:0.001},   # dict, e.g., {2:1.0, 3:0.001}
