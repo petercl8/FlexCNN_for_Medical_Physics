@@ -77,8 +77,8 @@ def patchwise_moment_metric(batch_pred,
                             moment_weights={1:60, 2:1.0, 3:0.001},   # dict, e.g., {2:1.0, 3:0.001}
                             patch_size=16,
                             stride=8,
-                            eps=1e-6,
-                            patch_weighting='mean',  # 'mean', 'energy', 'none'
+                            eps=0.1,
+                            patch_weighting='none',  # 'mean', 'energy', 'none'
                             return_per_moment=False):
     """
     Compute a patchwise moment metric with separate patch and moment weighting.
