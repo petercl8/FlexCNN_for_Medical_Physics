@@ -15,7 +15,69 @@ import torch
 from FlexCNN_for_Medical_Physics.classes.dataset import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, custom_metric
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric
-from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_simple_phantom
+# Import ROI_simple_phantom, with a local fallback to ensure packaging consistency
+try:
+    from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_simple_phantom
+except ImportError:
+    import numpy as _np
+    import torch as _torch
+
+    def _to_numpy(x):
+        """Convert tensor or numpy array to numpy, handling device placement."""
+        if isinstance(x, _torch.Tensor):
+            return x.detach().cpu().numpy()
+        return _np.asarray(x)
+
+    def ROI_simple_phantom(ground_truth_tensor, reconstruction_tensor, hot_mask):
+        """
+        Symmetric contrast recovery with separate error metrics:
+        - Hot underestimation in hot region
+        - Cold region overestimation (hot leaking into cold)
+        - Combined CR
+        Handles residual activity in the cold region due to voxelization.
+
+        Parameters:
+            ground_truth_tensor: np.array or torch tensor with true activity
+            reconstruction_tensor: np.array or torch tensor with reconstructed activity
+            hot_mask: binary mask of the hot region (1 inside hot, 0 elsewhere)
+
+        Returns:
+            dict with keys:
+                'CR_symmetric': combined contrast recovery (%)
+                'hot_underestimation': hot underestimation (%)
+                'cold_overestimation': cold region overestimation (%)
+        """
+        # Convert to numpy if needed
+        hot_mask = _to_numpy(hot_mask)
+        ground_truth_tensor = _to_numpy(ground_truth_tensor)
+        reconstruction_tensor = _to_numpy(reconstruction_tensor)
+
+        # Cold mask is complement of hot
+        cold_mask = 1 - hot_mask
+
+        # Voxel counts
+        V_hot = _np.sum(hot_mask)
+        V_cold = _np.sum(cold_mask)
+
+        # Mean values
+        R_hot_mean = _np.sum(reconstruction_tensor * hot_mask) / V_hot
+        R_cold_mean = _np.sum(reconstruction_tensor * cold_mask) / V_cold
+
+        T_hot_mean = _np.sum(ground_truth_tensor * hot_mask) / V_hot
+        T_cold_mean = _np.sum(ground_truth_tensor * cold_mask) / V_cold
+
+        # Symmetric contrast recovery
+        CR_symmetric = 100 * (R_hot_mean - R_cold_mean) / (T_hot_mean - T_cold_mean + 1e-12)
+
+        # Separate penalties
+        hot_underestimation = 100 * (T_hot_mean - R_hot_mean) / (T_hot_mean + 1e-12)
+        cold_overestimation = 100 * (R_cold_mean - T_cold_mean) / (T_hot_mean - T_cold_mean + 1e-12)
+
+        return {
+            'CR_symmetric': CR_symmetric,
+            'hot_underestimation': hot_underestimation,
+            'cold_overestimation': cold_overestimation
+        }
 
 # Number of batches to sample and average per evaluation
 NUM_EVAL_BATCHES = 3

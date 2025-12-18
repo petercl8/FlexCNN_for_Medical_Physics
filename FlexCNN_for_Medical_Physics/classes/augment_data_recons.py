@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import torchvision.transforms as transforms
-from .augment_data import IntersectSquareBorder
 
 
 def AugmentSinoImageDataRecons(image_multChannel, sinogram_multChannel, recon1_multChannel=None, recon2_multChannel=None, flip_channels=False):
@@ -119,3 +118,18 @@ def AugmentImageImageDataRecons(image_multChannel, sinogram_multChannel, recon1_
         image_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = ChannelFlipImageImage(image_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel)
 
     return image_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel
+
+
+def IntersectSquareBorder(image):
+    '''
+    Function for determining whether the image intersects the edge of the square FOV. If it does not, then the image
+    is fully specified by the sinogram and data augmentation can be performed. If the image does
+    intersect the edge of the image then some of it may be cropped outside the FOV. In this case,
+    augmentation via rotation should not be performed as the rotated image may not be fully described by the sinogram.
+    Looks at all channels in the image.
+    '''
+    max_idx = image.shape[1]-1
+    margin_sum = torch.sum(image[:,0,:]).item() + torch.sum(image[:,max_idx,:]).item() \
+                +torch.sum(image[:,:,0]).item() + torch.sum(image[:,:,max_idx]).item()
+    return_value = False if margin_sum == 0 else True
+    return return_value
