@@ -80,7 +80,7 @@ def patchwise_distribution_metric(batch_pred,
                             stride=8,
                             eps=1e-6,
                             patch_weighting='scaled',  # 'scaled', 'energy', 'mean', 'none'
-                            patch_weight_min=0.25,
+                            patch_weight_min=0.33,
                             patch_weight_max=1.0,
                             return_per_moment=False):
     """
