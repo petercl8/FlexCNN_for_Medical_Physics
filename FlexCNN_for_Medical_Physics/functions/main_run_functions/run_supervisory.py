@@ -47,27 +47,6 @@ def run_SUP(config, paths, settings):
     """
     Train, test, or visualize a supervisory-loss network using explicit dicts.
     """
-    # Dataset slicing controls
-    offset = settings.get('offset', 0)
-    num_examples = settings.get('num_examples', -1)
-    sample_division = settings.get('sample_division', 1)
-    
-    # Convert batch_base2_exponent to batch_size for tune/train modes
-    if 'batch_base2_exponent' in config and settings['run_mode'] in ('tune', 'train'):
-        config['batch_size'] = 2 ** config['batch_base2_exponent']
-    
-    batch_size = config['batch_size']
-
-    print('Dataset offset:', offset)
-    print('Dataset num_examples:', num_examples)
-    print('Dataset sample_division:', sample_division)
-
-    # Compute batch_size and display_step using helper (with integer rounding)
-    display_step = compute_display_step(config, settings)
-
-    # Initialize Ray Tune session if available
-    session = get_tune_session()
-
     # Core settings
     run_mode = settings['run_mode']
     device = settings['device']
@@ -93,6 +72,23 @@ def run_SUP(config, paths, settings):
     tune_max_t = settings.get('tune_max_t', 0)
     tune_restore= settings.get('tune_restore', False)
     sup_criterion = config['sup_criterion']
+    # Dataset slicing controls
+    offset = settings.get('offset', 0)
+    num_examples = settings.get('num_examples', -1)
+    sample_division = settings.get('sample_division', 1)
+    
+    # Convert batch_base2_exponent to batch_size for tune/train modes
+    if 'batch_base2_exponent' in config and settings['run_mode'] in ('tune', 'train'):
+        config['batch_size'] = 2 ** config['batch_base2_exponent']
+
+    batch_size = config['batch_size']
+
+    # Compute batch_size and display_step using helper (with integer rounding)
+    display_step = compute_display_step(config, settings)
+
+    # Initialize Ray Tune session if available
+    session = get_tune_session()
+
 
     # Tuning/Test specific initializations
     if run_mode == 'tune':
@@ -105,13 +101,17 @@ def run_SUP(config, paths, settings):
     if run_mode == 'test':
         test_dataframe = pd.DataFrame({'MSE (Network)' : [],  'MSE (Recon1)': [],  'MSE (Recon2)': [], 'SSIM (Network)' : [], 'SSIM (Recon1)': [], 'SSIM (Recon2)': []})
 
+
     # Model and optimizer
     gen = Generator(config=config, gen_SI=train_SI).to(device)
 
     # Optimizer with separate group for learnable output scale
     betas = (config['gen_b1'], config['gen_b2'])
     base_lr = config['gen_lr']
-    scale_lr_mult = settings.get('output_scale_lr_mult', 100.0)
+    if train_SI:
+        scale_lr_mult = config.get('SI_output_scale_lr_mult', 1.0)
+    else:
+        scale_lr_mult = config.get('IS_output_scale_lr_mult', 1.0)
     if getattr(gen, 'output_scale_learnable', False):
         scale_param = [gen.log_output_scale]
         main_params = [p for n, p in gen.named_parameters() if n != 'log_output_scale']

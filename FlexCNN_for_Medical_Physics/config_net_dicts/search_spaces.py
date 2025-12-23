@@ -50,6 +50,7 @@ config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     'SI_normalize': False,
     'SI_fixedScale': 1,                                          # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
     'SI_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
+    'SI_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
     'SI_layer_norm': tune.choice(['none', 'instance', 'group']),            # Could also add "group" normalization if you make it go into num_channels evenly.
     'SI_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
 }
@@ -88,6 +89,7 @@ config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     'IS_normalize': False,
     'IS_fixedScale': 1,        
     'IS_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
+    'IS_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
     'IS_layer_norm': tune.choice(['none', 'instance', 'group']),
     'IS_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
 }
