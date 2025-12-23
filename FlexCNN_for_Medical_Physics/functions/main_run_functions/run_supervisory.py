@@ -31,7 +31,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.display_images import (
     show_single_unmatched_tensor,
     show_multiple_matched_tensors
 )
-from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init
+from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init, weights_init_he
 from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
     compute_display_step,
     get_tune_session
@@ -159,7 +159,7 @@ def run_SUP(config, paths, settings):
             end_epoch = num_epochs
             batch_step = checkpoint['batch_step']
     else:
-        gen = gen.apply(weights_init)
+        gen = gen.apply(weights_init_he)
         start_epoch = 0
         batch_step = 0
         end_epoch = num_epochs

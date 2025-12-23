@@ -1,6 +1,7 @@
 ## Note: This function still needs to be updated for SSIM and testing with the test set. See 'START HERE' comment below.
 from FlexCNN_for_Medical_Physics.classes.generators import Generator
 from FlexCNN_for_Medical_Physics.classes.discriminators import Disc_I_90, Disc_S_90
+from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
 
 def run_CYCLE(config, checkpoint_dirPath=None, load_state=False, save_state=False):
     '''
@@ -69,10 +70,10 @@ def run_CYCLE(config, checkpoint_dirPath=None, load_state=False, save_state=Fals
         start_epoch=0
         end_epoch=num_epochs
         batch_step = 0
-        gen_SI = gen_SI.apply(weights_init)
-        gen_IS = gen_IS.apply(weights_init)
-        disc_I = disc_I.apply(weights_init)
-        disc_S = disc_S.apply(weights_init)
+        gen_SI = gen_SI.apply(weights_init_he)
+        gen_IS = gen_IS.apply(weights_init_he)
+        disc_I = disc_I.apply(weights_init_he)
+        disc_S = disc_S.apply(weights_init_he)
 
     ## Loop Over Epochs ##
     for epoch in range(start_epoch, end_epoch):

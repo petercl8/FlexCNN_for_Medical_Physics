@@ -1,5 +1,6 @@
 from FlexCNN_for_Medical_Physics.classes.generators import Generator
 from FlexCNN_for_Medical_Physics.classes.discriminators import Disc_I_90, Disc_S_90
+from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
 
 def run_GAN(config, paths, settings):
     """
@@ -51,8 +52,8 @@ def run_GAN(config, paths, settings):
         disc_opt.load_state_dict(checkpoint['disc_opt_state_dict'])
     else:
         print('Starting from scratch')
-        gen = gen.apply(weights_init)
-        disc = disc.apply(weights_init)
+        gen = gen.apply(weights_init_he)
+        disc = disc.apply(weights_init_he)
 
     ########################
     ### Loop Over Epochs ###
