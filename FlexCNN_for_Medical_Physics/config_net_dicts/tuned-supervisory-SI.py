@@ -35,7 +35,7 @@ config_SUP_SI = {
   "gen_b2": 0.152643657443423,
   "gen_lr": 0.00099063275528607,
   "image_channels": 1,
-  "image_size": 180,
+  "image_size": 320,
   "network_type": "SUP",
   "sino_channels": 3,
   "sino_size": 180,
