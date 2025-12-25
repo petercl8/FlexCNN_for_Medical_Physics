@@ -138,16 +138,6 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     recon1_multChannel = torch.from_numpy(recon1_array[index,:]).float() if recon1_array is not None else None
     recon2_multChannel = torch.from_numpy(recon2_array[index,:]).float() if recon2_array is not None else None
 
-    ## Run Data Augmentation on Selected Data. ##
-    if augment[0]=='SI':
-        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
-            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
-        )
-    if augment[0]=='II':
-        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
-            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
-        )
-
     ## Create A Set of Resized Outputs ##
 
     # Warn if resizing changes dimensions
@@ -165,6 +155,16 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     act_map_multChannel_resize  = transforms.Resize(size = (image_size, image_size), antialias=True)(act_map_multChannel)
     recon1_multChannel_resize = transforms.Resize(size = (image_size, image_size), antialias=True)(recon1_multChannel) if recon1_multChannel is not None else None
     recon2_multChannel_resize = transforms.Resize(size = (image_size, image_size), antialias=True)(recon2_multChannel) if recon2_multChannel is not None else None
+
+    ## Run Data Augmentation on Resized Data. ##
+    if augment[0]=='SI':
+        act_map_multChannel_resize, sinogram_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = AugmentSinoImageDataRecons(
+            act_map_multChannel_resize, sinogram_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize, flip_channels=augment[1]
+        )
+    if augment[0]=='II':
+        act_map_multChannel_resize, sinogram_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = AugmentImageImageDataRecons(
+            act_map_multChannel_resize, sinogram_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize, flip_channels=augment[1]
+        )
 
     ## (Optional) Normalize Resized Outputs Along Channel Dimension ##
     if SI_normalize:

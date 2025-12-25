@@ -22,7 +22,7 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.LeakyReLU(negative_slope=0.01),
   "SI_gen_hidden_dim": 2,
   "SI_gen_mult": 1.3907277562499765,
-  "SI_gen_neck": 11,
+  "SI_gen_neck": "wide",
   "SI_gen_z_dim": 1154,
   "SI_layer_norm": "instance",
   "SI_learnedScale_init": 17.13826238971223,
@@ -52,7 +52,7 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.ELU(alpha=1.0),
   "SI_gen_hidden_dim": 29,
   "SI_gen_mult": 1.5090047574838394,
-  "SI_gen_neck": 11,
+  "SI_gen_neck": "wide",
   "SI_gen_z_dim": 486,
   "SI_layer_norm": "instance",
   "SI_learnedScale_init": 20.45467480669682,
@@ -82,7 +82,7 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.Sigmoid(),
   "SI_gen_hidden_dim": 19,
   "SI_gen_mult": 2.065329728174869,
-  "SI_gen_neck": 5,
+  "SI_gen_neck": "medium",
   "SI_gen_z_dim": 1181,
   "SI_layer_norm": "instance",
   "SI_learnedScale_init": 4.2047521440377285,
@@ -113,7 +113,7 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.LeakyReLU(),
   "SI_gen_hidden_dim": 29,
   "SI_gen_mult": 3.378427521450207,
-  "SI_gen_neck": 1, # 1 = smallest
+  "SI_gen_neck": "narrow", # 1 = smallest
   "SI_gen_z_dim": 2069,
   "SI_layer_norm": "group",
   "SI_learnedScale_init": 6.7836194674698165,
@@ -144,7 +144,7 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.Tanh(),
   "SI_gen_hidden_dim": 23,
   "SI_gen_mult": 1.6605902406330195,
-  "SI_gen_neck": 1, # Options: 1, 6, 11 (default 1)
+  "SI_gen_neck": "narrow", # Options: 1, 6, 11 (default 1)
   "SI_gen_z_dim": 789,
   "SI_layer_norm": "instance",
   "SI_pad_mode": "zeros",

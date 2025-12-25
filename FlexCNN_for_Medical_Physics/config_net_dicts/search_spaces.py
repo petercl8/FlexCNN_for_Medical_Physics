@@ -27,7 +27,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     # Generator Network
     'SI_gen_mult': tune.uniform(1.1, 4),                        # Factor by which to multiply channels/block as one moves twowards the center of the network
     'SI_gen_fill': tune.choice([0,1,2]),                        # Number of constant-sized Conv2d layers/block
-    'SI_gen_neck': tune.choice([1,5,11]),                       # Size of network neck: 1 = smallest, 11 = largest
+    'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
     'SI_gen_z_dim': tune.lograndint(64, 4000),                  # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
     'SI_pad_mode': tune.choice(['zeros', 'reflect']),           # Padding type
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
@@ -66,7 +66,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     # Generator Network
     'IS_gen_mult': tune.uniform(1.1, 4),
     'IS_gen_fill': tune.choice([0,1,2]),
-    'IS_gen_neck': tune.choice([1,5,11]),
+    'IS_gen_neck': tune.choice(['narrow','medium','wide']),
     'IS_gen_z_dim': tune.lograndint(64, 4000),
     'IS_pad_mode': tune.choice(['zeros', 'reflect']),
     'IS_dropout': tune.choice([True,False]),
