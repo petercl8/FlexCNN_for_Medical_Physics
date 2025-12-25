@@ -43,9 +43,6 @@ config_SUP_SI = {
   "train_SI": True
 }
 
-
-
-
 '''
 ## highCountSino-->actMap, tuned for SSIM, Augugment: II
 config_SUP_SI = {
