@@ -13,26 +13,27 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-## highCountSino-->actMap, tuned for LDM, Augugment: SI
+
+## highCountSino-->actMap, tuned for SSIM, Augugment: SI
 config_SUP_SI = {
-  "SI_dropout": True,
+  "SI_dropout": False,
   "SI_exp_kernel": 4,
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
-  "SI_gen_final_activ": nn.LeakyReLU(negative_slope=0.01),
-  "SI_gen_hidden_dim": 2,
-  "SI_gen_mult": 1.3907277562499765,
-  "SI_gen_neck": "wide",
-  "SI_gen_z_dim": 1154,
+  "SI_gen_final_activ": nn.Sigmoid(),
+  "SI_gen_hidden_dim": 19,
+  "SI_gen_mult": 2.065329728174869,
+  "SI_gen_neck": "medium",
+  "SI_gen_z_dim": 1181,
   "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 17.13826238971223,
+  "SI_learnedScale_init": 4.2047521440377285,
   "SI_normalize": False,
   "SI_pad_mode": "zeros",
-  "SI_skip_mode": "concat",
-  "batch_base2_exponent": 8,
-  "gen_b1": 0.1454460216450056,
-  "gen_b2": 0.11317846560450925,
-  "gen_lr": 0.0007210369368698337,
+  "SI_skip_mode": "add",
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.22046050861804858,
+  "gen_b2": 0.152643657443423,
+  "gen_lr": 0.00099063275528607,
   "image_channels": 1,
   "image_size": 180,
   "network_type": "SUP",
@@ -41,6 +42,9 @@ config_SUP_SI = {
   "sup_criterion": nn.MSELoss(),
   "train_SI": True
 }
+
+
+
 
 '''
 ## highCountSino-->actMap, tuned for SSIM, Augugment: II
@@ -63,36 +67,6 @@ config_SUP_SI = {
   "gen_b1": 0.34632557248900636,
   "gen_b2": 0.10963336318792913,
   "gen_lr": 0.0005750756280291565,
-  "image_channels": 1,
-  "image_size": 180,
-  "network_type": "SUP",
-  "sino_channels": 3,
-  "sino_size": 180,
-  "sup_criterion": nn.MSELoss(),
-  "train_SI": True
-}
-'''
-'''
-## highCountSino-->actMap, tuned for SSIM, Augugment: SI
-config_SUP_SI = {
-  "SI_dropout": False,
-  "SI_exp_kernel": 4,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": nn.Sigmoid(),
-  "SI_gen_hidden_dim": 19,
-  "SI_gen_mult": 2.065329728174869,
-  "SI_gen_neck": "medium",
-  "SI_gen_z_dim": 1181,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 4.2047521440377285,
-  "SI_normalize": False,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "add",
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.22046050861804858,
-  "gen_b2": 0.152643657443423,
-  "gen_lr": 0.00099063275528607,
   "image_channels": 1,
   "image_size": 180,
   "network_type": "SUP",
