@@ -244,7 +244,7 @@ class Generator_180(nn.Module):
 ##### Generator Class (320 x 320)  #####
 ########################################
 
-class Generator_320(nn.Module):
+class Generator(nn.Module):
     def __init__(self, config, gen_SI=True):
         '''
         Encoder-decoder generator with optional skip connections, producing 320x320 output.
@@ -277,7 +277,7 @@ class Generator_320(nn.Module):
             gen_SI: Boolean - True for sinogram->image, False for image->sinogram. Controls which
                     config keys (SI_* vs IS_*) are used and input/output dimension assignment.
         '''
-        super(Generator_320, self).__init__()
+        super(Generator, self).__init__()
 
         if gen_SI:
             input_size = config['sino_size']
@@ -398,7 +398,7 @@ class Generator_320(nn.Module):
                 contract_block(dim_3, dim_3, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (10+4-5)/1+1 = 10 (constant)
             )
 
-        raise ValueError('neck must be one of {narrow, medium, wide} for Generator_320')
+        raise ValueError('neck must be one of {narrow, medium, wide} for Generator')
 
     def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, pad, fill, norm, drop):
         # Expanding Path: 10 -> 20 -> 40 -> 80 -> 160 -> 320

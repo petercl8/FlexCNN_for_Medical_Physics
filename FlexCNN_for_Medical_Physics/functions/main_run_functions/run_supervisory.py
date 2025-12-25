@@ -6,7 +6,7 @@ import pandas as pd
 import logging
 from torch.utils.data import DataLoader
 
-from FlexCNN_for_Medical_Physics.classes.generators import Generator_320
+from FlexCNN_for_Medical_Physics.classes.generators import Generator
 from FlexCNN_for_Medical_Physics.classes.dataset import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
 
@@ -103,7 +103,7 @@ def run_SUP(config, paths, settings):
 
 
     # Model and optimizer
-    gen = Generator_320(config=config, gen_SI=train_SI).to(device)
+    gen = Generator(config=config, gen_SI=train_SI).to(device)
 
     # Optimizer with separate group for learnable output scale
     betas = (config['gen_b1'], config['gen_b2'])
