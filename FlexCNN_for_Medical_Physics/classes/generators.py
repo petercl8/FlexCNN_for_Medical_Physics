@@ -222,6 +222,12 @@ class Generator_180(nn.Module):
         a = self._merge(skips[0], a)
         a = self.expand_blocks[3](a)
 
+        # Center crop to output_size if internal processing was larger
+        if a.shape[-1] > self.output_size:
+            crop_size = self.output_size
+            margin = (a.shape[-1] - crop_size) // 2
+            a = a[:, :, margin:margin+crop_size, margin:margin+crop_size]
+
         if self.final_activation:
             a = self.final_activation(a)
         if self.normalize:
@@ -461,6 +467,12 @@ class Generator_320(nn.Module):
 
         a = self._merge(skips[0], a)
         a = self.expand_blocks[4](a)
+
+        # Center crop to output_size if internal processing was larger
+        if a.shape[-1] > self.output_size:
+            crop_size = self.output_size
+            margin = (a.shape[-1] - crop_size) // 2
+            a = a[:, :, margin:margin+crop_size, margin:margin+crop_size]
 
         if self.final_activation:
             a = self.final_activation(a)
