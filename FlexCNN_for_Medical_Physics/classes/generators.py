@@ -349,7 +349,7 @@ class Generator(nn.Module):
         dim_4 = int(hidden_dim * mult**4)
 
         if input_size != 320:
-            raise ValueError('This generator is configured for 320x320 inputs and outputs.')
+            raise ValueError('This generator is configured for 320x320 inputs.')
 
         # Contracting Path: 320 -> 160 -> 80 -> 40 -> 20 -> 10
         # Conv2d formula: H_out = floor((H_in + 2*padding - kernel) / stride) + 1

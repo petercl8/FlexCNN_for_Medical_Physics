@@ -55,17 +55,6 @@ class NpArrayDataSet(Dataset):
         self.recon1_scale = recon1_scale
         self.recon2_scale = recon2_scale
 
-        # Print output shape once on instantiation for debugging
-        device_arg = self.device
-        if device_arg == 'cuda' and not torch.cuda.is_available():
-            device_arg = 'cpu'
-        sino_sample, act_sample, recon1_sample, recon2_sample = NpArrayDataLoader(
-            self.image_array, self.sino_array, self.config,
-            augment=self.augment, index=0, device=device_arg,
-            recon1_array=self.recon1_array, recon2_array=self.recon2_array,
-            recon1_scale=self.recon1_scale, recon2_scale=self.recon2_scale)
-        print(f"Dataset output shapes - Sinogram: {sino_sample.shape}, Activity Map: {act_sample.shape}, Recon1: {recon1_sample.shape if recon1_sample is not None else 'None'}, Recon2: {recon2_sample.shape if recon2_sample is not None else 'None'}")
-
     def __len__(self):
         length = int(len(self.image_array)/self.sample_division)
         return length
