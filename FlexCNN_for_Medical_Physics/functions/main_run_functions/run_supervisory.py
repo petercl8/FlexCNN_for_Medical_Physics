@@ -373,7 +373,7 @@ def run_SUP(config, paths, settings):
                         print('Input:')
                         show_single_unmatched_tensor(input_[0:visualize_batch_size])
                         print('Target/Recon2/Recon1/Output:')
-                        show_multiple_matched_tensors(target[0:visualize_batch_size], recon2_output[0:visualize_batch_size], recon1_output[0:visualize_batch_size], CNN_output[0:visualize_batch_size])
+                        show_multiple_matched_tensors(target[0:visualize_batch_size], recon1_output[0:visualize_batch_size], recon2_output[0:visualize_batch_size], CNN_output[0:visualize_batch_size])
 
                 if save_state:
                     print('Saving model!')
