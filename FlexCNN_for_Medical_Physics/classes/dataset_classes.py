@@ -175,8 +175,6 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_typ
         a = torch.reshape(act_map_multChannel_resize, (image_channels,-1))
         a = nn.functional.normalize(a, p=1, dim = 1)
         act_map_multChannel_resize = torch.reshape(a, (image_channels, image_size, image_size))
-        recon1_scale = 1.0
-        recon2_scale = 1.0
         if recon1_multChannel_resize is not None:
             b = torch.reshape(recon1_multChannel_resize, (image_channels,-1))
             b = nn.functional.normalize(b, p=1, dim = 1)
@@ -190,16 +188,23 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_typ
         a = nn.functional.normalize(a, p=1, dim = 1)
         sinogram_multChannel_resize = torch.reshape(a, (sino_channels, sino_size, sino_size))
 
-    ## Apply Fixed Scales for Reconstructions (if not normalizing) ##
-    recon1 = recon1_multChannel_resize * recon1_scale if recon1_multChannel_resize is not None else None
-    recon2 = recon2_multChannel_resize * recon2_scale if recon2_multChannel_resize is not None else None
+    # Images (activity + recons):
+    # If SI_normalize==True: multiply activity and reconstructions by SI_fixedScale (recon scales already set to 1.0)
+    # If SI_normalize==False: leave activity unchanged; multiply reconstructions by their respective recon scales
+    if SI_normalize:
+        act_map_scaled = (SI_fixedScale * act_map_multChannel_resize).to(device)
+        recon1 = (SI_fixedScale * recon1_multChannel_resize).to(device) if recon1_multChannel_resize is not None else None
+        recon2 = (SI_fixedScale * recon2_multChannel_resize).to(device) if recon2_multChannel_resize is not None else None
+    else:
+        act_map_scaled = act_map_multChannel_resize.to(device)
+        recon1 = (recon1_multChannel_resize * recon1_scale).to(device) if recon1_multChannel_resize is not None else None
+        recon2 = (recon2_multChannel_resize * recon2_scale).to(device) if recon2_multChannel_resize is not None else None
 
-    # Move to device
-    sino_scaled = sinogram_multChannel_resize.to(device)
-    act_map_scaled = act_map_multChannel_resize.to(device)
-    if recon1 is not None:
-        recon1 = recon1.to(device)
-    if recon2 is not None:
-        recon2 = recon2.to(device)
+    ## Apply Fixed Scales per desired behavior and move to device ##
+    # Sinogram: multiply by IS_fixedScale only if IS_normalize==True; otherwise leave unchanged
+    if IS_normalize:
+        sino_scaled = (IS_fixedScale * sinogram_multChannel_resize).to(device)
+    else:
+        sino_scaled = sinogram_multChannel_resize.to(device)
 
     return sino_scaled, act_map_scaled, recon1, recon2
