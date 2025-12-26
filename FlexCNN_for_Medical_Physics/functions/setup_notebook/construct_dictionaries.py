@@ -259,7 +259,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
 
     elif run_mode == 'train':
         settings['augment'] = train_opts['train_augment']
-        settings['shuffle'] = True
+        settings['shuffle'] = False # THRU HERE
         settings['num_epochs'] = train_opts['training_epochs']
         settings['load_state'] = train_opts['train_load_state']
         settings['save_state'] = train_opts['train_save_state']
