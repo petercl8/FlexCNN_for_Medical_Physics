@@ -7,7 +7,7 @@ import logging
 from torch.utils.data import DataLoader
 
 from FlexCNN_for_Medical_Physics.classes.generators import Generator
-from FlexCNN_for_Medical_Physics.classes.dataset import NpArrayDataSet
+from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
 
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import (
@@ -142,6 +142,7 @@ def run_SUP(config, paths, settings):
         ),
         batch_size=batch_size,
         shuffle=shuffle,
+        pin_memory=True,
     )
 
     # Checkpoint handling

@@ -12,7 +12,7 @@ phantom data; validation batches use the large validation set as-is.
 
 import numpy as np
 import torch
-from FlexCNN_for_Medical_Physics.classes.dataset import NpArrayDataSet
+from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, custom_metric
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric
 from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_simple_phantom

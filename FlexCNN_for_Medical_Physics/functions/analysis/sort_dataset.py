@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from FlexCNN_for_Medical_Physics.classes.dataset import NpArrayDataSet
+from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_matched_tensors
 
@@ -72,7 +72,8 @@ def sort_DataSet(
     dataloader = DataLoader(
         NpArrayDataSet(image_path=load_image_path, sino_path=load_sino_path, config=config, num_examples=num_examples),
         batch_size=1,
-        shuffle=True
+        shuffle=True,
+        pin_memory=True,
     )
 
     first = True

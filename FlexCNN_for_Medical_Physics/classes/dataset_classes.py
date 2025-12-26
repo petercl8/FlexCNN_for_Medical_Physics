@@ -3,7 +3,8 @@ from torch import nn
 from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
-from .augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
+from .dataset_augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
+from .dataset_resizing import ResizeImageData, CropPadSino
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
@@ -31,7 +32,7 @@ class NpArrayDataSet(Dataset):
         '''
 
         ## Load Data to Arrays ##
-        image_array = np.load(image_path, mmap_mode='r')       # We use memmaps to significantly speed up the loading.
+        image_array = np.load(image_path, mmap_mode='r')
         sino_array = np.load(sino_path, mmap_mode='r')
         recon1_array = np.load(recon1_path, mmap_mode='r') if recon1_path is not None else None
         recon2_array = np.load(recon2_path, mmap_mode='r') if recon2_path is not None else None
@@ -60,9 +61,7 @@ class NpArrayDataSet(Dataset):
         return length
 
     def __getitem__(self, idx):
-
         idx = idx*self.sample_division
-
         device_arg = self.device
         if device_arg == 'cuda' and not torch.cuda.is_available():
             device_arg = 'cpu'
@@ -83,10 +82,8 @@ class NpArrayDataSet(Dataset):
             return sino_scaled, act_map_scaled
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
-    
+def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_type='CropPad', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
     global resize_warned
-
     '''
     Function to load a sinogram, activity map, and optionally reconstructions. Returns 4 pytorch tensors:
     sino_scaled, act_map_scaled, recon1, recon2 (both reconstructions may be None).
@@ -97,6 +94,7 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
                          sino_size, image_channels, sino_channels, SI_normalize, SI_fixedScale, and (for non-SUP/GAN networks) 
                          IS_normalize, SI_fixedScale.
     augment:             perform data augmentation?
+    resize_type:         'CropPad' to crop/pad to target size, 'Resize' to use torchvision Resize (antialiasing)
     index:               index of the sinogram/activity map pair to grab
     device:              device to place tensors on ('cuda' or 'cpu')
     recon1_array:        (optional) reconstruction 1 numpy array
@@ -111,36 +109,42 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
     sino_size = config['sino_size']
     image_channels = config['image_channels']
     sino_channels = config['sino_channels']
-    
+
     ## Set Normalization Variables ##
     if (network_type=='GAN') or (network_type=='SUP'):
         if train_SI==True:
             SI_normalize=config['SI_normalize']
             SI_fixedScale=config['SI_fixedScale']
-            IS_normalize=False     # If the Sinogram-->Image network (SI) is being trained, IS normalization is not in the config dict.
-            IS_fixedScale=1             # If the Sinogram-->Image network (SI) is being trained, IS scaling is not in the config dict.
+            IS_normalize=False
+            IS_fixedScale=1
         else:
             SI_normalize=False
             SI_fixedScale=1
             IS_normalize=config['IS_normalize']
             IS_fixedScale=config['IS_fixedScale']
-
-    else: # If a cycle-consistent network, normalize & scale everything
+    else: # cycle-consistent network
         SI_normalize=config['SI_normalize']
         SI_fixedScale=config['SI_fixedScale']
         IS_normalize=config['IS_normalize']
-        IS_fixedScale=config['IS_fixedScale']#
+        IS_fixedScale=config['IS_fixedScale']
 
+    ## Select Data, Convert to Tensors ##
+    act_map_multChannel = torch.from_numpy(np.ascontiguousarray(image_array[index,:])).float()
+    sinogram_multChannel = torch.from_numpy(np.ascontiguousarray(sino_array[index,:])).float()
+    recon1_multChannel = torch.from_numpy(np.ascontiguousarray(recon1_array[index,:])).float() if recon1_array is not None else None
+    recon2_multChannel = torch.from_numpy(np.ascontiguousarray(recon2_array[index,:])).float() if recon2_array is not None else None
 
-    ## Select Data, Convert to Pytorch Tensors ##
-    act_map_multChannel = torch.from_numpy(image_array[index,:]).float() # act_map_multChannel.shape = (C, X, Y)
-    sinogram_multChannel = torch.from_numpy(sino_array[index,:]).float() # sinogram_multChannel.shape = (C, X, Y)
-    recon1_multChannel = torch.from_numpy(recon1_array[index,:]).float() if recon1_array is not None else None
-    recon2_multChannel = torch.from_numpy(recon2_array[index,:]).float() if recon2_array is not None else None
+    ## Data Augmentation ##
+    if augment[0]=='SI':
+        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
+            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
+        )
+    if augment[0]=='II':
+        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
+            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
+        )
 
-    ## Create A Set of Resized Outputs ##
-
-    # Warn if resizing changes dimensions
+    ## Resize Outputs ##
     orig_image_h, orig_image_w = act_map_multChannel.shape[1:]
     orig_sino_h, orig_sino_w = sinogram_multChannel.shape[1:]
 
@@ -150,30 +154,27 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
                   f"Original sinogram size: ({orig_sino_h}, {orig_sino_w}), target: ({sino_size}, {sino_size}).")
             resize_warned = True
 
-    # Resize
-    sinogram_multChannel_resize = transforms.Resize(size = (sino_size, sino_size), antialias=True)(sinogram_multChannel)
-    act_map_multChannel_resize  = transforms.Resize(size = (image_size, image_size), antialias=True)(act_map_multChannel)
-    recon1_multChannel_resize = transforms.Resize(size = (image_size, image_size), antialias=True)(recon1_multChannel) if recon1_multChannel is not None else None
-    recon2_multChannel_resize = transforms.Resize(size = (image_size, image_size), antialias=True)(recon2_multChannel) if recon2_multChannel is not None else None
+    # Resize sinogram
+    resize_sino = (orig_sino_h, orig_sino_w) != (sino_size, sino_size)
+    if resize_sino:
+        if resize_type=='Resize':
+            sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
+        else:
+            sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type='sinogram')
+    else:
+        sinogram_multChannel_resize = sinogram_multChannel
 
-    ## Run Data Augmentation on Resized Data. ##
-    if augment[0]=='SI':
-        act_map_multChannel_resize, sinogram_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = AugmentSinoImageDataRecons(
-            act_map_multChannel_resize, sinogram_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize, flip_channels=augment[1]
-        )
-    if augment[0]=='II':
-        act_map_multChannel_resize, sinogram_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = AugmentImageImageDataRecons(
-            act_map_multChannel_resize, sinogram_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize, flip_channels=augment[1]
-        )
+    # Resize image data if needed
+    resize_image = (orig_image_h, orig_image_w) != (image_size, image_size)
+    act_map_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = ResizeImageData(
+        act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, sino_size, resize_image=resize_image
+    )
 
-    ## (Optional) Normalize Resized Outputs Along Channel Dimension ##
+    ## (Optional) Normalize Resized Outputs ##
     if SI_normalize:
-        # Normalize activity map and (possible) reconstructions
         a = torch.reshape(act_map_multChannel_resize, (image_channels,-1))
         a = nn.functional.normalize(a, p=1, dim = 1)
         act_map_multChannel_resize = torch.reshape(a, (image_channels, image_size, image_size))
-
-        # If normalizing, reconstruction scales should not be applied (normalized data are already matched)
         recon1_scale = 1.0
         recon2_scale = 1.0
         if recon1_multChannel_resize is not None:
@@ -185,42 +186,20 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, index=0, d
             c = nn.functional.normalize(c, p=1, dim = 1)
             recon2_multChannel_resize = torch.reshape(c, (image_channels, image_size, image_size))
     if IS_normalize:
-        a = torch.reshape(sinogram_multChannel_resize, (sino_channels,-1))                     # Flattens each sinogram. Each channel is normalized.
-        a = nn.functional.normalize(a, p=1, dim = 1)                      # Normalizes along dimension 1 (values for each of the 3 channels)
-        sinogram_multChannel_resize = torch.reshape(a, (sino_channels, sino_size, sino_size))  # Reshapes sinograms back into squares.
+        a = torch.reshape(sinogram_multChannel_resize, (sino_channels,-1))
+        a = nn.functional.normalize(a, p=1, dim = 1)
+        sinogram_multChannel_resize = torch.reshape(a, (sino_channels, sino_size, sino_size))
 
-    ## Adjust Output Channels of Resized Outputs ##
-    if image_channels==1:
-        act_map_out = act_map_multChannel_resize                 # For image_channels = 1, the image is just left alone
-    else:
-        act_map_out = act_map_multChannel_resize.repeat(image_channels,1,1)   # This could be altered to account for RGB images, etc.
+    ## Apply Fixed Scales for Reconstructions (if not normalizing) ##
+    recon1 = recon1_multChannel_resize * recon1_scale if recon1_multChannel_resize is not None else None
+    recon2 = recon2_multChannel_resize * recon2_scale if recon2_multChannel_resize is not None else None
 
-    if sino_channels==1:
-        sino_out = sinogram_multChannel_resize[0:1,:]        # Selects 1st sinogram channel only. Using 0:1 preserves the channels dimension.
-    else:
-        sino_out = sinogram_multChannel_resize               # Keeps full sinogram with all channels
+    # Move to device
+    sino_scaled = sinogram_multChannel_resize.to(device)
+    act_map_scaled = act_map_multChannel_resize.to(device)
+    if recon1 is not None:
+        recon1 = recon1.to(device)
+    if recon2 is not None:
+        recon2 = recon2.to(device)
 
-    # Handle reconstruction channel adjustment
-    if recon1_multChannel_resize is not None:
-        if image_channels==1:
-            recon1_out = recon1_multChannel_resize
-        else:
-            recon1_out = recon1_multChannel_resize.repeat(image_channels,1,1)
-    else:
-        recon1_out = None
-
-    if recon2_multChannel_resize is not None:
-        if image_channels==1:
-            recon2_out = recon2_multChannel_resize
-        else:
-            recon2_out = recon2_multChannel_resize.repeat(image_channels,1,1)
-    else:
-        recon2_out = None
-
-    # Apply scaling
-    sino_scaled = IS_fixedScale * sino_out
-    act_map_scaled = SI_fixedScale * act_map_out
-    recon1_scaled = (SI_fixedScale * recon1_scale * recon1_out) if recon1_out is not None else None
-    recon2_scaled = (SI_fixedScale * recon2_scale * recon2_out) if recon2_out is not None else None
-
-    return sino_scaled.to(device), act_map_scaled.to(device), recon1_scaled.to(device) if recon1_scaled is not None else None, recon2_scaled.to(device) if recon2_scaled is not None else None
+    return sino_scaled, act_map_scaled, recon1, recon2
