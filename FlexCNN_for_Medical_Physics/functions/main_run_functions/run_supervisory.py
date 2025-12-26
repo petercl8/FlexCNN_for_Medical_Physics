@@ -360,7 +360,7 @@ def run_SUP(config, paths, settings):
                     print(f'mean_CNN_SSIM/mean_recon2_SSIM/mean_recon1_SSIM: {mean_CNN_SSIM}/{mean_recon2_SSIM}/{mean_recon1_SSIM}')
                     print('===========================================')
                     print('Input Sinogram:')
-                    show_single_unmatched_tensor(input_[0:9], fig_size=15)
+                    show_single_unmatched_tensor(input_[0:9], fig_size=25)
                     print('Target/Output/Recon2/Recon1:')
                     show_multiple_matched_tensors(target[0:9], CNN_output[0:9], recon2_output[0:9], recon1_output[0:9])
 
