@@ -3,7 +3,7 @@ from torchvision import transforms
 import torch.nn.functional as F
 
 
-def ResizeImageData(act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, sino_size, resize_image=True):
+def ResizeImageData(act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=True):
     """
     Resize image data (activity map and reconstructions) to target image_size.
     Optionally skip resizing if resize_image=False.

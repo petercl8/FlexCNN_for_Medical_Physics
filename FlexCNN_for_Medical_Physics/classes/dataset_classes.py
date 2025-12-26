@@ -160,14 +160,14 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_typ
         if resize_type=='Resize':
             sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
         else:
-            sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type='sinogram')
+            sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type='zeros')
     else:
         sinogram_multChannel_resize = sinogram_multChannel
 
     # Resize image data if needed
     resize_image = (orig_image_h, orig_image_w) != (image_size, image_size)
     act_map_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = ResizeImageData(
-        act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, sino_size, resize_image=resize_image
+        act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image
     )
 
     ## (Optional) Normalize Resized Outputs ##
