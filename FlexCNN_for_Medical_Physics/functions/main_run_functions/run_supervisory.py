@@ -348,7 +348,7 @@ def run_SUP(config, paths, settings):
                     print('Last Batch SSIM: ', calculate_metric(target, CNN_output, SSIM))
                     print('Last Batch LDM: ', patchwise_moment_metric(target, CNN_output, return_per_moment=True))
                     print('Input Sinogram:')
-                    show_single_unmatched_tensor(input_[0:3], fig_size=15)
+                    show_single_unmatched_tensor(input_[0:2], fig_size=25)
                     print(input_.shape)
                     print('Target/Output:')
                     show_multiple_matched_tensors(target[0:8], CNN_output[0:8])
@@ -360,7 +360,7 @@ def run_SUP(config, paths, settings):
                     print(f'mean_CNN_SSIM/mean_recon2_SSIM/mean_recon1_SSIM: {mean_CNN_SSIM}/{mean_recon2_SSIM}/{mean_recon1_SSIM}')
                     print('===========================================')
                     print('Input Sinogram:')
-                    show_single_unmatched_tensor(input_[0:9], fig_size=25)
+                    show_single_unmatched_tensor(input_[0:2], fig_size=25)
                     print('Target/Output/Recon2/Recon1:')
                     show_multiple_matched_tensors(target[0:9], CNN_output[0:9], recon2_output[0:9], recon1_output[0:9])
 
