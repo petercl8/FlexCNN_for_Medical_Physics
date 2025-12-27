@@ -82,7 +82,7 @@ class NpArrayDataSet(Dataset):
             return sino_scaled, act_map_scaled
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_type='CropPad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
+def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='CropPad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
     global resize_warned
     '''
     Function to load a sinogram, activity map, and optionally reconstructions. Returns 4 pytorch tensors:
@@ -94,7 +94,7 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_typ
                          sino_size, image_channels, sino_channels, SI_normalize, SI_fixedScale, and (for non-SUP/GAN networks) 
                          IS_normalize, SI_fixedScale.
     augment:             perform data augmentation?
-    resize_type:         'CropPad' to crop/pad to target size, 'Resize' to use torchvision Resize (antialiasing)
+    sino_resize_type:         'CropPad' to crop/pad to target size, 'Resize' to use torchvision Resize (antialiasing)
     index:               index of the sinogram/activity map pair to grab
     device:              device to place tensors on ('cuda' or 'cpu')
     recon1_array:        (optional) reconstruction 1 numpy array
@@ -156,7 +156,7 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_typ
         )
         # Resize sinogram (like a Sinogram)
         if resize_sino:
-            if resize_type=='Resize':
+            if sino_resize_type=='Resize':
                 sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
             else:
                 sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type=sino_pad_type)
@@ -170,9 +170,9 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_typ
         )
         # Resize sinogram (like an Image)
         if resize_sino:
-            if resize_type=='Resize':
+            if sino_resize_type=='Resize':
                 sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
-            else:
+            else: # For image inputs, pad_type and pool_size are hardcoded to 1 and 'zeros' (the only sensible options for image-like sinograms)
                 sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=1, pad_type='zeros')
 
 
