@@ -348,7 +348,7 @@ def run_SUP(config, paths, settings):
                     print('Last Batch SSIM: ', calculate_metric(target, CNN_output, SSIM))
                     print('Last Batch LDM: ', patchwise_moment_metric(target, CNN_output, return_per_moment=True))
                     print('Input Sinogram:')
-                    show_single_unmatched_tensor(input_[0:2], fig_size=25)
+                    show_single_unmatched_tensor(input_[0:2], fig_size=10)
                     print(input_.shape)
                     print('Target/Output:')
                     show_multiple_matched_tensors(target[0:8], CNN_output[0:8])
