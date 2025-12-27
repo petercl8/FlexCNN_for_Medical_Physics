@@ -134,38 +134,49 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_typ
     recon1_multChannel = torch.from_numpy(np.ascontiguousarray(recon1_array[index,:])).float() if recon1_array is not None else None
     recon2_multChannel = torch.from_numpy(np.ascontiguousarray(recon2_array[index,:])).float() if recon2_array is not None else None
 
-    ## Data Augmentation ##
-    if augment[0]=='SI':
-        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
-            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
-        )
-    if augment[0]=='II':
-        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
-            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
-        )
-
-    ## Resize Outputs ##
+    ## Resize Warning ##
     orig_image_h, orig_image_w = act_map_multChannel.shape[1:]
     orig_sino_h, orig_sino_w = sinogram_multChannel.shape[1:]
 
+    resize_sino = (orig_sino_h, orig_sino_w) != (sino_size, sino_size)
+    resize_image = (orig_image_h, orig_image_w) != (image_size, image_size)
+
     if not resize_warned:
-        if (orig_image_h, orig_image_w) != (image_size, image_size) or (orig_sino_h, orig_sino_w) != (sino_size, sino_size):
+        if resize_sino or resize_image:
             print(f"Warning: Dataset resized. Original image size: ({orig_image_h}, {orig_image_w}), target: ({image_size}, {image_size}). "
                   f"Original sinogram size: ({orig_sino_h}, {orig_sino_w}), target: ({sino_size}, {sino_size}).")
             resize_warned = True
 
-    # Resize sinogram
-    resize_sino = (orig_sino_h, orig_sino_w) != (sino_size, sino_size)
-    if resize_sino:
-        if resize_type=='Resize':
-            sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
+
+    ## Data Augmentation + Resizing ##
+    if augment[0]=='SI':
+        # Augment data (with sinogram-like augmentations)
+        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
+            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
+        )
+        # Resize sinogram (like a Sinogram)
+        if resize_sino:
+            if resize_type=='Resize':
+                sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
+            else:
+                sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type=sino_pad_type)
         else:
-            sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type=sino_pad_type)
-    else:
-        sinogram_multChannel_resize = sinogram_multChannel
+            sinogram_multChannel_resize = sinogram_multChannel
+
+    if augment[0]=='II':
+        # Augment data (with image-like augmentations)
+        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
+            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
+        )
+        # Resize sinogram (like an Image)
+        if resize_sino:
+            if resize_type=='Resize':
+                sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
+            else:
+                sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=1, pad_type='zeros')
+
 
     # Resize image data (only if needed)
-    resize_image = (orig_image_h, orig_image_w) != (image_size, image_size) # Is resizing needed?
     act_map_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = ResizeImageData(
         act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image, image_pad_type=image_pad_type
     )
