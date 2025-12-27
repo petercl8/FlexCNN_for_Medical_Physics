@@ -17,13 +17,13 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 ## highCountSino-->actMap, tuned for SSIM, Augugment: SI
 config_SUP_SI = {
   "SI_dropout": False,
-  "SI_exp_kernel": 4, #4
+  "SI_exp_kernel": 3, #4
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
   "SI_gen_final_activ": nn.Sigmoid(),
   "SI_gen_hidden_dim": 19,
   "SI_gen_mult": 2.065329728174869,
-  "SI_gen_neck": "narrow", #medium
+  "SI_gen_neck": "wide", #medium
   "SI_gen_z_dim": 1181,
   "SI_layer_norm": "instance",
   "SI_learnedScale_init": 4.2047521440377285,
