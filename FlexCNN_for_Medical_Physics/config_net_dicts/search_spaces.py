@@ -29,7 +29,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_gen_fill': tune.choice([0,1,2]),                        # Number of constant-sized Conv2d layers/block
     'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
     'SI_gen_z_dim': tune.lograndint(64, 4000),                  # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
-    'SI_pad_mode': tune.choice(['zeros', 'reflect']),           # Padding type
+    'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
     'SI_gen_hidden_dim': tune.lograndint(2, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
@@ -68,7 +68,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_gen_fill': tune.choice([0,1,2]),
     'IS_gen_neck': tune.choice(['narrow','medium','wide']),
     'IS_gen_z_dim': tune.lograndint(64, 4000),
-    'IS_pad_mode': tune.choice(['zeros', 'reflect']),
+    'IS_pad_mode': tune.choice(['zeros', 'replicate']),
     'IS_dropout': tune.choice([True,False]),
     'IS_exp_kernel': tune.choice([3,4]),
     'IS_gen_hidden_dim': tune.lograndint(2, 30),

@@ -33,7 +33,7 @@ class Generator(nn.Module):
                     - {SI,IS}_gen_mult: Multiplicative factor for channels across layers
                     - {SI,IS}_gen_fill: Constant-size conv layers per block {0, 1, 2, 3}
                     - {SI,IS}_layer_norm: Normalization type {'batch', 'instance', 'group', 'none'}
-                    - {SI,IS}_pad_mode: Padding mode {'zeros', 'reflect'}
+                    - {SI,IS}_pad_mode: Padding mode {'zeros', 'replicate'} (encoder only; decoder uses replicate)
                     - {SI,IS}_dropout: Whether to use dropout {True, False}
                     - {SI,IS}_skip_mode: Skip connection mode {'none', 'add', 'concat'}
                     - {SI,IS}_normalize: Whether to normalize output to L1 norm {True, False}
@@ -139,9 +139,9 @@ class Generator(nn.Module):
                 contract_block(dim_3, dim_4, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (10+2-4)/2+1 = 5
                 contract_block(dim_4, dim_5, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+2-3)/2+1 = 3
                 contract_block(dim_5, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),     # H = (3+0-3)/1+1 = 1
-                expand_block(z_dim, dim_5, 3, stride=2, padding=0, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (1-1)*2+3-0+0 = 3
-                expand_block(dim_5, dim_4, 4, stride=2, padding=2, output_padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (3-1)*2+4-4+1 = 5
-                expand_block(dim_4, dim_3, 3, stride=2, padding=1, output_padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-2+1 = 10
+                expand_block(z_dim, dim_5, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (1-1)*2+3-0+0 = 3
+                expand_block(dim_5, dim_4, 4, stride=2, padding=2, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (3-1)*2+4-4+1 = 5
+                expand_block(dim_4, dim_3, 3, stride=2, padding=1, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-2+1 = 10
             )
 
         # neck='medium': Medium bottleneck (5x5 spatial), constant-size convs; upsamples back to 10x10 for skip merge
@@ -152,7 +152,7 @@ class Generator(nn.Module):
                 contract_block(dim_4, dim_4, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
                 contract_block(dim_4, dim_4, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
                 contract_block(dim_4, dim_4, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
-                expand_block(dim_4, dim_3, 3, stride=2, padding=1, output_padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-2+1 = 10
+                expand_block(dim_4, dim_3, 3, stride=2, padding=1, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-2+1 = 10
             )
 
         # neck='wide': Widest bottleneck (10x10 spatial), constant-size layers with kernel=5 for spatial information flow
@@ -193,11 +193,11 @@ class Generator(nn.Module):
             return base * 2 if self.skip_mode == 'concat' else base
 
         blocks = nn.ModuleList()
-        blocks.append(expand_block(in_ch(dim_3), dim_3, stage_params[0][0], stage_params[0][1], stage_params[0][2], stage_params[0][3], padding_mode=pad, fill=fill, norm=norm, drop=drop))
-        blocks.append(expand_block(in_ch(dim_3), dim_2, stage_params[1][0], stage_params[1][1], stage_params[1][2], stage_params[1][3], padding_mode=pad, fill=fill, norm=norm, drop=drop))
-        blocks.append(expand_block(in_ch(dim_2), dim_1, stage_params[2][0], stage_params[2][1], stage_params[2][2], stage_params[2][3], padding_mode=pad, fill=fill, norm=norm, drop=drop))
-        blocks.append(expand_block(in_ch(dim_1), dim_0, stage_params[3][0], stage_params[3][1], stage_params[3][2], stage_params[3][3], padding_mode=pad, fill=fill, norm=norm, drop=drop))
-        blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[4][0], stage_params[4][1], stage_params[4][2], stage_params[4][3], padding_mode=pad, fill=fill, norm=norm, drop=drop, final_layer=True))
+        blocks.append(expand_block(in_ch(dim_3), dim_3, stage_params[0][0], stage_params[0][1], stage_params[0][2], stage_params[0][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_3), dim_2, stage_params[1][0], stage_params[1][1], stage_params[1][2], stage_params[1][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_2), dim_1, stage_params[2][0], stage_params[2][1], stage_params[2][2], stage_params[2][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_1), dim_0, stage_params[3][0], stage_params[3][1], stage_params[3][2], stage_params[3][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[4][0], stage_params[4][1], stage_params[4][2], stage_params[4][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop, final_layer=True))
         return blocks
 
     def _merge(self, skip, x):
@@ -321,7 +321,7 @@ class Generator_180(nn.Module):
                     - {SI,IS}_gen_mult: Multiplicative factor for channels across layers
                     - {SI,IS}_gen_fill: Constant-size conv layers per block {0, 1, 2, 3}
                     - {SI,IS}_layer_norm: Normalization type {'batch', 'instance', 'group', 'none'}
-                    - {SI,IS}_pad_mode: Padding mode {'zeros', 'reflect'}
+                    - {SI,IS}_pad_mode: Padding mode {'zeros', 'replicate'} (encoder only; decoder uses replicate)
                     - {SI,IS}_dropout: Whether to use dropout {True, False}
                     - {SI,IS}_skip_mode: Skip connection mode {'none', 'add', 'concat'}
                     - {SI,IS}_normalize: Whether to normalize output to L1 norm {True, False}
@@ -425,9 +425,9 @@ class Generator_180(nn.Module):
                 contract_block(dim_2, dim_3, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (11+2-4)/2+1 = 5
                 contract_block(dim_3, dim_4, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+2-3)/2+1 = 3
                 contract_block(dim_4, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),     # H = (3+0-3)/1+1 = 1
-                expand_block(z_dim, dim_4, 3, stride=2, padding=0, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (1-1)*2+3-0+0 = 3
-                expand_block(dim_4, dim_3, 4, stride=2, padding=2, output_padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (3-1)*2+4-4+1 = 5
-                expand_block(dim_3, dim_2, 3, stride=2, padding=0, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-0+0 = 11
+                expand_block(z_dim, dim_4, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (1-1)*2+3-0+0 = 3
+                expand_block(dim_4, dim_3, 4, stride=2, padding=2, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (3-1)*2+4-4+1 = 5
+                expand_block(dim_3, dim_2, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-0+0 = 11
             )
 
         # neck='medium': Medium bottleneck (5x5 spatial), upsamples back to 11x11 for skip merge
@@ -438,7 +438,7 @@ class Generator_180(nn.Module):
                 contract_block(dim_3, dim_3, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
                 contract_block(dim_3, dim_3, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
                 contract_block(dim_3, dim_3, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
-                expand_block(dim_3, dim_2, 3, stride=2, padding=0, output_padding=0, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-0+0 = 11
+                expand_block(dim_3, dim_2, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-0+0 = 11
             )
 
         # neck='wide': Widest bottleneck (11x11 spatial), constant-size layers with kernel=5 for spatial information flow
@@ -477,10 +477,10 @@ class Generator_180(nn.Module):
             return base * 2 if self.skip_mode == 'concat' else base
 
         blocks = nn.ModuleList()
-        blocks.append(expand_block(in_ch(dim_2), dim_2, stage_params[0][0], stage_params[0][1], stage_params[0][2], stage_params[0][3], padding_mode=pad, fill=fill, norm=norm, drop=drop))
-        blocks.append(expand_block(in_ch(dim_2), dim_1, stage_params[1][0], stage_params[1][1], stage_params[1][2], stage_params[1][3], padding_mode=pad, fill=fill, norm=norm, drop=drop))
-        blocks.append(expand_block(in_ch(dim_1), dim_0, stage_params[2][0], stage_params[2][1], stage_params[2][2], stage_params[2][3], padding_mode=pad, fill=fill, norm=norm, drop=drop))
-        blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[3][0], stage_params[3][1], stage_params[3][2], stage_params[3][3], padding_mode=pad, fill=fill, norm=norm, drop=drop, final_layer=True))
+        blocks.append(expand_block(in_ch(dim_2), dim_2, stage_params[0][0], stage_params[0][1], stage_params[0][2], stage_params[0][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_2), dim_1, stage_params[1][0], stage_params[1][1], stage_params[1][2], stage_params[1][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_1), dim_0, stage_params[2][0], stage_params[2][1], stage_params[2][2], stage_params[2][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[3][0], stage_params[3][1], stage_params[3][2], stage_params[3][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop, final_layer=True))
         return blocks
 
     def _merge(self, skip, x):
