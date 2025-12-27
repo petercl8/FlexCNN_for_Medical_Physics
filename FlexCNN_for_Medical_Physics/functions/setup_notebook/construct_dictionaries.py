@@ -258,8 +258,8 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['tune_qa_hot_weight'] = tune_opts.get('tune_qa_hot_weight', 0.5)
 
     elif run_mode == 'train':
-        settings['augment'] = train_opts['train_augment']
-        settings['shuffle'] = True
+        settings['augment'] = False #train_opts['train_augment']
+        settings['shuffle'] = False #True
         settings['num_epochs'] = train_opts['training_epochs']
         settings['load_state'] = train_opts['train_load_state']
         settings['save_state'] = train_opts['train_save_state']
