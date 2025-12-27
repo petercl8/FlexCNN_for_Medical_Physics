@@ -128,10 +128,10 @@ class Generator(nn.Module):
             contract_block(dim_3, dim_3, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),     # H = (20+2-3)/2+1 = 10
         ])
 
-        self.neck = self._build_neck(neck, dim_3, dim_4, z_dim, pad, fill, norm, drop)
+        self.neck = self._build_neck(neck, dim_3, dim_4, dim_5, z_dim, pad, fill, norm, drop)
         self.expand_blocks = self._build_expand(exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, pad, fill, norm, drop)
 
-    def _build_neck(self, neck, dim_3, dim_4, z_dim, pad, fill, norm, drop):
+    def _build_neck(self, neck, dim_3, dim_4, dim_5, z_dim, pad, fill, norm, drop):
         # neck='narrow': Narrowest bottleneck (1x1), upsamples back to 10x10 for skip merge
         if neck == 'narrow':
             # ConvTranspose2d formula: H_out = (H_in-1)*stride + kernel - 2*padding + output_padding
