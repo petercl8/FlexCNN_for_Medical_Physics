@@ -3,32 +3,51 @@ from torchvision import transforms
 import torch.nn.functional as F
 
 
-def ResizeImageData(act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=True):
+def ResizeImageData(act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=True, image_pad_type='none'):
     """
-    Resize image data (activity map and reconstructions) to target image_size.
-    Optionally skip resizing if resize_image=False.
+    Resize or pad image data (activity map and reconstructions) to target image_size.
 
     Args:
         act_map_multChannel: Activity map tensor of shape (C, H, W)
         recon1_multChannel: Reconstruction 1 tensor or None
         recon2_multChannel: Reconstruction 2 tensor or None
         image_size: Target image size (int for square)
-        sino_size: Sinogram target size (unused, kept for API consistency)
-        resize_image: Boolean flag to enable/disable resizing
+        resize_image: Boolean flag to enable resizing when image_pad_type='none'
+        image_pad_type: 'none' (default) to resize, 'zeros' to pad with zeros without resizing
 
     Returns:
-        Tuple of (act_map_resized, recon1_resized, recon2_resized)
+        Tuple of (act_map_processed, recon1_processed, recon2_processed)
     """
-    if resize_image:
-        act_map_resized = transforms.Resize(size=(image_size, image_size), antialias=True)(act_map_multChannel)
-        recon1_resized = transforms.Resize(size=(image_size, image_size), antialias=True)(recon1_multChannel) if recon1_multChannel is not None else None
-        recon2_resized = transforms.Resize(size=(image_size, image_size), antialias=True)(recon2_multChannel) if recon2_multChannel is not None else None
-    else:
-        act_map_resized = act_map_multChannel
-        recon1_resized = recon1_multChannel
-        recon2_resized = recon2_multChannel
 
-    return act_map_resized, recon1_resized, recon2_resized
+    def _pad_to_size(tensor):
+        if tensor is None:
+            return None
+        C, H, W = tensor.shape
+        pad_h = max(0, image_size - H)
+        pad_w = max(0, image_size - W)
+        pad_top = pad_h // 2
+        pad_bottom = pad_h - pad_top
+        pad_left = pad_w // 2
+        pad_right = pad_w - pad_left
+        if pad_h > 0 or pad_w > 0:
+            tensor = F.pad(tensor, (pad_left, pad_right, pad_top, pad_bottom))
+        return tensor
+
+    if resize_image==False:
+        return act_map_multChannel, recon1_multChannel, recon2_multChannel
+
+    else:
+        if image_pad_type == 'zeros':
+            act_map_out = _pad_to_size(act_map_multChannel)
+            recon1_out = _pad_to_size(recon1_multChannel)
+            recon2_out = _pad_to_size(recon2_multChannel)
+        else:
+            resize_op = transforms.Resize(size=(image_size, image_size), antialias=True)
+            act_map_out = resize_op(act_map_multChannel)
+            recon1_out = resize_op(recon1_multChannel) if recon1_multChannel is not None else None
+            recon2_out = resize_op(recon2_multChannel) if recon2_multChannel is not None else None
+
+    return act_map_out, recon1_out, recon2_out
 
 
 def CropPadSino(

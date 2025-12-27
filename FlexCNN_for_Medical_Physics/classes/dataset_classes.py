@@ -82,7 +82,7 @@ class NpArrayDataSet(Dataset):
             return sino_scaled, act_map_scaled
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_type='CropPad', sino_pad_type='sinogram', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
+def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_type='CropPad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
     global resize_warned
     '''
     Function to load a sinogram, activity map, and optionally reconstructions. Returns 4 pytorch tensors:
@@ -167,7 +167,7 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, resize_typ
     # Resize image data if needed
     resize_image = (orig_image_h, orig_image_w) != (image_size, image_size)
     act_map_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = ResizeImageData(
-        act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image
+        act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image, image_pad_type=image_pad_type
     )
 
     ## (Optional) Normalize Resized Outputs ##
