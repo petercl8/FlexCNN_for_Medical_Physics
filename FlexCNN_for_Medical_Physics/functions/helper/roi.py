@@ -79,11 +79,11 @@ def ROI_simple_phantom(ground_truth_tensor, reconstruction_tensor, hot_mask):
     T_cold_mean = np.sum(ground_truth_tensor * cold_mask) / V_cold
 
     # Symmetric contrast recovery
-    CR_symmetric = 100 * (R_hot_mean - R_cold_mean) / (T_hot_mean - T_cold_mean + 1e-12)
+    CR_symmetric = 100 * (R_hot_mean - R_cold_mean) / (T_hot_mean - T_cold_mean + 1e-12) # reconstruction contrast over true contrast
 
     # Separate penalties
-    hot_underestimation = 100 * (T_hot_mean - R_hot_mean) / (T_hot_mean + 1e-12)
-    cold_overestimation = 100 * (R_cold_mean - T_cold_mean) / (T_hot_mean - T_cold_mean + 1e-12)
+    hot_underestimation = 100 * (T_hot_mean - R_hot_mean) / (T_hot_mean + 1e-12) # percent underestimation of hot region
+    cold_overestimation = 100 * (R_cold_mean - T_cold_mean) / (T_hot_mean - T_cold_mean + 1e-12) # percent overestimation of cold region relative to true contrast
 
     return {
         'CR_symmetric': CR_symmetric,

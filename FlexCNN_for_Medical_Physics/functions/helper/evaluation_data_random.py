@@ -212,6 +212,9 @@ def evaluate_val(gen, batches, device, train_SI):
         mse_sum += calculate_metric(eval_target, eval_output, MSE)
         ssim_sum += calculate_metric(eval_target, eval_output, SSIM)
         custom_sum += custom_metric(eval_target, eval_output)
+        
+        # Explicit cleanup to prevent memory accumulation during tuning
+        del eval_sino, eval_image, eval_input, eval_target, eval_output
     
     # Return averaged metrics
     return {
@@ -262,6 +265,9 @@ def evaluate_qa(gen, batches, device, use_ground_truth_rois=False):
         CR_symmetric_sum += cr_metrics['CR_symmetric']
         hot_under_sum += cr_metrics['hot_underestimation']
         cold_over_sum += cr_metrics['cold_overestimation']
+        
+        # Explicit cleanup to prevent memory accumulation during tuning
+        del eval_sino, eval_image, hotMask, network_output, eval_output
     
     # Return averaged metrics
     return {

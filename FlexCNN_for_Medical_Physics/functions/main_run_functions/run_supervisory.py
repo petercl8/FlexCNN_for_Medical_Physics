@@ -316,6 +316,11 @@ def run_SUP(config, paths, settings):
                     else:
                         raise ValueError(f"Invalid tune_report_for='{tune_report_for}'")
                     
+                    # Explicit memory cleanup to prevent accumulation across trials
+                    del batches
+                    if device.startswith('cuda'):
+                        torch.cuda.empty_cache()
+                    
                     # Restore generator to train mode
                     gen.train()
                     
