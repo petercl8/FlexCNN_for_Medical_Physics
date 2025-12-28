@@ -142,7 +142,9 @@ def run_SUP(config, paths, settings):
         ),
         batch_size=batch_size,
         shuffle=shuffle,
-        pin_memory=True,
+        # Dataset already returns tensors on the requested device;
+        # disable pin_memory to avoid errors when tensors are CUDA
+        pin_memory=False,
     )
 
     # Checkpoint handling

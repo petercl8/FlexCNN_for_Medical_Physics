@@ -66,7 +66,12 @@ def load_validation_batches(paths, config, settings):
     batches = [] # a list of dicts with 'sino' and 'image' tensors
     for _ in range(NUM_EVAL_BATCHES):
         # Sample a fresh random batch (no fixed seed; differs each call)
-        indices = np.random.choice(len(val_dataset), size=tune_eval_batch_size, replace=False)
+        # Allow replacement when requested batch size exceeds dataset size
+        indices = np.random.choice(
+            len(val_dataset),
+            size=tune_eval_batch_size,
+            replace=(tune_eval_batch_size > len(val_dataset))
+        )
         
         # Extract the batch
         sino_batch = []
@@ -216,7 +221,7 @@ def evaluate_val(gen, batches, device, train_SI):
     }
 
 
-def evaluate_qa(gen, batches, device, settings, use_ground_truth_rois=False):
+def evaluate_qa(gen, batches, device, use_ground_truth_rois=False):
     """
     Evaluate network on multiple QA phantom batches and average contrast metrics.
     
