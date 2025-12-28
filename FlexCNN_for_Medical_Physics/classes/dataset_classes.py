@@ -10,7 +10,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
+def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
     global resize_warned
     '''
     Function to load a sinogram, activity map, and optionally reconstructions. Returns 4 pytorch tensors:
@@ -22,7 +22,8 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
                          sino_size, image_channels, sino_channels, SI_normalize, SI_fixedScale, and (for non-SUP/GAN networks) 
                          IS_normalize, SI_fixedScale.
     augment:             perform data augmentation?
-    sino_resize_type:         'crop_pad' to crop/pad to target size, 'bilinear' to use bilinear interpolation
+    sino_resize_type:    'crop_pad' to crop/pad to target size, 'bilinear' to use bilinear interpolation
+    sino_pad_type:       'sinogram' (default) to pad sinograms with sinogram-like padding, 'zeros' to pad with zeros
     image_pad_type:      'none' (default) to resize w/ bilinear interpolation to correct size, 'zeros' to pad with zeros without resizing     
     index:               index of the sinogram/activity map pair to grab
     device:              device to place tensors on ('cuda' or 'cpu')
