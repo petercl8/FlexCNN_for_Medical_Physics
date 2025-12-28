@@ -10,7 +10,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='bilinear', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
+def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
     global resize_warned
     '''
     Function to load a sinogram, activity map, and optionally reconstructions. Returns 4 pytorch tensors:
@@ -96,18 +96,19 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
             sinogram_multChannel_resize = sinogram_multChannel
 
     if augment[0]=='II':
-        # Augment data (with image-like augmentations)
-        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
-            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
-        )
-        # Resize sinogram (like an Image)
+        # If augmenting sinograms (like images), first resize sinogram (like an Image). This way, rotations are not truncated.
         if resize_sino:
             if sino_resize_type=='bilinear':
                 sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
             else: # For image inputs, pad_type and pool_size are hardcoded to 1 and 'zeros' (the only sensible options for image-like sinograms)
-                sinogram_multChannel_resize = crop_pad_sino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=1, pad_type='zeros')
+                sinogram_multChannel_resize = crop_pad_sino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type='zeros')
         else:
             sinogram_multChannel_resize = sinogram_multChannel
+
+        # Augment data (with image-like augmentations)
+        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
+            act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
+        )
 
     ## Augment Images ##
     # Resize image data (only if needed)
