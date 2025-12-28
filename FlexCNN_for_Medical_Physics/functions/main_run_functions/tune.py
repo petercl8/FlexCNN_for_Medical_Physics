@@ -91,7 +91,7 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         optim_metric = 'cold_overestimation'
         min_max = 'min'  # maximize weighted combination of hot/cold
     else:
-        raise ValueError(f"Unsupported tune_metric='{tune_metric}'. Expected 'MSE', 'SSIM', 'CUSTOM', 'CR_symmetric', 'hot_underestimation', 'cold_overestimation')
+        raise ValueError(f"Unsupported tune_metric='{tune_metric}'. Expected 'MSE', 'SSIM', 'CUSTOM', 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'")
 
 
     print('===================')
