@@ -115,7 +115,8 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
     )
 
 
-    ## (Optional) Normalize Resized Outputs ##
+    #### (Optional) Normalize Resized Outputs ####
+
     if SI_normalize:
         a = torch.reshape(act_map_multChannel_resize, (image_channels,-1))
         a = nn.functional.normalize(a, p=1, dim = 1)
@@ -133,7 +134,9 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
         a = nn.functional.normalize(a, p=1, dim = 1)
         sinogram_multChannel_resize = torch.reshape(a, (sino_channels, sino_size, sino_size))
 
-    # Images (activity + recons):
+
+    #### Scale and Move to Device ####
+
     # If SI_normalize==True: multiply activity and reconstructions by SI_fixedScale (recon scales already set to 1.0)
     # If SI_normalize==False: leave activity unchanged; multiply reconstructions by their respective recon scales
     if SI_normalize:

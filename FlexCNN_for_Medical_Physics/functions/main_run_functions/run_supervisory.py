@@ -309,8 +309,8 @@ def run_SUP(config, paths, settings):
                             )
 
                     elif tune_report_for == 'qa':
-                        batches = load_qa_batches(paths, config, settings)
-                        metrics = evaluate_qa(gen, batches, device, settings)
+                        batches = load_qa_batches(paths, config, settings, augment=('SI', True))
+                        metrics = evaluate_qa(gen, batches, device, use_ground_truth_rois=True)
                     else:
                         raise ValueError(f"Invalid tune_report_for='{tune_report_for}'")
                     

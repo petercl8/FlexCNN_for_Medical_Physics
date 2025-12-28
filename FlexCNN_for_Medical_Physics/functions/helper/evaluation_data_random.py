@@ -84,7 +84,7 @@ def load_validation_batches(paths, config, settings):
     return batches
 
 
-def load_qa_batches(paths, config, settings):
+def load_qa_batches(paths, config, settings, augment=('SI', True)):
     """
     Load multiple fresh random QA phantom batches with augmentation and masks.
     
@@ -99,6 +99,7 @@ def load_qa_batches(paths, config, settings):
                to ensure augmentations align across all tensors)
         config: dict with 'image_size', 'sino_size', 'image_channels', 'sino_channels'
         settings: dict with 'tune_eval_batch_size' (e.g., 32) and 'augment' matching training
+        augment: type of augmentation to apply to images, sinograms & masks
     
     Returns:
         list of dicts, each with keys 'sino', 'image', 'hotMask', 'hotBackgroundMask'
@@ -118,7 +119,6 @@ def load_qa_batches(paths, config, settings):
         )
     
     tune_eval_batch_size = settings.get('tune_eval_batch_size', 32)
-    augment = settings.get('augment', False)
     
     # Load full QA set
     # Use training-time augmentations for QA (same pipeline)
@@ -140,8 +140,10 @@ def load_qa_batches(paths, config, settings):
     batches = []
     for _ in range(NUM_EVAL_BATCHES):
         # Sample a fresh random batch (no fixed seed; differs each call)
-        indices = np.random.choice(len(qa_dataset), size=tune_eval_batch_size, replace=False)
-        
+        indices = np.random.choice(len(qa_dataset), size=tune_eval_batch_size, replace=True) # Allow replacement due to small QA set
+
+        # THRE HERE
+
         # Extract the batch
         sino_batch = []
         image_batch = []
