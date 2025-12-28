@@ -357,7 +357,7 @@ def run_SUP(config, paths, settings):
                     print('Input Sinogram:')
                     if input_.shape[1] == 1:
                         show_single_unmatched_tensor(input_[0:2], fig_size=5)
-                    else
+                    else:
                         show_single_unmatched_tensor(input_[0:2], fig_size=15)
                     print(input_.shape)
                     print('Target/Output:')
