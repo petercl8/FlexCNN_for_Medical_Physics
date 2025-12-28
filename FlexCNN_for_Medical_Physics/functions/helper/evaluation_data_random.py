@@ -18,7 +18,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calcul
 from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_simple_phantom
 
 # Number of batches to sample and average per evaluation
-NUM_EVAL_BATCHES = 3
+NUM_EVAL_BATCHES = 1
 
 
 def load_validation_batches(paths, config, settings):
@@ -177,6 +177,7 @@ def evaluate_val(gen, batches, device, train_SI):
     Evaluate network on multiple validation batches and average metrics.
     
     Each batch is moved to device, evaluated, and metrics are averaged across all batches.
+    Batches remain on CPU until evaluation to minimize GPU memory pressure.
     
     Args:
         gen: Generator network (assumed in eval mode)
@@ -216,6 +217,9 @@ def evaluate_val(gen, batches, device, train_SI):
         # Explicit cleanup to prevent memory accumulation during tuning
         del eval_sino, eval_image, eval_input, eval_target, eval_output
     
+    # Clear batch list to free CPU memory
+    batches.clear()
+    
     # Return averaged metrics
     return {
         'MSE': mse_sum / num_batches,
@@ -229,6 +233,7 @@ def evaluate_qa(gen, batches, device, use_ground_truth_rois=False):
     Evaluate network on multiple QA phantom batches and average contrast metrics.
     
     Each batch is moved to device, evaluated, and ROI metrics are averaged across all batches.
+    Batches remain on CPU until evaluation to minimize GPU memory pressure.
     
     Args:
         gen: Generator network (assumed in eval mode)
@@ -268,6 +273,9 @@ def evaluate_qa(gen, batches, device, use_ground_truth_rois=False):
         
         # Explicit cleanup to prevent memory accumulation during tuning
         del eval_sino, eval_image, hotMask, network_output, eval_output
+    
+    # Clear batch list to free CPU memory
+    batches.clear()
     
     # Return averaged metrics
     return {
