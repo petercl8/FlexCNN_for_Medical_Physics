@@ -106,7 +106,7 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
             sinogram_multChannel_resize = sinogram_multChannel
 
         # Augment data (with image-like augmentations)
-        act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
+        act_map_multChannel, sinogram_multChannel_resize, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
             act_map_multChannel, sinogram_multChannel_resize, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
         )
 
