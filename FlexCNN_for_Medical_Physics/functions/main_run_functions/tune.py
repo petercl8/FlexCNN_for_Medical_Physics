@@ -81,17 +81,18 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     elif tune_metric == 'CUSTOM':
         optim_metric = 'CUSTOM'
         min_max = 'min'
-    elif tune_metric == 'ROI_NEMA_hot':
-        optim_metric = 'ROI_NEMA_hot'
+    elif tune_metric == 'CR_symmetric':
+        optim_metric = 'CR_symmetric'
         min_max = 'max'  # maximize hot lesion contrast recovery
-    elif tune_metric == 'ROI_NEMA_cold':
-        optim_metric = 'ROI_NEMA_cold'
-        min_max = 'max'  # maximize cold lesion contrast recovery
-    elif tune_metric == 'ROI_NEMA_weighted':
-        optim_metric = 'ROI_NEMA_weighted'
-        min_max = 'max'  # maximize weighted combination of hot/cold
+    elif tune_metric == 'hot_underestimation':
+        optim_metric = 'hot_underestimation'
+        min_max = 'min'  # maximize cold lesion contrast recovery
+    elif tune_metric == 'cold_overestimation':
+        optim_metric = 'cold_overestimation'
+        min_max = 'min'  # maximize weighted combination of hot/cold
     else:
-        raise ValueError(f"Unsupported tune_metric='{tune_metric}'. Expected 'MSE', 'SSIM', 'CUSTOM', 'ROI_NEMA_hot', 'ROI_NEMA_cold', or 'ROI_NEMA_weighted'.")
+        raise ValueError(f"Unsupported tune_metric='{tune_metric}'. Expected 'MSE', 'SSIM', 'CUSTOM', 'CR_symmetric', 'hot_underestimation', 'cold_overestimation')
+
 
     print('===================')
     print('tune_max_t:', tune_max_t)
