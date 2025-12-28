@@ -136,16 +136,16 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
     recon2_multChannel = torch.from_numpy(np.ascontiguousarray(recon2_array[index,:])).float() if recon2_array is not None else None
 
     ## Resize Warning ##
-    orig_image_h, orig_image_w = act_map_multChannel.shape[1:]
-    orig_sino_h, orig_sino_w = sinogram_multChannel.shape[1:]
+    orig_channel, orig_image_h, orig_image_w = act_map_multChannel.shape
+    orig_sino_channel, orig_sino_h, orig_sino_w = sinogram_multChannel.shape
 
     resize_sino = (orig_sino_h, orig_sino_w) != (sino_size, sino_size)
     resize_image = (orig_image_h, orig_image_w) != (image_size, image_size)
 
     if not resize_warned:
         if resize_sino or resize_image:
-            print(f"Warning: Dataset resized. Original image size: ({orig_image_h}, {orig_image_w}), target: ({image_size}, {image_size}). "
-                  f"Original sinogram size: ({orig_sino_h}, {orig_sino_w}), target: ({sino_size}, {sino_size}).")
+            print(f"Warning: Dataset resized. Original image size: ({orig_channel}, {orig_image_h}, {orig_image_w}), target: ({image_channels}, {image_size}, {image_size}). "
+                  f"Original sinogram size: ({orig_sino_channel}, {orig_sino_h}, {orig_sino_w}), target: ({sino_channels}, {sino_size}, {sino_size}).")
             resize_warned = True
 
 
