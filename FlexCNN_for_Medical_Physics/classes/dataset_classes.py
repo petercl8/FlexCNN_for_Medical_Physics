@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
 from .dataset_augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
-from .dataset_resizing import ResizeImageData, CropPadSino
+from .dataset_resizing import resize_image_data, crop_pad_sino
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
@@ -82,7 +82,7 @@ class NpArrayDataSet(Dataset):
             return sino_scaled, act_map_scaled
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='CropPad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
+def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
     global resize_warned
     '''
     Function to load a sinogram, activity map, and optionally reconstructions. Returns 4 pytorch tensors:
@@ -94,7 +94,8 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
                          sino_size, image_channels, sino_channels, SI_normalize, SI_fixedScale, and (for non-SUP/GAN networks) 
                          IS_normalize, SI_fixedScale.
     augment:             perform data augmentation?
-    sino_resize_type:         'CropPad' to crop/pad to target size, 'Resize' to use torchvision Resize (antialiasing)
+    sino_resize_type:         'crop_pad' to crop/pad to target size, 'bilinear' to use bilinear interpolation
+    image_pad_type:      'none' (default) to resize w/ bilinear interpolation to correct size, 'zeros' to pad with zeros without resizing     
     index:               index of the sinogram/activity map pair to grab
     device:              device to place tensors on ('cuda' or 'cpu')
     recon1_array:        (optional) reconstruction 1 numpy array
@@ -148,7 +149,9 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
             resize_warned = True
 
 
-    ## Data Augmentation + Resizing ##
+    #### AUGMENT AND RESIZE DATA ####
+
+    ## Augment Sinograms ##
     if augment[0]=='SI':
         # Augment data (with sinogram-like augmentations)
         act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
@@ -156,10 +159,10 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
         )
         # Resize sinogram (like a Sinogram)
         if resize_sino:
-            if sino_resize_type=='Resize':
+            if sino_resize_type=='bilinear':
                 sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
             else:
-                sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type=sino_pad_type)
+                sinogram_multChannel_resize = crop_pad_sino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=2, pad_type=sino_pad_type)
         else:
             sinogram_multChannel_resize = sinogram_multChannel
 
@@ -170,16 +173,19 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
         )
         # Resize sinogram (like an Image)
         if resize_sino:
-            if sino_resize_type=='Resize':
+            if sino_resize_type=='bilinear':
                 sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
             else: # For image inputs, pad_type and pool_size are hardcoded to 1 and 'zeros' (the only sensible options for image-like sinograms)
-                sinogram_multChannel_resize = CropPadSino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=1, pad_type='zeros')
+                sinogram_multChannel_resize = crop_pad_sino(sinogram_multChannel, vert_size=sino_size, target_width=sino_size, pool_size=1, pad_type='zeros')
+        else:
+            sinogram_multChannel_resize = sinogram_multChannel
 
-
+    ## Augment Images ##
     # Resize image data (only if needed)
-    act_map_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = ResizeImageData(
+    act_map_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = resize_image_data(
         act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image, image_pad_type=image_pad_type
     )
+
 
     ## (Optional) Normalize Resized Outputs ##
     if SI_normalize:

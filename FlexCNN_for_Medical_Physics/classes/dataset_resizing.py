@@ -3,7 +3,7 @@ from torchvision import transforms
 import torch.nn.functional as F
 
 
-def ResizeImageData(act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=True, image_pad_type='none'):
+def resize_image_data(act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=True, image_pad_type='none'):
     """
     Resize or pad image data (activity map and reconstructions) to target image_size.
 
@@ -13,7 +13,7 @@ def ResizeImageData(act_map_multChannel, recon1_multChannel, recon2_multChannel,
         recon2_multChannel: Reconstruction 2 tensor or None
         image_size: Target image size (int for square)
         resize_image: Boolean flag to enable resizing when image_pad_type='none'
-        image_pad_type: 'none' (default) to resize, 'zeros' to pad with zeros without resizing
+        image_pad_type: 'none' (default) to resize w/ bilinear interpolation to correct size, 'zeros' to pad with zeros without resizing
 
     Returns:
         Tuple of (act_map_processed, recon1_processed, recon2_processed)
@@ -50,7 +50,7 @@ def ResizeImageData(act_map_multChannel, recon1_multChannel, recon2_multChannel,
     return act_map_out, recon1_out, recon2_out
 
 
-def CropPadSino(
+def crop_pad_sino(
     sino_multChannel,
     vert_size,
     target_width,
