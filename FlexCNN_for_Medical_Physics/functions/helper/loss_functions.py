@@ -82,6 +82,109 @@ def get_gen_loss(real_A, real_B, gen_AB, gen_BA, disc_A, disc_B, config):
         gen_loss = lambda_adv*adv_loss+lambda_sup*sup_loss+lambda_cycle*cycle_loss
         return gen_loss, adv_loss.item(), sup_loss.item(), cycle_loss.item(), cycle_A, cycle_B
 
+
+def patchwise_moment_loss(batch_pred,
+                          batch_target,
+                          moments=[1,2],                    # 1=mean, 2=std
+                          moment_weights={1:2.0, 2:1.0},    # relative importance of each moment
+                          patch_size=8,
+                          stride=4,
+                          eps=1e-6,
+                          patch_weighting='scaled',          # 'scaled', 'energy', 'mean', 'none'
+                          patch_weight_min=0.33,
+                          patch_weight_max=1.0,
+                          min_patch_mean=1e-3):
+    """
+    Fully vectorized patchwise moment loss (mean + std) suitable for GPU backpropagation.
+
+    Features:
+    - Physics-informed normalization: mean -> μ, std -> √μ
+    - Patch weighting retained
+    - Low-count patch masking
+    - Fully vectorized for speed in training
+    """
+
+    B, C, H, W = batch_pred.shape
+    p, s = patch_size, stride
+
+    # Only full patches
+    num_patches_h = (H - p) // s + 1
+    num_patches_w = (W - p) // s + 1
+    if num_patches_h <= 0 or num_patches_w <= 0:
+        raise ValueError("Patch size larger than image dimensions.")
+    max_h = s * (num_patches_h - 1) + p
+    max_w = s * (num_patches_w - 1) + p
+    batch_pred = batch_pred[:, :, :max_h, :max_w]
+    batch_target = batch_target[:, :, :max_h, :max_w]
+
+    # Extract patches and flatten spatial dims
+    pred_patches = batch_pred.unfold(2, p, s).unfold(3, p, s)
+    target_patches = batch_target.unfold(2, p, s).unfold(3, p, s)
+    num_patches = num_patches_h * num_patches_w
+    pred_patches = pred_patches.contiguous().view(B, C, num_patches, -1)
+    target_patches = target_patches.contiguous().view(B, C, num_patches, -1)
+
+    # Patch mean (shape [B, C, num_patches])
+    patch_mean = target_patches.mean(dim=-1)
+
+    # Patch weighting
+    patch_min = patch_mean.min(dim=-1, keepdim=True)[0]
+    patch_max = patch_mean.max(dim=-1, keepdim=True)[0]
+
+    if patch_weighting == 'scaled':
+        patch_weights = patch_weight_min + \
+                        (patch_mean - patch_min) / (patch_max - patch_min + eps) * \
+                        (patch_weight_max - patch_weight_min)
+    elif patch_weighting == 'energy':
+        patch_energy = (target_patches ** 2).mean(dim=-1)
+        patch_weights = patch_energy / (patch_energy.sum(dim=-1, keepdim=True) + eps)
+    elif patch_weighting == 'mean':
+        patch_weights = patch_mean / (patch_mean.sum(dim=-1, keepdim=True) + eps)
+    else:
+        patch_weights = torch.ones_like(patch_mean)
+
+    # Low-count patch mask
+    patch_mask = (patch_mean >= min_patch_mean).float()
+    patch_weights = patch_weights * patch_mask
+
+    # Compute all patch statistics at once
+    target_mean = patch_mean
+    pred_mean = pred_patches.mean(dim=-1)
+
+    target_centered = target_patches - target_mean.unsqueeze(-1)
+    pred_centered = pred_patches - pred_mean.unsqueeze(-1)
+
+    target_std = torch.sqrt((target_centered ** 2).mean(dim=-1) + eps)
+    pred_std = torch.sqrt((pred_centered ** 2).mean(dim=-1) + eps)
+
+    rel_diff_dict = {}
+
+    total_metric = 0.0
+    for k in moments:
+        if k == 1:
+            # Mean differences
+            rel_diff = torch.abs(pred_mean - target_mean) / (target_mean + eps)
+            denom_factor = moment_weights.get(k, 1.0)
+        elif k == 2:
+            # Std differences normalized by sqrt(mean)
+            rel_diff = torch.abs(pred_std - target_std) / (torch.sqrt(target_mean + eps))
+            denom_factor = moment_weights.get(k, 1.0)
+        else:
+            raise ValueError("Only mean (1) and std (2) supported.")
+
+        # Weighted aggregation over patches, channels, batch
+        weighted_diff = (rel_diff * patch_weights).sum(dim=-1).mean(dim=[0,1])
+        weighted_diff *= denom_factor
+
+        rel_diff_dict[k] = weighted_diff
+        total_metric += weighted_diff
+
+    # Normalize by sum of moment weights
+    total_metric /= sum(moment_weights.get(k,1.0) for k in moments)
+
+    return total_metric
+
+
 ### Functons for Assymmetric/Separate (Older) ###
 '''
 def get_gen_adv_loss(fake_X, disc_X, adv_criterion):
