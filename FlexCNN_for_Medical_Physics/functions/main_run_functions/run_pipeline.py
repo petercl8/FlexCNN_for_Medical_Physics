@@ -71,3 +71,6 @@ def run_pipeline(
             test_merge_dataframes=test_opts['test_merge_dataframes'],
             test_csv_file=test_opts['test_csv_file'],
         )
+        
+    elif run_mode == 'none':
+        break
