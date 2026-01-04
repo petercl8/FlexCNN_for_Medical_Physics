@@ -229,6 +229,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
     settings['num_examples'] = common_settings.get('num_examples', -1)
     settings['recon1_scale'] = common_settings.get('recon1_scale', 1.0)
     settings['recon2_scale'] = common_settings.get('recon2_scale', 1.0)
+    settings['sino_scale'] = common_settings.get('sino_scale', 1.0)
     
     # Mode-specific
     if run_mode == 'tune':
