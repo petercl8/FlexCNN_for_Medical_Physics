@@ -226,10 +226,10 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
     # Common settings (now minimal)
     settings['run_mode'] = run_mode
     settings['device'] = common_settings['device']
-    settings['num_examples'] = common_settings.get('num_examples', -1)
-    settings['recon1_scale'] = common_settings.get('recon1_scale', 1.0)
-    settings['recon2_scale'] = common_settings.get('recon2_scale', 1.0)
-    settings['sino_scale'] = common_settings.get('sino_scale', 1.0)
+    settings['sino_scale'] = common_settings['sino_scale']
+    settings['num_examples'] = common_settings['num_examples']
+    settings['recon1_scale'] = common_settings['recon1_scale']
+    settings['recon2_scale'] = common_settings['recon2_scale']
     
     # Mode-specific
     if run_mode == 'tune':
@@ -242,21 +242,21 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['show_times'] = False
         settings['sample_division'] = 1
         
-        settings['tune_exp_name']= tune_opts['tune_exp_name']
+        settings['tune_exp_name'] = tune_opts['tune_exp_name']
         settings['tune_scheduler'] = tune_opts['tune_scheduler']
-        settings['tune_dataframe_fraction'] = tune_opts.get('tune_dataframe_fraction', 1.0)
-        settings['tune_restore'] = tune_opts.get('tune_restore', False)
-        settings['tune_max_t'] = tune_opts.get('tune_max_t', 100)
-        settings['tune_minutes'] = tune_opts.get('tune_minutes', 180)
+        settings['tune_dataframe_fraction'] = tune_opts['tune_dataframe_fraction']
+        settings['tune_restore'] = tune_opts['tune_restore']
+        settings['tune_max_t'] = tune_opts['tune_max_t']
+        settings['tune_minutes'] = tune_opts['tune_minutes']
         settings['tune_metric'] = tune_opts['tune_metric']
-        settings['tune_even_reporting'] = tune_opts.get('tune_even_reporting', False)
-        settings['tune_batches_per_report'] = tune_opts.get('tune_batches_per_report')
-        settings['tune_examples_per_report'] = tune_opts.get('tune_examples_per_report')
+        settings['tune_even_reporting'] = tune_opts['tune_even_reporting']
+        settings['tune_batches_per_report'] = tune_opts['tune_batches_per_report']
+        settings['tune_examples_per_report'] = tune_opts['tune_examples_per_report']
         settings['tune_augment'] = tune_opts['tune_augment']
-        settings['tune_debug'] = tune_opts.get('tune_debug', False)
-        settings['tune_report_for'] = tune_opts.get('tune_report_for', 'val')
-        settings['tune_eval_batch_size'] = tune_opts.get('tune_eval_batch_size', 32)
-        settings['tune_qa_hot_weight'] = tune_opts.get('tune_qa_hot_weight', 0.5)
+        settings['tune_debug'] = tune_opts['tune_debug']
+        settings['tune_report_for'] = tune_opts['tune_report_for']
+        settings['tune_eval_batch_size'] = tune_opts['tune_eval_batch_size']
+        settings['tune_qa_hot_weight'] = tune_opts['tune_qa_hot_weight']
 
     elif run_mode == 'train':
         settings['augment'] = train_opts['train_augment']
