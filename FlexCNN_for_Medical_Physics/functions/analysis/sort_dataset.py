@@ -19,7 +19,8 @@ def sort_DataSet(
     threshold,
     threshold_min_max,
     num_examples=-1,
-    visualize=False
+    visualize=False,
+    sino_scale=1
 ):
     """
     Filter and save subsets of image/sinogram pairs based on a reconstruction metric.
@@ -70,7 +71,7 @@ def sort_DataSet(
     scale = config['SI_fixedScale'] if train_SI else config['SI_fixedScale']
 
     dataloader = DataLoader(
-        NpArrayDataSet(image_path=load_image_path, sino_path=load_sino_path, config=config, num_examples=num_examples),
+        NpArrayDataSet(image_path=load_image_path, sino_path=load_sino_path, config=config, num_examples=num_examples, sino_scale=sino_scale),
         batch_size=1,
         shuffle=True,
         pin_memory=True,

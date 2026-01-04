@@ -51,6 +51,7 @@ def load_validation_batch(paths, config, settings):
         device='cpu',  # Load to CPU; caller handles device placement
         recon1_path=None,
         recon2_path=None,
+        sino_scale=settings['sino_scale'],
     )
     
     # Deterministically sample a fixed batch

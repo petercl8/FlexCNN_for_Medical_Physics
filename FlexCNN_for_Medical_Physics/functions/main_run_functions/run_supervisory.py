@@ -139,11 +139,10 @@ def run_SUP(config, paths, settings):
             recon2_path=paths.get('recon2_path', None),
             recon1_scale=settings.get('recon1_scale', 1.0),
             recon2_scale=settings.get('recon2_scale', 1.0),
+            sino_scale=settings.get('sino_scale', 1.0),
         ),
         batch_size=batch_size,
         shuffle=shuffle,
-        # Dataset already returns tensors on the requested device;
-        # disable pin_memory to avoid errors when tensors are CUDA
         pin_memory=False,
     )
 

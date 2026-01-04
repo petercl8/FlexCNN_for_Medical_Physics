@@ -9,6 +9,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_mul
 
 def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict, indexes, device):
 
+def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict, indexes, device, settings):
     # --- Normalize input so we always have a list of image array names ---
     if isinstance(image_array_names, str):
         image_array_names = [image_array_names]
@@ -28,14 +29,15 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
     sino_tensor = None
     first_sino = True
 
+    sino_scale = settings['sino_scale']
+
     # --- Loop over each image array separately ---
     for array_num, image_array in enumerate(image_arrays):
-
         # Build tensors for this image array
         i = 0
         for idx in indexes:
             sino_ground_scaled, image_ground_scaled, _, _ = NpArrayDataLoader(
-                image_array, sino_array, config, augment=(None, False), index=idx, device=device
+                image_array, sino_array, config, augment=(None, False), index=idx, device=device, sino_scale=sino_scale
             )
 
             if first_sino:
@@ -48,7 +50,7 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
                     dtype=torch.float32,
                     device=device
                 )
-                first_sino=False
+                first_sino = False
 
             # create a fresh image tensor for *this* image array
             if i == 0:
@@ -63,7 +65,7 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
 
             image_tensor[i, :] = image_ground_scaled
 
-            if array_num==0:
+            if array_num == 0:
                 sino_tensor[i, :] = sino_ground_scaled
 
             i += 1
@@ -82,12 +84,11 @@ def CNN_reconstruct(sino_tensor, config, checkpoint_name, paths, device):
     with torch.no_grad():
         return gen(sino_tensor).detach()
 
-def PlotPhantomRecons(image_array_names, sino_array_name, config, paths_dict, indexes, checkpointName, fig_size, device):
 
-    image_tensors, sino_tensor = BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict, indexes, device)
+def PlotPhantomRecons(image_array_names, sino_array_name, config, paths_dict, indexes, checkpointName, fig_size, device, settings):
+    image_tensors, sino_tensor = BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict, indexes, device, settings)
     CNN_output = CNN_reconstruct(sino_tensor, config, checkpointName, paths_dict, device)
     show_multiple_unmatched_tensors(*image_tensors, CNN_output, fig_size=fig_size)
-
     return image_tensors, sino_tensor
 
 '''

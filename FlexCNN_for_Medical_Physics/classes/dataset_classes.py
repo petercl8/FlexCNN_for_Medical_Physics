@@ -10,7 +10,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0):
+def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0, sino_scale=1.0):
     global resize_warned
     '''
     Function to load a sinogram, activity map, and optionally reconstructions. Returns 4 pytorch tensors:
@@ -149,11 +149,11 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
         recon2 = (recon2_multChannel_resize * recon2_scale).to(device) if recon2_multChannel_resize is not None else None
 
     ## Apply Fixed Scales per desired behavior and move to device ##
-    # Sinogram: multiply by IS_fixedScale only if IS_normalize==True; otherwise leave unchanged
+    # Sinogram: multiply by IS_fixedScale only if IS_normalize==True; otherwise multiply by sino_scale if not normalized
     if IS_normalize:
         sino_scaled = (IS_fixedScale * sinogram_multChannel_resize).to(device)
     else:
-        sino_scaled = sinogram_multChannel_resize.to(device)
+        sino_scaled = (sinogram_multChannel_resize * sino_scale).to(device)
 
     return sino_scaled, act_map_scaled, recon1, recon2
 
@@ -165,7 +165,7 @@ class NpArrayDataSet(Dataset):
     In the dataset used in our first two conference papers, the data repeat every 17500 steps but with different augmentations.
     For the dataset with FORE rebinning, the dataset contains no augmented examples; all augmentation is performed on the fly.
     '''
-    def __init__(self, image_path, sino_path, config, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda', recon1_path=None, recon2_path=None, recon1_scale=1.0, recon2_scale=1.0):
+    def __init__(self, image_path, sino_path, config, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda', recon1_path=None, recon2_path=None, recon1_scale=1.0, recon2_scale=1.0, sino_scale=1.0):
         '''
         image_path:         path to images (ground truth activity maps) in data set
         sino_path:          path to sinograms in data set
@@ -206,6 +206,7 @@ class NpArrayDataSet(Dataset):
         self.device = device
         self.recon1_scale = recon1_scale
         self.recon2_scale = recon2_scale
+        self.sino_scale = sino_scale
 
     def __len__(self):
         length = int(len(self.image_array)/self.sample_division)
@@ -220,7 +221,7 @@ class NpArrayDataSet(Dataset):
             self.image_array, self.sino_array, self.config,
             augment=self.augment, index=idx, device=device_arg,
             recon1_array=self.recon1_array, recon2_array=self.recon2_array,
-            recon1_scale=self.recon1_scale, recon2_scale=self.recon2_scale)
+            recon1_scale=self.recon1_scale, recon2_scale=self.recon2_scale, sino_scale=self.sino_scale)
 
         # Only return reconstructions if they exist (to avoid collate errors with None values)
         if recon1 is not None and recon2 is not None:
