@@ -567,7 +567,8 @@ class Generator_180(nn.Module):
         out_chan = output_channels
 
         # Root scaling exponent for channel growth
-        self.scaling_exp = 0.5  # Change as needed (e.g., 0.7)
+        self.scaling_exp = 0.7
+          # Change as needed (e.g., 0.7)
         # Unique channel dims for each stage
         dim_0 = int(hidden_dim * mult ** (0 ** self.scaling_exp))
         dim_1 = int(hidden_dim * mult ** (1 ** self.scaling_exp))
