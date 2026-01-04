@@ -24,12 +24,12 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train'):
         image_path = paths['train_image_path']
         recon1_path = paths['train_recon1_path']
         recon2_path = paths['train_recon2_path']
-        sinogram_path = paths.get('train_sinogram_path', None)
+        sinogram_path = paths.get('train_sino_path', None)
     elif dataset == 'test':
         image_path = paths['test_image_path']
         recon1_path = paths['test_recon1_path']
         recon2_path = paths['test_recon2_path']
-        sinogram_path = paths.get('test_sinogram_path', None)
+        sinogram_path = paths.get('test_sino_path', None)
     else:
         raise ValueError("dataset must be 'train' or 'test'")
 
