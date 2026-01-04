@@ -38,7 +38,7 @@ config_SUP_SI = {
   "image_size": 180,
   "network_type": "SUP",
   "sino_channels": 3, #3
-  "sino_size": 320,
+  "sino_size": 288, #320
   "sup_criterion": nn.MSELoss(),
   "train_SI": True
 }
