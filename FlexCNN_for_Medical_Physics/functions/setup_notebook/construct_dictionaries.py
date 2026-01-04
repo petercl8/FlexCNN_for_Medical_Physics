@@ -41,7 +41,7 @@ def construct_config(
     network_type = str(network_opts['network_type']).upper()  # Normalize strings
     train_SI = network_opts['train_SI']
     image_size = network_opts['image_size']
-    sino_size = 288 #network_opts['sino_size']
+    sino_size = network_opts['sino_size']
     image_channels = network_opts['image_channels']
     sino_channels = network_opts['sino_channels']
     SI_normalize = network_opts['SI_normalize']
@@ -59,6 +59,25 @@ def construct_config(
             config = config_CYCLESUP
         else:
             raise ValueError(f"Unknown network_type '{network_type}'.")
+        
+        # Validate that user-specified dimensions match the loaded config
+        # (can't change network architecture for already-trained networks)
+        mismatches = []
+        if config.get('image_size') != image_size:
+            mismatches.append(f"image_size: config has {config.get('image_size')}, but network_opts specifies {image_size}")
+        if config.get('sino_size') != sino_size:
+            mismatches.append(f"sino_size: config has {config.get('sino_size')}, but network_opts specifies {sino_size}")
+        if config.get('image_channels') != image_channels:
+            mismatches.append(f"image_channels: config has {config.get('image_channels')}, but network_opts specifies {image_channels}")
+        if config.get('sino_channels') != sino_channels:
+            mismatches.append(f"sino_channels: config has {config.get('sino_channels')}, but network_opts specifies {sino_channels}")
+        
+        if mismatches:
+            error_msg = f"\n❌ Network dimension mismatch detected!\n\nThe loaded configuration has different dimensions than your network_opts settings.\n"
+            error_msg += f"This usually means the checkpoint was trained with different input/output sizes.\n\n"
+            error_msg += "Mismatches found:\n" + "\n".join(f"  • {m}" for m in mismatches)
+            error_msg += f"\n\nPlease update your network_opts to match the trained network, or use a different checkpoint."
+            raise ValueError(error_msg)
 
     # If tuning, we need to construct the dictionary from smaller pieces
     elif run_mode == 'tune':
