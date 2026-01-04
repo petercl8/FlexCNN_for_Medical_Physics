@@ -63,8 +63,11 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train', sample_sin
             total_sinograms = len(sinogram_array)
             rng = np.random.default_rng()
             indices = rng.choice(total_sinograms, size=min(sample_sinogram_number, total_sinograms), replace=False)
-            sampled_sinograms = sinogram_array[indices]
-            sampled_images = image_array[indices] if len(image_array) == total_sinograms else image_array
+            sampled_sinograms = np.stack([sinogram_array[i] for i in indices], axis=0)
+            if len(image_array) == total_sinograms:
+                sampled_images = np.stack([image_array[i] for i in indices], axis=0)
+            else:
+                sampled_images = image_array
             sinogram_nonzero = sampled_sinograms[sampled_sinograms > 0]
             image_nonzero = sampled_images[sampled_images > 0]
         else:
