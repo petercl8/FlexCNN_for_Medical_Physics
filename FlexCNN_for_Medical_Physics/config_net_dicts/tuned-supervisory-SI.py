@@ -23,13 +23,13 @@ config_SUP_SI = {
   "SI_gen_final_activ": nn.Sigmoid(),
   "SI_gen_hidden_dim": 19,
   "SI_gen_mult": 2.065329728174869,
-  "SI_gen_neck": "wide", #medium
+  "SI_gen_neck": "medium", #medium
   "SI_gen_z_dim": 1181,
   "SI_layer_norm": "instance",
   "SI_learnedScale_init": 4.2047521440377285,
   "SI_normalize": False,
   "SI_pad_mode": "zeros", # "zeros"
-  "SI_skip_mode": "add", #add
+  "SI_skip_mode": "concat", #add
   "batch_base2_exponent": 5,
   "gen_b1": 0.22046050861804858,
   "gen_b2": 0.152643657443423,
