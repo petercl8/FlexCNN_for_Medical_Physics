@@ -107,12 +107,12 @@ class Generator(nn.Module):
         # neck='narrow': 1x1 bottleneck
         if neck == 'narrow':
             return nn.Sequential(
-                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 9->5
-                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 5->3
+                contract_block(dim_4, dim_5, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 9->5: floor((9+2-3)/2)+1=5
+                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 5->3: floor((5+2-3)/2)+1=3
                 contract_block(dim_6, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),     # 3->1
                 expand_block(z_dim, dim_6, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 1->3
                 expand_block(dim_6, dim_5, 4, stride=2, padding=2, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 3->5
-                expand_block(dim_5, dim_4, 3, stride=2, padding=1, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 5->9
+                expand_block(dim_5, dim_4, 3, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 5->9: (5-1)*2+3-2+0=9
             )
         # neck='medium': 5x5 bottleneck
         if neck == 'medium':
