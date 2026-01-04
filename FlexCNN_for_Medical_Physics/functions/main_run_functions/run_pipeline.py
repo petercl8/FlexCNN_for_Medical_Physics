@@ -73,4 +73,4 @@ def run_pipeline(
         )
 
     elif run_mode == 'none':
-        break
+        raise SystemExit
