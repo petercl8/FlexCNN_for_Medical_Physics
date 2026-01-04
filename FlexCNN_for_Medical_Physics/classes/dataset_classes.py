@@ -69,7 +69,7 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
     orig_sino_channel, orig_sino_h, orig_sino_w = sinogram_multChannel.shape
 
     resize_sino = (orig_sino_h, orig_sino_w) != (sino_size, sino_size)
-    resize_image = (orig_image_h, orig_image_w) != (image_size, image_size)
+    resize_image = (orig_image_h, orig_image_w) != (image_size, image_size) or (recon1_multChannel is not None and (recon1_multChannel.shape[1], recon1_multChannel.shape[2]) != (image_size, image_size)) or (recon2_multChannel is not None and (recon2_multChannel.shape[1], recon2_multChannel.shape[2]) != (image_size, image_size))
 
     if not resize_warned:
         if resize_sino or resize_image:
@@ -82,7 +82,7 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
 
     ## Augment Sinograms ##
     if augment[0]=='SI':
-        # Augment data (with sinogram-like augmentations)
+        # We augment first so that the sinogram columns, which contain the full span of angles, are not truncated before sinogram-like augmentation.
         act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
             act_map_multChannel, sinogram_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
         )
@@ -110,7 +110,6 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
             act_map_multChannel, sinogram_multChannel_resize, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
         )
 
-    ## Augment Images ##
     # Resize image data (only if needed)
     act_map_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = resize_image_data(
         act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image, image_pad_type=image_pad_type
@@ -118,7 +117,6 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
 
 
     #### (Optional) Normalize Resized Outputs ####
-
     if SI_normalize:
         a = torch.reshape(act_map_multChannel_resize, (image_channels,-1))
         a = nn.functional.normalize(a, p=1, dim = 1)

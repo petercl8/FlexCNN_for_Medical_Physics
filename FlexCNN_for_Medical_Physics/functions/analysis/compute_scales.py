@@ -24,19 +24,21 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train'):
         image_path = paths['train_image_path']
         recon1_path = paths['train_recon1_path']
         recon2_path = paths['train_recon2_path']
+        sinogram_path = paths.get('train_sinogram_path', None)
     elif dataset == 'test':
         image_path = paths['test_image_path']
         recon1_path = paths['test_recon1_path']
         recon2_path = paths['test_recon2_path']
+        sinogram_path = paths.get('test_sinogram_path', None)
     else:
         raise ValueError("dataset must be 'train' or 'test'")
-    
+
     # Load ground truth images and compute total activity
     image_array = np.load(image_path, mmap_mode='r')
     total_image_activity = image_array.sum()
-    
+
     scales = {}
-    
+
     # Compute recon1 scale: ratio of ground truth to reconstruction activity
     if recon1_path is not None:
         recon1_array = np.load(recon1_path, mmap_mode='r')
@@ -44,7 +46,7 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train'):
         scales['recon1_scale'] = float(total_image_activity / total_recon1_activity)
     else:
         scales['recon1_scale'] = 1.0
-    
+
     # Compute recon2 scale: ratio of ground truth to reconstruction activity
     if recon2_path is not None:
         recon2_array = np.load(recon2_path, mmap_mode='r')
@@ -52,14 +54,27 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train'):
         scales['recon2_scale'] = float(total_image_activity / total_recon2_activity)
     else:
         scales['recon2_scale'] = 1.0
-    
+
+    # Compute sinogram scale: match average of nonzero sinogram pixels to average of nonzero image pixels
+    if sinogram_path is not None:
+        sinogram_array = np.load(sinogram_path, mmap_mode='r')
+        image_nonzero = image_array[image_array > 0]
+        sinogram_nonzero = sinogram_array[sinogram_array > 0]
+        avg_nonzero_image = float(image_nonzero.mean()) if image_nonzero.size > 0 else 0.0
+        avg_nonzero_sinogram = float(sinogram_nonzero.mean()) if sinogram_nonzero.size > 0 else 1.0
+        scales['sinogram_scale'] = avg_nonzero_image / avg_nonzero_sinogram
+    else:
+        scales['sinogram_scale'] = 1.0
+
     # Print results
     print(f"\nSimple scaling factors for {dataset} dataset:")
     if scales['recon1_scale'] != 1.0:
         print(f"  recon1_scale: {scales['recon1_scale']:.6f}")
     if scales['recon2_scale'] != 1.0:
         print(f"  recon2_scale: {scales['recon2_scale']:.6f}")
-    
+    if 'sinogram_scale' in scales and scales['sinogram_scale'] != 1.0:
+        print(f"  sinogram_scale: {scales['sinogram_scale']:.6f}")
+
     return scales
 
 
