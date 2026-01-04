@@ -1,6 +1,6 @@
 import numpy as np
 
-def compute_quantitative_reconstruction_scale(paths, dataset='train'):
+def compute_quantitative_reconstruction_scale(paths, dataset='train', sample_sinogram_number=None):
     """
     Compute the global scaling factor to match reconstructions to ground truth.
     
@@ -58,11 +58,21 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train'):
     # Compute sinogram scale: match average of nonzero sinogram pixels to average of nonzero image pixels
     if sinogram_path is not None:
         sinogram_array = np.load(sinogram_path, mmap_mode='r')
-        image_nonzero = image_array[image_array > 0]
-        sinogram_nonzero = sinogram_array[sinogram_array > 0]
+        # Optionally sample sinograms for calculation
+        if sample_sinogram_number is not None:
+            total_sinograms = len(sinogram_array)
+            rng = np.random.default_rng()
+            indices = rng.choice(total_sinograms, size=min(sample_sinogram_number, total_sinograms), replace=False)
+            sampled_sinograms = sinogram_array[indices]
+            sampled_images = image_array[indices] if len(image_array) == total_sinograms else image_array
+            sinogram_nonzero = sampled_sinograms[sampled_sinograms > 0]
+            image_nonzero = sampled_images[sampled_images > 0]
+        else:
+            sinogram_nonzero = sinogram_array[sinogram_array > 0]
+            image_nonzero = image_array[image_array > 0]
         avg_nonzero_image = float(image_nonzero.mean()) if image_nonzero.size > 0 else 0.0
         avg_nonzero_sinogram = float(sinogram_nonzero.mean()) if sinogram_nonzero.size > 0 else 1.0
-        scales['sinogram_scale'] = avg_nonzero_image / avg_nonzero_sinogram
+        scales['sinogram_scale'] = avg_nonzero_image / avg_nonzero_sinogram if avg_nonzero_sinogram != 0 else 1.0
     else:
         scales['sinogram_scale'] = 1.0
 
