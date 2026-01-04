@@ -1,6 +1,6 @@
 import numpy as np
 
-def compute_quantitative_reconstruction_scale(paths, dataset='train', sample_sinogram_number=None, clip_percentile_low=1, clip_percentile_high=99):
+def compute_quantitative_reconstruction_scale(paths, dataset='train', sample_sinogram_number=None, clip_percentile_low=1, clip_percentile_high=99, sinogram_scale_stat='median'):
     """
     Compute the global scaling factor to match reconstructions to ground truth.
     
@@ -70,22 +70,28 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train', sample_sin
         else:
             sinogram_nonzero = sinogram_array[sinogram_array > 0]
             image_nonzero = image_array[image_array > 0]
-        # Clip nonzero values before computing median
+        # Clip nonzero values before computing stat
         if image_nonzero.size > 0:
             image_low = np.percentile(image_nonzero, clip_percentile_low)
             image_high = np.percentile(image_nonzero, clip_percentile_high)
             image_clipped = np.clip(image_nonzero, image_low, image_high)
-            median_nonzero_image = float(np.median(image_clipped))
+            if sinogram_scale_stat == 'mean':
+                stat_nonzero_image = float(np.mean(image_clipped))
+            else:
+                stat_nonzero_image = float(np.median(image_clipped))
         else:
-            median_nonzero_image = 0.0
+            stat_nonzero_image = 0.0
         if sinogram_nonzero.size > 0:
             sino_low = np.percentile(sinogram_nonzero, clip_percentile_low)
             sino_high = np.percentile(sinogram_nonzero, clip_percentile_high)
             sinogram_clipped = np.clip(sinogram_nonzero, sino_low, sino_high)
-            median_nonzero_sinogram = float(np.median(sinogram_clipped))
+            if sinogram_scale_stat == 'mean':
+                stat_nonzero_sinogram = float(np.mean(sinogram_clipped))
+            else:
+                stat_nonzero_sinogram = float(np.median(sinogram_clipped))
         else:
-            median_nonzero_sinogram = 1.0
-        scales['sinogram_scale'] = median_nonzero_image / median_nonzero_sinogram if median_nonzero_sinogram != 0 else 1.0
+            stat_nonzero_sinogram = 1.0
+        scales['sinogram_scale'] = stat_nonzero_image / stat_nonzero_sinogram if stat_nonzero_sinogram != 0 else 1.0
     else:
         scales['sinogram_scale'] = 1.0
 
