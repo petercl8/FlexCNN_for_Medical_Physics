@@ -64,18 +64,15 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train', sample_sin
             rng = np.random.default_rng()
             indices = rng.choice(total_sinograms, size=min(sample_sinogram_number, total_sinograms), replace=False)
             sampled_sinograms = np.stack([sinogram_array[i] for i in indices], axis=0)
-            if len(image_array) == total_sinograms:
-                sampled_images = np.stack([image_array[i] for i in indices], axis=0)
-            else:
-                sampled_images = image_array
+            sampled_images = np.stack([image_array[i] for i in indices], axis=0)
             sinogram_nonzero = sampled_sinograms[sampled_sinograms > 0]
             image_nonzero = sampled_images[sampled_images > 0]
         else:
             sinogram_nonzero = sinogram_array[sinogram_array > 0]
             image_nonzero = image_array[image_array > 0]
-        avg_nonzero_image = float(image_nonzero.mean()) if image_nonzero.size > 0 else 0.0
-        avg_nonzero_sinogram = float(sinogram_nonzero.mean()) if sinogram_nonzero.size > 0 else 1.0
-        scales['sinogram_scale'] = avg_nonzero_image / avg_nonzero_sinogram if avg_nonzero_sinogram != 0 else 1.0
+        median_nonzero_image = float(np.median(image_nonzero)) if image_nonzero.size > 0 else 0.0
+        median_nonzero_sinogram = float(np.median(sinogram_nonzero)) if sinogram_nonzero.size > 0 else 1.0
+        scales['sinogram_scale'] = median_nonzero_image / median_nonzero_sinogram if median_nonzero_sinogram != 0 else 1.0
     else:
         scales['sinogram_scale'] = 1.0
 
