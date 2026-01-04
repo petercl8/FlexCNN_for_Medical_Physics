@@ -12,7 +12,7 @@ class Generator(nn.Module):
         Encoder-decoder generator with optional skip connections, producing 288x288 output.
         Contracting path: 288->144->72->36->18->9, neck: 1x1, 5x5, or 9x9, expanding path: 9->18->36->72->144->288.
         '''
-        super(Generator_288, self).__init__()
+        super(Generator, self).__init__()
 
         if gen_SI:
             input_size = config['sino_size']
