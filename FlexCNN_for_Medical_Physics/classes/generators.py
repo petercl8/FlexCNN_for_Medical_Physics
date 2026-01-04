@@ -122,7 +122,7 @@ class Generator(nn.Module):
                 contract_block(dim_5, dim_5, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 5->5
                 contract_block(dim_5, dim_5, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 5->5
                 contract_block(dim_5, dim_5, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 5->5
-                expand_block(dim_5, dim_4, 3, stride=2, padding=1, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 5->9: (5-1)*2+3-2+1=9
+                expand_block(dim_5, dim_4, 3, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 5->9: (5-1)*2+3-2+0=9
             )
         # neck='wide': 9x9 bottleneck
         if neck == 'wide':
