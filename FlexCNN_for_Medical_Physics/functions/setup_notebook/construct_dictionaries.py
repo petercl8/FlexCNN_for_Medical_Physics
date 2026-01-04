@@ -41,7 +41,7 @@ def construct_config(
     network_type = str(network_opts['network_type']).upper()  # Normalize strings
     train_SI = network_opts['train_SI']
     image_size = network_opts['image_size']
-    sino_size = network_opts['sino_size']
+    sino_size = 288 #network_opts['sino_size']
     image_channels = network_opts['image_channels']
     sino_channels = network_opts['sino_channels']
     SI_normalize = network_opts['SI_normalize']
