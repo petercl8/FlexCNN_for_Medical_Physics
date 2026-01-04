@@ -53,6 +53,7 @@ def load_validation_batches(paths, config, settings):
         image_path=paths['tune_val_image_path'],
         sino_path=paths['tune_val_sino_path'],
         config=config,
+        settings=settings,
         augment=(None, False),  # No augmentation for validation
         offset=0,
         num_examples=-1,  # Load entire validation set
@@ -60,7 +61,6 @@ def load_validation_batches(paths, config, settings):
         device='cpu',  # Load to CPU; caller handles device placement
         recon1_path=None,
         recon2_path=None,
-        sino_scale=settings['sino_scale'],
     )
     
     # Load NUM_EVAL_BATCHES fresh random batches
@@ -133,6 +133,7 @@ def load_qa_batches(paths, config, settings, augment=('SI', True)):
         image_path=paths['tune_qa_image_path'],
         sino_path=paths['tune_qa_sino_path'],
         config=config,
+        settings=settings,
         augment=augment,  # Enable augmentation for QA using training pipeline setting
         offset=0,
         num_examples=-1,  # Load entire QA set
@@ -140,7 +141,6 @@ def load_qa_batches(paths, config, settings, augment=('SI', True)):
         device='cpu',  # Load to CPU; caller handles device placement
         recon1_path=paths['tune_qa_hotMask_path'],      # Hot mask via recon1_path
         recon2_path=paths['tune_qa_hotBackgroundMask_path'],  # Hot background via recon2_path
-        sino_scale=settings['sino_scale'],
     )
     
     # Load NUM_EVAL_BATCHES fresh random batches with augmentation

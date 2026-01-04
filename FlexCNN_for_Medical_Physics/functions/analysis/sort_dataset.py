@@ -71,7 +71,7 @@ def sort_DataSet(
     scale = config['SI_fixedScale'] if train_SI else config['SI_fixedScale']
 
     dataloader = DataLoader(
-        NpArrayDataSet(image_path=load_image_path, sino_path=load_sino_path, config=config, num_examples=num_examples, sino_scale=sino_scale),
+        NpArrayDataSet(image_path=load_image_path, sino_path=load_sino_path, config=config, settings=settings, num_examples=num_examples),
         batch_size=1,
         shuffle=True,
         pin_memory=True,

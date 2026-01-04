@@ -44,6 +44,7 @@ def load_validation_batch(paths, config, settings):
         image_path=paths['tune_val_image_path'],
         sino_path=paths['tune_val_sino_path'],
         config=config,
+        settings=settings,
         augment=(None, False),  # No augmentation for validation
         offset=0,
         num_examples=-1,  # Load entire validation set
@@ -51,7 +52,6 @@ def load_validation_batch(paths, config, settings):
         device='cpu',  # Load to CPU; caller handles device placement
         recon1_path=None,
         recon2_path=None,
-        sino_scale=settings['sino_scale'],
     )
     
     # Deterministically sample a fixed batch

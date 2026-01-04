@@ -10,7 +10,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 
 
 
-def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None, recon1_scale=1.0, recon2_scale=1.0, sino_scale=1.0):
+def NpArrayDataLoader(image_array, sino_array, config, settings, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda', recon1_array=None, recon2_array=None):
     global resize_warned
     '''
     Function to load a sinogram, activity map, and optionally reconstructions. Returns 4 pytorch tensors:
@@ -57,6 +57,11 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
         SI_fixedScale=config['SI_fixedScale']
         IS_normalize=config['IS_normalize']
         IS_fixedScale=config['IS_fixedScale']
+
+    # Extract scale factors from settings
+    recon1_scale = settings.get('recon1_scale', 1.0)
+    recon2_scale = settings.get('recon2_scale', 1.0)
+    sino_scale = settings.get('sino_scale', 1.0)
 
     ## Select Data, Convert to Tensors ##
     act_map_multChannel = torch.from_numpy(np.ascontiguousarray(image_array[index,:])).float()
@@ -159,27 +164,27 @@ def NpArrayDataLoader(image_array, sino_array, config, augment=False, sino_resiz
 
 
 
+
 class NpArrayDataSet(Dataset):
     '''
     Class for loading data from .np files, given file directory strings and set of optional transformations.
     In the dataset used in our first two conference papers, the data repeat every 17500 steps but with different augmentations.
     For the dataset with FORE rebinning, the dataset contains no augmented examples; all augmentation is performed on the fly.
     '''
-    def __init__(self, image_path, sino_path, config, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda', recon1_path=None, recon2_path=None, recon1_scale=1.0, recon2_scale=1.0, sino_scale=1.0):
+    def __init__(self, image_path, sino_path, config, settings, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda', recon1_path=None, recon2_path=None):
         '''
         image_path:         path to images (ground truth activity maps) in data set
         sino_path:          path to sinograms in data set
         config:             configuration dictionary with hyperparameters. Must contain: image_size, sino_size, 
                             image_channels, sino_channels, network_type, train_SI, SI_normalize, SI_fixedScale, 
                             and (for non-SUP/GAN networks) IS_normalize, SI_fixedScale.
+        settings:           dictionary containing recon1_scale, recon2_scale, sino_scale, etc.
         augment:            Set True to perform on-the-fly augmentation of data set. Set False to not perform augmentation.
         offset:             To begin dataset at beginning of the datafile, set offset=0. To begin on the second image, offset = 1, etc.
         num_examples:       Max number of examples to load into dataset. Set to -1 to load the maximum number from the numpy array.
         sample_division:    set to 1 to use every example, 2 to use every other example, etc. (Ex: if sample_division=2, the dataset will be half the size.)
         recon1_path:        (optional) path to pre-computed reconstruction 1. If None, reconstructions will be computed on-the-fly.
         recon2_path:        (optional) path to pre-computed reconstruction 2. If None, reconstructions will be computed on-the-fly.
-        recon1_scale:       (optional) scaling factor for recon1 to match ground truth quantitatively (if not normalizing). Default: 1.0
-        recon2_scale:       (optional) scaling factor for recon2 to match ground truth quantitatively (if not normalizing). Default: 1.0
         '''
 
         ## Load Data to Arrays ##
@@ -201,12 +206,12 @@ class NpArrayDataSet(Dataset):
             self.recon2_array = recon2_array[offset : offset + num_examples, :] if recon2_array is not None else None
 
         self.config = config
+        self.settings = settings
         self.augment = augment
         self.sample_division = sample_division
         self.device = device
-        self.recon1_scale = recon1_scale
-        self.recon2_scale = recon2_scale
-        self.sino_scale = sino_scale
+        self.recon1_path = recon1_path
+        self.recon2_path = recon2_path
 
     def __len__(self):
         length = int(len(self.image_array)/self.sample_division)
@@ -218,10 +223,9 @@ class NpArrayDataSet(Dataset):
         if device_arg == 'cuda' and not torch.cuda.is_available():
             device_arg = 'cpu'
         sino_scaled, act_map_scaled, recon1, recon2 = NpArrayDataLoader(
-            self.image_array, self.sino_array, self.config,
+            self.image_array, self.sino_array, self.config, self.settings,
             augment=self.augment, index=idx, device=device_arg,
-            recon1_array=self.recon1_array, recon2_array=self.recon2_array,
-            recon1_scale=self.recon1_scale, recon2_scale=self.recon2_scale, sino_scale=self.sino_scale)
+            recon1_array=self.recon1_array, recon2_array=self.recon2_array)
 
         # Only return reconstructions if they exist (to avoid collate errors with None values)
         if recon1 is not None and recon2 is not None:

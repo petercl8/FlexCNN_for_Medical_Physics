@@ -27,7 +27,6 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
     sino_tensor = None
     first_sino = True
 
-    sino_scale = settings['sino_scale']
 
     # --- Loop over each image array separately ---
     for array_num, image_array in enumerate(image_arrays):
@@ -35,7 +34,7 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
         i = 0
         for idx in indexes:
             sino_ground_scaled, image_ground_scaled, _, _ = NpArrayDataLoader(
-                image_array, sino_array, config, augment=(None, False), index=idx, device=device, sino_scale=sino_scale
+                image_array, sino_array, config, settings, augment=(None, False), index=idx, device=device
             )
 
             if first_sino:

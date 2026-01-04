@@ -37,9 +37,9 @@ def run_CYCLE(config, checkpoint_dirPath=None, load_state=False, save_state=Fals
 
     ## Load Data ##
     dataloader = DataLoader(
-        NpArrayDataSet(image_path=image_path, sino_path=sino_path, config=config,
+        NpArrayDataSet(image_path=image_path, sino_path=sino_path, config=config, settings=settings,
                        augment=augment, offset=offset, num_examples=num_examples, sample_division=sample_division,
-                       recon1_path=recon1_path, recon2_path=recon2_path, sino_scale=sino_scale),
+                       recon1_path=recon1_path, recon2_path=recon2_path),
         batch_size=batch_size,
         shuffle=shuffle,
         pin_memory=True,
