@@ -1,4 +1,4 @@
-COUNTS_PER_BQfrom torch import nn
+from torch import nn
 from ray import tune
 from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
 
