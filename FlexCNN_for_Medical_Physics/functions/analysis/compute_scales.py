@@ -1,6 +1,6 @@
 import numpy as np
 
-def compute_quantitative_reconstruction_scale(paths, dataset='train', sample_sinogram_number=None, clip_percentile_low=1, clip_percentile_high=99, sinogram_scale_stat='median'):
+def compute_quantitative_reconstruction_scale(paths, dataset='train', compute_sinogram_scale=False, sample_sinogram_number=None, clip_percentile_low=1, clip_percentile_high=99, sinogram_scale_stat='median'):
     """
     Compute the global scaling factor to match reconstructions to ground truth.
     
@@ -56,7 +56,7 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train', sample_sin
         scales['recon2_scale'] = 1.0
 
     # Compute sinogram scale: match average of nonzero sinogram pixels to average of nonzero image pixels
-    if sinogram_path is not None:
+    if sinogram_path is not None and compute_sinogram_scale:
         sinogram_array = np.load(sinogram_path, mmap_mode='r')
         # Optionally sample sinograms for calculation
         if sample_sinogram_number is not None:
