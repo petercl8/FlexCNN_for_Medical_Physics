@@ -245,10 +245,11 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
     # Common settings (now minimal)
     settings['run_mode'] = run_mode
     settings['device'] = common_settings['device']
-    settings['sino_scale'] = common_settings['sino_scale']
     settings['num_examples'] = common_settings['num_examples']
+    settings['sino_scale'] = common_settings['sino_scale']
     settings['recon1_scale'] = common_settings['recon1_scale']
     settings['recon2_scale'] = common_settings['recon2_scale']
+    settings['image_scale'] = common_settings['image_scale']
     
     # Mode-specific
     if run_mode == 'tune':

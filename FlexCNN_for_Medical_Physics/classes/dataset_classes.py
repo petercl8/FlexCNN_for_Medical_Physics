@@ -59,9 +59,10 @@ def NpArrayDataLoader(image_array, sino_array, config, settings, augment=False, 
         IS_fixedScale=config['IS_fixedScale']
 
     # Extract scale factors from settings
-    recon1_scale = settings.get('recon1_scale', 1.0)
-    recon2_scale = settings.get('recon2_scale', 1.0)
-    sino_scale = settings.get('sino_scale', 1.0)
+    recon1_scale = settings['recon1_scale']
+    recon2_scale = settings['recon2_scale']
+    sino_scale = settings['sino_scale']
+    image_scale = settings['image_scale']
 
     ## Select Data, Convert to Tensors ##
     act_map_multChannel = torch.from_numpy(np.ascontiguousarray(image_array[index,:])).float()
@@ -148,9 +149,9 @@ def NpArrayDataLoader(image_array, sino_array, config, settings, augment=False, 
         recon1 = (SI_fixedScale * recon1_multChannel_resize).to(device) if recon1_multChannel_resize is not None else None
         recon2 = (SI_fixedScale * recon2_multChannel_resize).to(device) if recon2_multChannel_resize is not None else None
     else:
-        act_map_scaled = act_map_multChannel_resize.to(device)
-        recon1 = (recon1_multChannel_resize * recon1_scale).to(device) if recon1_multChannel_resize is not None else None
-        recon2 = (recon2_multChannel_resize * recon2_scale).to(device) if recon2_multChannel_resize is not None else None
+        act_map_scaled = (image_scale * act_map_multChannel_resize).to(device)
+        recon1 = (recon1_scale * recon1_multChannel_resize).to(device) if recon1_multChannel_resize is not None else None
+        recon2 = (recon2_scale * recon2_multChannel_resize).to(device) if recon2_multChannel_resize is not None else None
 
     ## Apply Fixed Scales per desired behavior and move to device ##
     # Sinogram: multiply by IS_fixedScale only if IS_normalize==True; otherwise multiply by sino_scale if not normalized
