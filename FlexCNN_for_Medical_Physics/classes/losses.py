@@ -68,7 +68,8 @@ class HybridLoss(nn.Module):
             self.examples_seen = n_new
 
         # Total loss
-        total_loss = self.alpha * self.C * L_base + L_stats
+        total_loss = self.alpha * self.C * L_base + (1 - self.alpha) * L_stats
+
         return total_loss
 
 
