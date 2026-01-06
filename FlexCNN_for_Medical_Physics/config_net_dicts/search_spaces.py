@@ -108,8 +108,9 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': tune.loguniform(0.1, 0.999),
     'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=1.0)]), # Could also include nn.KLDivLoss(reduction='batchmean'). Not prefixed with SI or IS because this is used for both.
-    'sup_base_alpha': tune.uniform(0, 1),  # Weighting between base and stats loss. Setting to -1 means no stats loss, but unlike setting to 0, stats loss is not computed, saving time.
     'sup_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    'sup_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Setting to -1 means no stats loss, but unlike setting to 0, stats loss is not computed, saving time.
+    'sup_half_life_examples': tune.uniform(500, 5000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
     # OVERWRITES: overwrites values from config_RAY_SI or config_RAY_IS. This is done so time isn't wasted looking for unused hyperparameters.
     'SI_disc_hidden_dim': 1,
     'SI_disc_patchGAN': 1,

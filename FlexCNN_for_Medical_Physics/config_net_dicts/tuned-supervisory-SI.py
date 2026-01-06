@@ -40,8 +40,9 @@ config_SUP_SI = {
   "sino_channels": 3, #3
   "sino_size": 288, #320
   "sup_base_criterion": nn.MSELoss(),
-  "sup_base_alpha": 0.5, # default: -1
   "sup_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
+  "sup_alpha_min": 0.2,
+  "sup_half_life_examples": 2000,
   "train_SI": True
 }
 
@@ -72,8 +73,9 @@ config_SUP_SI = {
   "sino_channels": 3,
   "sino_size": 180,
   "sup_base_criterion": nn.MSELoss(),
-  "sup_base_alpha": -1,
   "sup_stats_criterion": None,
+  "sup_alpha_min": 0.2,
+  "sup_half_life_examples": 2000,
   "train_SI": True
 }
 '''
@@ -105,8 +107,9 @@ config_SUP_SI = {
   "sino_channels": 1,
   "sino_size": 180,
   "sup_base_criterion": nn.MSELoss(), # nn.MSELoss()
-  "sup_base_alpha": -1,
   "sup_stats_criterion": None,
+  "sup_alpha_min": 0.2,
+  "sup_half_life_examples": 2000,
   "train_SI": True
 }
 '''
@@ -130,8 +133,9 @@ config_SUP_SI = {
   "gen_b2": 0.27147903136187507,
   "gen_lr": 0.0005481469822215635,
   "sup_base_criterion": nn.MSELoss(),
-  "sup_base_alpha": -1,
   "sup_stats_criterion": None,
+  "sup_alpha_min": 0.2,
+  "sup_half_life_examples": 2000,
   "network_type": "SUP",
   "image_channels":1,
   "sino_channels": 3,

@@ -1,78 +1,94 @@
 import torch
 import torch.nn as nn
 
+
 class HybridLoss(nn.Module):
     """
-    Hybrid loss for PET / patchwise metrics.
-
-    total_loss = alpha * C * base_loss + stats_loss
-
-    Features:
-    - C is a running estimate of gradient-scale ratio over the first
-      max_examples_for_warmup examples.
-    - Weighted by batch size for stability.
-    - After warm-up, C is frozen.
-    - Set alpha=-1 to ignore stats_loss and return base_loss only.
+    Hybrid loss with:
+      - gradient-scale normalization (C)
+      - exponential scheduling of stats contribution
+      - efficient single-forward-pass warm-up
+    L_total = alpha(n) * C * L_base + (1 - alpha(n)) * L_stats
+    where alpha(n) = alpha_min + (1 - alpha_min) * 2^(-n / half_life_examples)
     """
 
     def __init__(
         self,
         base_loss: nn.Module,
-        stats_loss: nn.Module = None,
-        alpha: float = 1.0,
-        epsilon: float = 1e-8,
+        stats_loss: nn.Module,
+        alpha_min: float = 0.2,
+        half_life_examples: int = 2000,
         max_examples_for_warmup: int = 500,
+        epsilon: float = 1e-8,
     ):
         super().__init__()
         self.base_loss = base_loss
         self.stats_loss = stats_loss
-        self.alpha = alpha
-        self.epsilon = epsilon
-        self.max_examples_for_warmup = max_examples_for_warmup
 
-        # Buffers store state safely on device and are not trainable
+        self.alpha_min = alpha_min
+        self.half_life_examples = half_life_examples
+        self.max_examples_for_warmup = max_examples_for_warmup
+        self.epsilon = epsilon
+
+        # Buffers (stateful, not trainable)
         self.register_buffer("C", torch.tensor(0.0))
         self.register_buffer("examples_seen", torch.tensor(0))
 
+    def _compute_alpha(self) -> torch.Tensor:
+        """
+        Exponential schedule with half-life measured in examples.
+        """
+        n = self.examples_seen.float()
+        hl = float(self.half_life_examples)
+        return self.alpha_min + (1.0 - self.alpha_min) * torch.pow(
+            torch.tensor(2.0, device=n.device), -n / hl
+        )
+
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        # Base loss
-        L_base = self.base_loss(pred, target)
-
-        # Shortcut: base loss only
-        if self.alpha == -1 or self.stats_loss is None:
-            return L_base
-
-        # Stats loss
-        L_stats = self.stats_loss(pred, target)
-
         batch_size = pred.shape[0]
 
-        # Update C during warm-up
+        # -----------------------------
+        # Compute base loss
+        # -----------------------------
+        L_base = self.base_loss(pred, target)
+
+        # If no stats loss was provided, fall back to base loss only
+        if self.stats_loss is None:
+            self.examples_seen += batch_size
+            return L_base
+
+        # -----------------------------
+        # Compute stats loss
+        # -----------------------------
+        L_stats = self.stats_loss(pred, target)
+
+        # ----------------------------------------
+        # Warm-up phase: estimate C efficiently
+        # ----------------------------------------
         if self.examples_seen < self.max_examples_for_warmup:
-            pred_clone = pred.detach().clone().requires_grad_(True)
-            Lb = self.base_loss(pred_clone, target)
-            Ls = self.stats_loss(pred_clone, target)
+            grad_base, grad_stats = torch.autograd.grad(
+                outputs=[L_base, L_stats],
+                inputs=pred,
+                grad_outputs=[torch.ones_like(L_base), torch.ones_like(L_stats)],
+                create_graph=False  # No higher-order derivatives
+            )
 
-            grad_base = torch.autograd.grad(Lb, pred_clone, retain_graph=True)[0]
-            grad_stats = torch.autograd.grad(Ls, pred_clone)[0]
-
-            # Current gradient ratio
             C_current = grad_stats.norm() / (grad_base.norm() + self.epsilon)
 
-            # Simple weighted running mean
             n_old = self.examples_seen
             n_new = n_old + batch_size
             self.C = (self.C * n_old + C_current * batch_size) / n_new
 
-            # Increment examples seen
-            self.examples_seen = n_new
+        # Always increment example counter
+        self.examples_seen += batch_size
 
-        # Total loss
-        total_loss = self.alpha * self.C * L_base + (1 - self.alpha) * L_stats
+        # -----------------------------
+        # Scheduled mixture
+        # -----------------------------
+        alpha = self._compute_alpha()
+        total_loss = alpha * self.C * L_base + (1.0 - alpha) * L_stats
 
         return total_loss
-
-
 
 
 

@@ -102,10 +102,12 @@ def run_SUP(config, paths, settings):
 
     # Model and Loss functions
     gen = Generator(config=config, gen_SI=train_SI).to(device)
+
     base_criterion = config['sup_base_criterion']
-    base_alpha = config['sup_base_alpha']
-    stats_criterion = config['sup_stats_criterion']
-    hybrid_loss = HybridLoss(base_loss=base_criterion, stats_loss=stats_criterion, alpha=base_alpha)
+    stats_criterion = config.get('sup_stats_criterion', None)
+    alpha_min = config.get('sup_alpha_min', 0.2)
+    half_life_examples = config.get('sup_half_life_examples', 2000)
+    hybrid_loss = HybridLoss(base_loss=base_criterion, stats_loss=stats_criterion, alpha_min=alpha_min, half_life_examples=half_life_examples)
 
     # Optimizer with separate group for learnable output scale
     betas = (config['gen_b1'], config['gen_b2'])
