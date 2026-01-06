@@ -7,7 +7,7 @@ MEAN_ACTIVITY = 144617
 MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalized scaling
 
 # Variance-weighted MSE parameter
-COUNTS_PER_BQ=1.0  # Weighting exponent for variance-weighted MSE
+COUNTS_PER_BQ=60.0  # Weighting exponent for variance-weighted MSE. If tuning/training using activity maps, set to 60. If using annihilation maps, set to 1.
 
 # Parameters for PatchwiseMomentLoss (used in config_RAY_SUP)
 patch_size=8  # 8
