@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 from FlexCNN_for_Medical_Physics.classes.generators import Generator
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
+from FlexCNN_for_Medical_Physics.classes.losses import HybridLoss
 from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
 
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import (
@@ -71,7 +72,6 @@ def run_SUP(config, paths, settings):
     tune_dataframe_fraction = settings.get('tune_dataframe_fraction', 1.0)
     tune_max_t = settings.get('tune_max_t', 0)
     tune_restore= settings.get('tune_restore', False)
-    sup_criterion = config['sup_criterion']
     # Dataset slicing controls
     offset = settings.get('offset', 0)
     num_examples = settings.get('num_examples', -1)
@@ -89,7 +89,6 @@ def run_SUP(config, paths, settings):
     # Initialize Ray Tune session if available
     session = get_tune_session()
 
-
     # Tuning/Test specific initializations
     if run_mode == 'tune':
         if tune_restore==False:
@@ -101,9 +100,12 @@ def run_SUP(config, paths, settings):
     if run_mode == 'test':
         test_dataframe = pd.DataFrame({'MSE (Network)' : [],  'MSE (Recon1)': [],  'MSE (Recon2)': [], 'SSIM (Network)' : [], 'SSIM (Recon1)': [], 'SSIM (Recon2)': []})
 
-
-    # Model and optimizer
+    # Model and Loss functions
     gen = Generator(config=config, gen_SI=train_SI).to(device)
+    base_criterion = config['sup_base_criterion']
+    base_alpha = config['sup_base_alpha']
+    stats_criterion = config['sup_stats_criterion']
+    hybrid_loss = HybridLoss(base_loss=base_criterion, stats_loss=stats_criterion, alpha=base_alpha)
 
     # Optimizer with separate group for learnable output scale
     betas = (config['gen_b1'], config['gen_b2'])
@@ -216,7 +218,8 @@ def run_SUP(config, paths, settings):
                     print('PIXEL VALUES SUM TO A NEGATIVE NUMBER. IF THIS CONTINUES FOR AWHILE, YOU MAY NEED TO RESTART')
 
                 # Update gradients                    
-                gen_loss = sup_criterion(CNN_output, target)
+                #gen_loss = sup_base_criterion(CNN_output, target)
+                gen_loss = hybrid_loss(CNN_output, target)
                 gen_loss.backward()
                 gen_opt.step()
 

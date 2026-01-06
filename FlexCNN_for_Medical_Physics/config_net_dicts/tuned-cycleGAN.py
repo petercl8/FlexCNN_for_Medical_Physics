@@ -46,7 +46,7 @@ config_CYCLEGAN={ # Works, yeah! ("4a92")
     "lambda_adv": 1,
     "lambda_cycle": 1, #1
     "lambda_sup": 0, # 0
-    "sup_criterion": nn.L1Loss()
+    "sup_base_criterion": nn.L1Loss()
     }
 
 '''
@@ -66,7 +66,7 @@ config={ # Symmetrize == FALSE (final activations don't match). This was the bes
     'gen_b2': 0.999,
     'gen_lr': 0.000103,
     "cycle_criterion": nn.L1Loss(),
-    "sup_criterion": nn.L1Loss(),
+    "sup_base_criterion": nn.L1Loss(),
     "gen_adv_criterion": nn.KLDivLoss(),
     "lambda_adv": 1,
     "lambda_cycle": 2,

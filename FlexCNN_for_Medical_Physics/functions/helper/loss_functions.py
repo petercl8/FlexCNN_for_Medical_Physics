@@ -1,15 +1,15 @@
 import torch
 
-def get_supervisory_loss(fake_X, real_X, sup_criterion):
+def get_supervisory_loss(fake_X, real_X, sup_base_criterion):
     '''
     Function to calculate the supervisory loss.
 
     fake_X:         fake image tensor (Terminology from GANs. For supervisory networks, it's arbitrary whether fake_X or real_X are ground truths or reconstructions)
     real_X:         real image tensor
-    sup_criterion   loss function. Will be a Pytorch object.
+    sup_base_criterion   loss function. Will be a Pytorch object.
     '''
     #print('Calc supervisory loss')
-    sup_loss = sup_criterion(fake_X, real_X)
+    sup_loss = sup_base_criterion(fake_X, real_X)
     return sup_loss
 
 def get_disc_loss(fake_X, real_X, disc_X, adv_criterion):
@@ -44,7 +44,7 @@ def get_gen_loss(real_A, real_B, gen_AB, gen_BA, disc_A, disc_B, config):
     '''
     Function to calculate the total generator loss. Used to train the generators.
     '''
-    supervisory_criterion = config['sup_criterion']
+    supervisory_criterion = config['sup_base_criterion']
     cycle_criterion = config['cycle_criterion']
     gen_adversarial_criterion = config['gen_adv_criterion']
     lambda_adv = config['lambda_adv']
@@ -193,9 +193,9 @@ def get_gen_adv_loss(fake_X, disc_X, adv_criterion):
     adversarial_loss = adv_criterion(disc_fake_pred, torch.ones_like(disc_fake_pred)) # Called only from get_gen_loss
     return adversarial_loss
 
-def get_sup_loss(fake_X, real_X, sup_criterion):
+def get_sup_loss(fake_X, real_X, sup_base_criterion):
     print('Calc supervisory loss')
-    sup_loss = sup_criterion(fake_X, real_X)
+    sup_loss = sup_base_criterion(fake_X, real_X)
     return sup_loss
 
 def get_cycle_loss(fake_I, gen_IS, low_rez_S, cycle_criterion):

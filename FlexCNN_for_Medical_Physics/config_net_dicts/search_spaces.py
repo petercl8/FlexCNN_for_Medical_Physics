@@ -1,15 +1,14 @@
 from torch import nn
 from ray import tune
-from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss
-from pytorch_msssim import SSIM
+from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
 
 # Data-driven initialization bounds (from compute_average_activity_per_image analysis)
 MEAN_ACTIVITY = 144617
 MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalized scaling
 
 # Parameters for PatchwiseMomentLoss (used in config_RAY_SUP)
-patch_size=5  # 8
-stride=2      # 4
+patch_size=8  # 8
+stride=4      # 4
 max_moment=3  # 3
 scale='mean'  # 'mean' or 'std'
 
@@ -108,8 +107,9 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'gen_lr': tune.loguniform(1e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': tune.loguniform(0.1, 0.999),
-    'sup_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss(), nn.L1Loss(), nn.KLDivLoss(reduction='batchmean'), 
-                                  SSIM(data_range=1.0, size_average=True, nonnegative_ssim=True)]), # Not SI or IS because this is used for both
+    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=1.0)]), # Could also include nn.KLDivLoss(reduction='batchmean'). Not prefixed with SI or IS because this is used for both.
+    'sup_base_alpha': tune.uniform(0, 20),  # Weighting between base and stats loss (-1 means no stats loss)
+    'sup_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
     # OVERWRITES: overwrites values from config_RAY_SI or config_RAY_IS. This is done so time isn't wasted looking for unused hyperparameters.
     'SI_disc_hidden_dim': 1,
     'SI_disc_patchGAN': 1,
@@ -136,14 +136,13 @@ config_RAY_GAN = { # This is MERGED with either config_RAY_IS or config_RAY_SI t
 
 config_GAN_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent generative adversarial network.
     # NEW
-    'cycle_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), SSIM(data_range=1.0, size_average=True, nonnegative_ssim=True)]),
-    'sup_criterion': tune.choice([nn.MSELoss(), nn.KLDivLoss(reduction='batchmean'), nn.L1Loss(), nn.BCEWithLogitsLoss(), 
-                                  SSIM(data_range=1.0, size_average=True, nonnegative_ssim=True)]),
+    'cycle_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=1.0)]),
+    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=1.0)]),
     'lambda_adv': 1,
     'lambda_sup': 0,
     'lambda_cycle': 1,
     # OVERWRITES
-    'gen_adv_criterion': nn.MSELoss(), #tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.BCEWithLogitsLoss()]),
+    'gen_adv_criterion': nn.MSELoss(), #tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=1.0)]),
     'IS_disc_lr': tune.loguniform(1e-4,1e-2),
     'SI_disc_lr': tune.loguniform(1e-4,1e-2),
     'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
@@ -154,7 +153,7 @@ config_GAN_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/co
 
 config_SUP_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
     # NEW
-    'cycle_criterion': tune.choice([nn.MSELoss(), nn.L1Loss()]),
+    'cycle_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=1.0)]),
     'lambda_adv': 0,
     'lambda_sup': 1,
     'lambda_cycle':  tune.uniform(0, 10),
@@ -163,8 +162,7 @@ config_SUP_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/co
     'gen_lr': tune.loguniform(0.5e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
     'gen_b2': tune.loguniform(0.1, 0.999),
-    'sup_criterion': tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.L1Loss(), nn.BCEWithLogitsLoss(), 
-                                  SSIM(data_range=1.0, size_average=True, nonnegative_ssim=True)]),
+    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.L1Loss(), nn.BCEWithLogitsLoss(), SSIMLoss()]),
     # NOT USED
     'gen_adv_criterion': nn.MSELoss(), #tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.BCEWithLogitsLoss()]),
     'IS_disc_lr': 1e-4, #tune.loguniform(1e-4,1e-2),

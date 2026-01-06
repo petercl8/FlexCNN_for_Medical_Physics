@@ -1,5 +1,5 @@
 from torch import nn
-from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss
+from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
 
 ## Supervisory
 '''
@@ -39,7 +39,9 @@ config_SUP_SI = {
   "network_type": "SUP",
   "sino_channels": 3, #3
   "sino_size": 288, #320
-  "sup_criterion": nn.MSELoss(),
+  "sup_base_criterion": nn.MSELoss(),
+  "sup_base_alpha": -1,
+  "sup_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
   "train_SI": True
 }
 
@@ -69,7 +71,9 @@ config_SUP_SI = {
   "network_type": "SUP",
   "sino_channels": 3,
   "sino_size": 180,
-  "sup_criterion": nn.MSELoss(),
+  "sup_base_criterion": nn.MSELoss(),
+  "sup_base_alpha": -1,
+  "sup_stats_criterion": None,
   "train_SI": True
 }
 '''
@@ -100,7 +104,9 @@ config_SUP_SI = {
   "network_type": "SUP",
   "sino_channels": 1,
   "sino_size": 180,
-  "sup_criterion": nn.MSELoss(), # nn.MSELoss()
+  "sup_base_criterion": nn.MSELoss(), # nn.MSELoss()
+  "sup_base_alpha": -1,
+  "sup_stats_criterion": None,
   "train_SI": True
 }
 '''
@@ -123,7 +129,9 @@ config_SUP_SI = {
   "gen_b1": 0.2082092731474774,
   "gen_b2": 0.27147903136187507,
   "gen_lr": 0.0005481469822215635,
-  "sup_criterion": nn.MSELoss(),
+  "sup_base_criterion": nn.MSELoss(),
+  "sup_base_alpha": -1,
+  "sup_stats_criterion": None,
   "network_type": "SUP",
   "image_channels":1,
   "sino_channels": 3,

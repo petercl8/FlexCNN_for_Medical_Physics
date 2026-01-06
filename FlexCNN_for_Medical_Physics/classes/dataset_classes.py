@@ -101,7 +101,7 @@ def NpArrayDataLoader(image_array, sino_array, config, settings, augment=False, 
             sinogram_multChannel_resize = sinogram_multChannel
 
     if augment[0]=='II':
-        # If augmenting sinograms (like images), first resize sinogram (like an Image). This way, rotations are not truncated.
+        # If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.
         if resize_sino:
             if sino_resize_type=='bilinear':
                 sinogram_multChannel_resize = transforms.Resize(size=(sino_size, sino_size), antialias=True)(sinogram_multChannel)
@@ -119,7 +119,6 @@ def NpArrayDataLoader(image_array, sino_array, config, settings, augment=False, 
     act_map_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = resize_image_data(
         act_map_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image, image_pad_type=image_pad_type
     )
-
 
     #### (Optional) Normalize Resized Outputs ####
     if SI_normalize:

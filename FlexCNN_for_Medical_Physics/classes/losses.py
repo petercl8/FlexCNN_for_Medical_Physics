@@ -1,6 +1,80 @@
 import torch
 import torch.nn as nn
 
+class HybridLoss(nn.Module):
+    """
+    Hybrid loss for PET / patchwise metrics.
+
+    total_loss = alpha * C * base_loss + stats_loss
+
+    Features:
+    - C is a running estimate of gradient-scale ratio over the first
+      max_examples_for_warmup examples.
+    - Weighted by batch size for stability.
+    - After warm-up, C is frozen.
+    - Set alpha=-1 to ignore stats_loss and return base_loss only.
+    """
+
+    def __init__(
+        self,
+        base_loss: nn.Module,
+        stats_loss: nn.Module = None,
+        alpha: float = 1.0,
+        epsilon: float = 1e-8,
+        max_examples_for_warmup: int = 500,
+    ):
+        super().__init__()
+        self.base_loss = base_loss
+        self.stats_loss = stats_loss
+        self.alpha = alpha
+        self.epsilon = epsilon
+        self.max_examples_for_warmup = max_examples_for_warmup
+
+        # Buffers store state safely on device and are not trainable
+        self.register_buffer("C", torch.tensor(0.0))
+        self.register_buffer("examples_seen", torch.tensor(0))
+
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        # Base loss
+        L_base = self.base_loss(pred, target)
+
+        # Shortcut: base loss only
+        if self.alpha == -1 or self.stats_loss is None:
+            return L_base
+
+        # Stats loss
+        L_stats = self.stats_loss(pred, target)
+
+        batch_size = pred.shape[0]
+
+        # Update C during warm-up
+        if self.examples_seen < self.max_examples_for_warmup:
+            pred_clone = pred.detach().clone().requires_grad_(True)
+            Lb = self.base_loss(pred_clone, target)
+            Ls = self.stats_loss(pred_clone, target)
+
+            grad_base = torch.autograd.grad(Lb, pred_clone, retain_graph=True)[0]
+            grad_stats = torch.autograd.grad(Ls, pred_clone)[0]
+
+            # Current gradient ratio
+            C_current = grad_stats.norm() / (grad_base.norm() + self.epsilon)
+
+            # Simple weighted running mean
+            n_old = self.examples_seen
+            n_new = n_old + batch_size
+            self.C = (self.C * n_old + C_current * batch_size) / n_new
+
+            # Increment examples seen
+            self.examples_seen = n_new
+
+        # Total loss
+        total_loss = self.alpha * self.C * L_base + L_stats
+        return total_loss
+
+
+
+
+
 class PatchwiseMomentLoss(nn.Module):
     '''
     Implement by adding the following to appropriate loss entires in the search dicts:
@@ -53,13 +127,38 @@ class PatchwiseMomentLoss(nn.Module):
             loss += self.weights[k-1] * moment_loss
 
         return loss
+    
 
+class VarWeightedMSE(nn.Module):
+    """
+    Variance-weighted MSE for Poisson-distributed targets.
+    Supports batched multi-channel inputs.
+    
+    Loss = mean( (pred - target)^2 / (k * target + epsilon) )
+    """
 
-class CombinedLoss(nn.Module):
-    def __init__(self, alpha=0.5):
+    def __init__(self, k=1.0, epsilon=1e-8):
+        """
+        Parameters
+        ----------
+        k : float
+            Scaling constant to convert activity (target) to counts
+        epsilon : float
+            Small constant to avoid divide-by-zero
+        """
         super().__init__()
-        self.alpha = alpha
-        self.moment_loss = PatchwiseMomentLoss(...)
-        self.pixel_loss = nn.L1Loss()
-    def forward(self, pred, target):
-        return self.alpha*self.pixel_loss(pred, target) + (1-self.alpha)*self.moment_loss(pred, target)
+        self.k = k
+        self.epsilon = epsilon
+
+    def forward(self, pred: torch.Tensor, target: torch.Tensor):
+        """
+        Parameters
+        ----------
+        pred : torch.Tensor
+            Predicted activity, shape [B, C, H, W] or similar
+        target : torch.Tensor
+            Ground truth activity, same shape as pred
+        """
+        counts = self.k * target
+        loss = ((pred - target) ** 2 / (counts + self.epsilon)).mean()
+        return loss
