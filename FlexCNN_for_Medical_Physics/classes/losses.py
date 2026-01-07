@@ -57,17 +57,20 @@ class HybridLoss(nn.Module):
         # Warm-up phase: estimate C efficiently
         # ----------------------------------------
         if self.examples_seen < self.max_examples_for_warmup:
+            # Compute gradients on a detached copy to avoid interfering with the main graph
+            pred_for_grad = pred.detach().requires_grad_(True)
+            L_base_for_grad = self.base_loss(pred_for_grad, target)
+            L_stats_for_grad = self.stats_loss(pred_for_grad, target)
+
             grad_base = torch.autograd.grad(
-                outputs=L_base,
-                inputs=pred,
-                create_graph=False,
-                retain_graph=True
+                outputs=L_base_for_grad,
+                inputs=pred_for_grad,
+                create_graph=False
             )[0]
             grad_stats = torch.autograd.grad(
-                outputs=L_stats,
-                inputs=pred,
-                create_graph=False,
-                retain_graph=False
+                outputs=L_stats_for_grad,
+                inputs=pred_for_grad,
+                create_graph=False
             )[0]
 
             C_current = grad_stats.norm() / (grad_base.norm() + self.epsilon)
