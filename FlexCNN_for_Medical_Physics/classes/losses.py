@@ -48,18 +48,9 @@ class HybridLoss(nn.Module):
         batch_size = pred.shape[0]
 
         # -----------------------------
-        # Compute base loss
+        # Compute base and stats losses
         # -----------------------------
         L_base = self.base_loss(pred, target)
-
-        # If no stats loss was provided, fall back to base loss only
-        if self.stats_loss is None:
-            self.examples_seen += batch_size
-            return L_base
-
-        # -----------------------------
-        # Compute stats loss
-        # -----------------------------
         L_stats = self.stats_loss(pred, target)
 
         # ----------------------------------------
