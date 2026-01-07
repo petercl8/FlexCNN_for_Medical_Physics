@@ -82,7 +82,7 @@ class HybridLoss(nn.Module):
 
             g_base_norm = grad_base.norm()
             g_stats_norm = grad_stats.norm()
-            C_current = g_stats_norm / (g_base_norm + self.epsilon)
+            C_current = g_base_norm / (g_stats_norm + self.epsilon)
 
             n_old = self.examples_seen
             n_new = n_old + batch_size
@@ -90,9 +90,9 @@ class HybridLoss(nn.Module):
 
             if self.show_components:
                 try:
-                    print(f"[HybridLoss] ||grad_stats||={g_stats_norm.item():.6f}, "
-                          f"||grad_base||={g_base_norm.item():.6f}, "
-                          f"||grad_base||*C={(g_base_norm * self.C).item():.6f}")
+                    print(f"[HybridLoss] ||grad_base||={g_base_norm.item():.6f}, "
+                          f"||grad_stats||={g_stats_norm.item():.6f}, "
+                          f"||grad_stats||*C={(g_stats_norm * self.C).item():.6f}")
                 except Exception:
                     # Best-effort logging; never break training due to printing
                     pass
@@ -110,7 +110,7 @@ class HybridLoss(nn.Module):
                 print(f"[HybridLoss] alpha={alpha.item():.6f}, C={self.C.item():.6f}")
             except Exception:
                 pass
-        total_loss = alpha * self.C * L_base + (1.0 - alpha) * L_stats
+        total_loss = alpha * L_base + (1.0 - alpha) * self.C * L_stats
 
         return total_loss
 
