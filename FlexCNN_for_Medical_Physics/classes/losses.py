@@ -20,6 +20,7 @@ class HybridLoss(nn.Module):
         half_life_examples: int = 2000,
         max_examples_for_warmup: int = 500,
         epsilon: float = 1e-8,
+        show_norms: bool = False,
     ):
         super().__init__()
         self.base_loss = base_loss
@@ -29,6 +30,7 @@ class HybridLoss(nn.Module):
         self.half_life_examples = half_life_examples
         self.max_examples_for_warmup = max_examples_for_warmup
         self.epsilon = epsilon
+        self.show_norms = show_norms
 
         # Buffers (stateful, not trainable)
         self.register_buffer("C", torch.tensor(0.0))
@@ -51,6 +53,11 @@ class HybridLoss(nn.Module):
         # Compute base and stats losses
         # -----------------------------
         L_base = self.base_loss(pred, target)
+
+        # If alpha_min is set to -1, short-circuit to base loss only
+        if self.alpha_min == -1:
+            return L_base
+
         L_stats = self.stats_loss(pred, target)
 
         # ----------------------------------------
@@ -73,11 +80,22 @@ class HybridLoss(nn.Module):
                 create_graph=False
             )[0]
 
-            C_current = grad_stats.norm() / (grad_base.norm() + self.epsilon)
+            g_base_norm = grad_base.norm()
+            g_stats_norm = grad_stats.norm()
+            C_current = g_stats_norm / (g_base_norm + self.epsilon)
 
             n_old = self.examples_seen
             n_new = n_old + batch_size
             self.C = (self.C * n_old + C_current * batch_size) / n_new
+
+            if self.show_norms:
+                try:
+                    print(f"[HybridLoss] ||grad_stats||={g_stats_norm.item():.6f}, "
+                          f"||grad_base||={g_base_norm.item():.6f}, "
+                          f"||grad_base||*C={(g_base_norm * self.C).item():.6f}")
+                except Exception:
+                    # Best-effort logging; never break training due to printing
+                    pass
 
         # Always increment example counter
         self.examples_seen += batch_size
