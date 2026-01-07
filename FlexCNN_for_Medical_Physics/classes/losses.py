@@ -20,7 +20,7 @@ class HybridLoss(nn.Module):
         half_life_examples: int = 2000,
         max_examples_for_warmup: int = 500,
         epsilon: float = 1e-8,
-        show_norms: bool = False,
+        show_components: bool = True,
     ):
         super().__init__()
         self.base_loss = base_loss
@@ -30,7 +30,7 @@ class HybridLoss(nn.Module):
         self.half_life_examples = half_life_examples
         self.max_examples_for_warmup = max_examples_for_warmup
         self.epsilon = epsilon
-        self.show_norms = show_norms
+        self.show_components = show_components
 
         # Buffers (stateful, not trainable)
         self.register_buffer("C", torch.tensor(0.0))
@@ -88,7 +88,7 @@ class HybridLoss(nn.Module):
             n_new = n_old + batch_size
             self.C = (self.C * n_old + C_current * batch_size) / n_new
 
-            if self.show_norms:
+            if self.show_components:
                 try:
                     print(f"[HybridLoss] ||grad_stats||={g_stats_norm.item():.6f}, "
                           f"||grad_base||={g_base_norm.item():.6f}, "
@@ -104,6 +104,12 @@ class HybridLoss(nn.Module):
         # Scheduled mixture
         # -----------------------------
         alpha = self._compute_alpha()
+
+        if self.show_components:
+            try:
+                print(f"[HybridLoss] alpha={alpha.item():.6f}, C={self.C.item():.6f}")
+            except Exception:
+                pass
         total_loss = alpha * self.C * L_base + (1.0 - alpha) * L_stats
 
         return total_loss
