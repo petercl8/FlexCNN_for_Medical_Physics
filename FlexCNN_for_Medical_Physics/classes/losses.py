@@ -57,12 +57,18 @@ class HybridLoss(nn.Module):
         # Warm-up phase: estimate C efficiently
         # ----------------------------------------
         if self.examples_seen < self.max_examples_for_warmup:
-            grad_base, grad_stats = torch.autograd.grad(
-                outputs=[L_base, L_stats],
+            grad_base = torch.autograd.grad(
+                outputs=L_base,
                 inputs=pred,
-                grad_outputs=[torch.ones_like(L_base), torch.ones_like(L_stats)],
-                create_graph=False  # No higher-order derivatives
-            )
+                create_graph=False,
+                retain_graph=True
+            )[0]
+            grad_stats = torch.autograd.grad(
+                outputs=L_stats,
+                inputs=pred,
+                create_graph=False,
+                retain_graph=False
+            )[0]
 
             C_current = grad_stats.norm() / (grad_base.norm() + self.epsilon)
 
