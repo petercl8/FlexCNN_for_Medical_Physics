@@ -1,14 +1,12 @@
 import torch
 import torch.nn as nn
 
-
 class HybridLoss(nn.Module):
     """
     Hybrid loss with:
-      - gradient-scale normalization (C)
+      - gradient-scale normalization (C) using EMA
       - exponential scheduling of stats contribution
-      - efficient single-forward-pass warm-up
-    L_total = alpha(n) * C * L_base + (1 - alpha(n)) * L_stats
+    L_total = alpha(n) * L_base + (1 - alpha(n)) * C * L_stats
     where alpha(n) = alpha_min + (1 - alpha_min) * 2^(-n / half_life_examples)
     """
 
@@ -18,9 +16,10 @@ class HybridLoss(nn.Module):
         stats_loss: nn.Module,
         alpha_min: float = 0.2,
         half_life_examples: int = 2000,
-        max_examples_for_warmup: int = 500,
         epsilon: float = 1e-8,
         show_components: bool = True,
+        C_momentum: float = 0.05,
+        C_momentum_schedule: callable = None,  # optional: function(examples_seen) -> momentum
     ):
         super().__init__()
         self.base_loss = base_loss
@@ -28,9 +27,10 @@ class HybridLoss(nn.Module):
 
         self.alpha_min = alpha_min
         self.half_life_examples = half_life_examples
-        self.max_examples_for_warmup = max_examples_for_warmup
         self.epsilon = epsilon
         self.show_components = show_components
+        self.C_momentum = C_momentum
+        self.C_momentum_schedule = C_momentum_schedule
 
         # Buffers (stateful, not trainable)
         self.register_buffer("C", torch.tensor(0.0))
@@ -54,65 +54,69 @@ class HybridLoss(nn.Module):
         # -----------------------------
         L_base = self.base_loss(pred, target)
 
-        # If alpha_min is set to -1, short-circuit to base loss only
+        # Short-circuit to base loss only
         if self.alpha_min == -1:
             return L_base
 
         L_stats = self.stats_loss(pred, target)
 
-        # ----------------------------------------
-        # Warm-up phase: estimate C efficiently
-        # ----------------------------------------
-        if self.examples_seen < self.max_examples_for_warmup:
-            # Compute gradients on a detached copy to avoid interfering with the main graph
-            pred_for_grad = pred.detach().requires_grad_(True)
-            L_base_for_grad = self.base_loss(pred_for_grad, target)
-            L_stats_for_grad = self.stats_loss(pred_for_grad, target)
+        # -----------------------------
+        # Estimate gradient norms for EMA
+        # -----------------------------
+        # Compute gradient norms with respect to predictions (detached)
+        pred_for_grad = pred.detach().requires_grad_(True)
+        L_base_for_grad = self.base_loss(pred_for_grad, target)
+        L_stats_for_grad = self.stats_loss(pred_for_grad, target)
 
-            grad_base = torch.autograd.grad(
-                outputs=L_base_for_grad,
-                inputs=pred_for_grad,
-                create_graph=False
-            )[0]
-            grad_stats = torch.autograd.grad(
-                outputs=L_stats_for_grad,
-                inputs=pred_for_grad,
-                create_graph=False
-            )[0]
+        grad_base = torch.autograd.grad(
+            outputs=L_base_for_grad, inputs=pred_for_grad, create_graph=False
+        )[0]
+        grad_stats = torch.autograd.grad(
+            outputs=L_stats_for_grad, inputs=pred_for_grad, create_graph=False
+        )[0]
 
-            g_base_norm = grad_base.norm()
-            g_stats_norm = grad_stats.norm()
-            C_current = g_base_norm / (g_stats_norm + self.epsilon)
+        g_base_norm = grad_base.norm()
+        g_stats_norm = grad_stats.norm()
+        C_current = g_base_norm / (g_stats_norm + self.epsilon)
 
-            n_old = self.examples_seen
-            n_new = n_old + batch_size
-            self.C = (self.C * n_old + C_current * batch_size) / n_new
+        # Optional momentum schedule
+        momentum = self.C_momentum
+        if self.C_momentum_schedule is not None:
+            momentum = self.C_momentum_schedule(self.examples_seen.item())
 
-            if self.show_components:
-                try:
-                    print(f"[HybridLoss] ||grad_base||={g_base_norm.item():.6f}, "
-                          f"||grad_stats||={g_stats_norm.item():.6f}, "
-                          f"||grad_stats||*C={(g_stats_norm * self.C).item():.6f}")
-                except Exception:
-                    # Best-effort logging; never break training due to printing
-                    pass
+        # EMA update
+        if self.examples_seen == 0:
+            self.C = C_current
+        else:
+            self.C = (1.0 - momentum) * self.C + momentum * C_current
 
-        # Always increment example counter
-        self.examples_seen += batch_size
+        if self.show_components:
+            try:
+                print(
+                    f"[HybridLoss] ||grad_base||={g_base_norm.item():.6f}, "
+                    f"||grad_stats||={g_stats_norm.item():.6f}, "
+                    f"||grad_stats||*C={(g_stats_norm * self.C).item():.6f}"
+                )
+            except Exception:
+                pass
 
         # -----------------------------
         # Scheduled mixture
         # -----------------------------
         alpha = self._compute_alpha()
-
         if self.show_components:
             try:
                 print(f"[HybridLoss] alpha={alpha.item():.6f}, C={self.C.item():.6f}")
             except Exception:
                 pass
+
         total_loss = alpha * L_base + (1.0 - alpha) * self.C * L_stats
 
+        # Increment example counter
+        self.examples_seen += batch_size
+
         return total_loss
+
 
 
 
