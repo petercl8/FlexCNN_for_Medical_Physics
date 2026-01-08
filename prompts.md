@@ -75,8 +75,16 @@ For our plan:
 
 Let's discuss the specifics of how this will be implemented. ChatGPT had some suggestions:
 
-1) Use forward hooks or minimal wrapper logic to extract intermediate features
+a) Use forward hooks or minimal wrapper logic to extract intermediate features
 
-2) A lightweight wrapper or subclass that connects two Generator instances
+b) A lightweight wrapper or subclass that connects two Generator instances
 
-I've never done this before, so I will need to dialogue with you about how we will accomplish this before we formalize our plan. Please repeat back to me your understanding of this task so let's begin.
+My current (tentative thought) is to divide this task into a number of stages that we can complete one at a time:
+
+Stage 0: Simplify codebase (in particular, #run_supervisory.py) so that it makes use of more code contained in functions and is easier to understand.
+Stage 1: Update code (#dataset_classes.py, #stitching_notebook.ipynb, #run_supervisory.py, etc.) to allow for the optional loading of attenuation maps.
+Stage 2: Update code to allow for tuning/training of the atten_map->atten_sinogram network ("attenuation network"). Checkpoint code could remain as it currently stands because we are just dealing with one network at this point.
+Stage 3: Update code to allow for loading two networks (attenuation and activity) from checkpoints
+Stage 4: Update code to allow for simultaneous training (of activity network), inference only (of attenuation network), and feature transfer. Would need to also include introduction of learnable scaling parameters for injected features.
+
+This is only my plan and it may not be the right way to do things. I've never done something like this in Pytorch before, so I will need to dialogue with you about how we will accomplish this before we formalize our plan. Please repeat back to me your understanding of this task. Once I'm satisfied you understand the assignment, we can start talking about the plan.
