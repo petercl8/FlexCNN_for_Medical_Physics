@@ -6,7 +6,7 @@ import pandas as pd
 import logging
 from torch.utils.data import DataLoader
 
-from FlexCNN_for_Medical_Physics.classes.generators import Generator
+from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.classes.losses import HybridLoss
 from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
@@ -101,7 +101,18 @@ def run_SUP(config, paths, settings):
         test_dataframe = pd.DataFrame({'MSE (Network)' : [],  'MSE (Recon1)': [],  'MSE (Recon2)': [], 'SSIM (Network)' : [], 'SSIM (Recon1)': [], 'SSIM (Recon2)': []})
 
     # Model and Loss functions
-    gen = Generator(config=config, gen_SI=train_SI).to(device)
+    # Select appropriate Generator class based on input dimensions
+    input_size = sino_size if train_SI else image_size
+    if input_size == 180:
+        GeneratorClass = Generator_180
+    elif input_size == 288:
+        GeneratorClass = Generator_288
+    elif input_size == 320:
+        GeneratorClass = Generator_320
+    else:
+        raise ValueError(f"No Generator class available for input_size={input_size}. Supported sizes: 180, 288, 320")
+    
+    gen = GeneratorClass(config=config, gen_SI=train_SI).to(device)
 
     base_criterion = config['sup_base_criterion']
     stats_criterion = config.get('sup_stats_criterion', None)

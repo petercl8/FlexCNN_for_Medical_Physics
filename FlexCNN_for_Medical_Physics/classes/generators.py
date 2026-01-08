@@ -6,7 +6,7 @@ from torch import nn
 ##### Generator Classes #####
 #############################
 
-class Generator(nn.Module):
+class Generator_288(nn.Module):
     def __init__(self, config, gen_SI=True):
         '''
         Encoder-decoder generator with optional skip connections, producing 288x288 output.
