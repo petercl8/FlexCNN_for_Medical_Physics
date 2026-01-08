@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataLoader
-from FlexCNN_for_Medical_Physics.classes.generators import Generator
+from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_unmatched_tensors
 
 
@@ -72,9 +72,16 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
 
     return image_tensors, sino_tensor
 
-def CNN_reconstruct(sino_tensor, config, checkpoint_name, paths, device):
+def CNN_reconstruct(sino_tensor, config, checkpoint_name, paths, device, sino_size=288):
     checkpoint_path = os.path.join(paths['checkpoint_dirPath'], checkpoint_name)
-    gen = Generator(config=config, gen_SI=True).to(device)
+    if sino_size == 180:
+        gen = Generator_180(config=config, gen_SI=True).to(device)
+    elif sino_size == 288:
+        gen = Generator_288(config=config, gen_SI=True).to(device)
+    elif sino_size == 320:
+        gen = Generator_320(config=config, gen_SI=True).to(device)
+    else:
+        raise ValueError(f"No Generator class available for sino_size={sino_size}. Supported sizes: 180, 288, 320")
     checkpoint = torch.load(checkpoint_path, map_location=device)
     gen.load_state_dict(checkpoint['gen_state_dict'])
     gen.eval()

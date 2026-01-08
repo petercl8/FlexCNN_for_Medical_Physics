@@ -1,5 +1,5 @@
 ## Note: This function still needs to be updated for SSIM and testing with the test set. See 'START HERE' comment below.
-from FlexCNN_for_Medical_Physics.classes.generators import Generator
+from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
 from FlexCNN_for_Medical_Physics.classes.discriminators import Disc_I_90, Disc_S_90
 from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
 
