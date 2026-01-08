@@ -1,3 +1,4 @@
+﻿# Test comment: added by Copilot (2026-01-08)
 import torch
 import torch.nn as nn
 
@@ -207,3 +208,5 @@ class VarWeightedMSE(nn.Module):
         counts = self.k * target
         loss = ((pred - target) ** 2 / (counts + self.epsilon)).mean()
         return loss
+
+
