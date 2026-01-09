@@ -42,9 +42,9 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_skip_mode': tune.choice(['none','add','concat']),       # Skip-connection mode
 
     # Statistical Regularization (SI-specific)
-    'SI_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
-    'SI_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
-    'SI_half_life_examples': tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
+    'SI_stats_criterion': -1 # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    'SI_alpha_min': -1 # tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
+    'SI_half_life_examples': -1 # tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
 
     # Discriminator Network
     'SI_disc_hidden_dim': tune.lograndint(10, 30),              # Discriminator channel scaling factor
@@ -86,9 +86,9 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_skip_mode': tune.choice(['none','add','concat']),
 
     # Statistical Regularization (IS-specific)
-    'IS_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
-    'IS_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
-    'IS_half_life_examples': tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
+    'IS_stats_criterion': -1 # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    'IS_alpha_min': -1 # tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
+    'IS_half_life_examples': -1 # tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
 
     # Discriminator Network
     'IS_disc_hidden_dim': tune.lograndint(10, 30),
