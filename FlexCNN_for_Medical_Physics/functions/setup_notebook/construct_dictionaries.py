@@ -184,30 +184,40 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['visualize_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_recon1_file']) if data_files.get('visualize_recon1_file') is not None else None
     paths['visualize_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_recon2_file']) if data_files.get('visualize_recon2_file') is not None else None
     
+    # Attenuation image paths for all modes
+    paths['tune_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_image_file']) if data_files.get('tune_atten_image_file') is not None else None
+    paths['train_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_image_file']) if data_files.get('train_atten_image_file') is not None else None
+    paths['test_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_atten_image_file']) if data_files.get('test_atten_image_file') is not None else None
+    paths['visualize_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_atten_image_file']) if data_files.get('visualize_atten_image_file') is not None else None
+    
     # Active paths and checkpoint filename selection
     if run_mode == 'tune':
         paths['sino_path'] = paths['tune_sino_path']
         paths['image_path'] = paths['tune_image_path']
         paths['recon1_path'] = paths['tune_recon1_path']
         paths['recon2_path'] = paths['tune_recon2_path']
+        paths['atten_image_path'] = paths['tune_atten_image_path']
         checkpoint_file = ''
     elif run_mode == 'train':
         paths['sino_path'] = paths['train_sino_path']
         paths['image_path'] = paths['train_image_path']
         paths['recon1_path'] = paths['train_recon1_path']
         paths['recon2_path'] = paths['train_recon2_path']
+        paths['atten_image_path'] = paths['train_atten_image_path']
         checkpoint_file = mode_files['train_checkpoint_file']
     elif run_mode == 'test':
         paths['sino_path'] = paths['test_sino_path']
         paths['image_path'] = paths['test_image_path']
         paths['recon1_path'] = paths['test_recon1_path']
         paths['recon2_path'] = paths['test_recon2_path']
+        paths['atten_image_path'] = paths['test_atten_image_path']
         checkpoint_file = mode_files['test_checkpoint_file']
     elif run_mode in ['visualize', 'none']:
         paths['sino_path'] = paths['visualize_sino_path']
         paths['image_path'] = paths['visualize_image_path']
         paths['recon1_path'] = paths['visualize_recon1_path']
         paths['recon2_path'] = paths['visualize_recon2_path']
+        paths['atten_image_path'] = paths['visualize_atten_image_path']
         checkpoint_file = mode_files['visualize_checkpoint_file']
     else:
         raise ValueError(f"Unknown run_mode: {run_mode}")
@@ -250,6 +260,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
     settings['recon1_scale'] = common_settings['recon1_scale']
     settings['recon2_scale'] = common_settings['recon2_scale']
     settings['image_scale'] = common_settings['image_scale']
+    settings['atten_image_scale'] = common_settings.get('atten_image_scale', 1.0)
     
     # Mode-specific
     if run_mode == 'tune':

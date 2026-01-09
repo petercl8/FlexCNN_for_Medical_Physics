@@ -44,6 +44,50 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
+def collate_nested(batch):
+    """
+    Custom collate function for nested tuple batches with optional None fields.
+    Expects each sample to be: (act_data, atten_data, recon_data) where:
+      act_data = (sino, image)
+      atten_data = (atten_sino, atten_image)
+      recon_data = (recon1, recon2)
+    
+    Stacks tensors when all samples provide them; keeps None when all samples have None.
+    Raises ValueError if a field has mixed None/tensor across the batch (fail-fast).
+    """
+    def _stack_or_none(items):
+        """Stack if all tensors, None if all None, else raise."""
+        non_none = [item for item in items if item is not None]
+        if len(non_none) == 0:
+            return None
+        elif len(non_none) == len(items):
+            return torch.stack(non_none, dim=0)
+        else:
+            raise ValueError(f"Mixed None/tensor in batch field: {len(non_none)}/{len(items)} non-None")
+    
+    # Unpack nested structure from each sample
+    act_data_list = [sample[0] for sample in batch]
+    atten_data_list = [sample[1] for sample in batch]
+    recon_data_list = [sample[2] for sample in batch]
+    
+    # Stack each field independently
+    sino_batch = _stack_or_none([act[0] for act in act_data_list])
+    image_batch = _stack_or_none([act[1] for act in act_data_list])
+    
+    atten_sino_batch = _stack_or_none([atten[0] for atten in atten_data_list])
+    atten_image_batch = _stack_or_none([atten[1] for atten in atten_data_list])
+    
+    recon1_batch = _stack_or_none([recon[0] for recon in recon_data_list])
+    recon2_batch = _stack_or_none([recon[1] for recon in recon_data_list])
+    
+    # Return nested structure
+    act_data = (sino_batch, image_batch)
+    atten_data = (atten_sino_batch, atten_image_batch)
+    recon_data = (recon1_batch, recon2_batch)
+    
+    return act_data, atten_data, recon_data
+
+
 def _create_generator(config: dict, device: str):
     """
     Instantiate the appropriate Generator class based on config input size.
@@ -329,10 +373,13 @@ def run_SUP(config, paths, settings):
             device=device,
             recon1_path=paths.get('recon1_path', None),
             recon2_path=paths.get('recon2_path', None),
+            atten_image_path=paths.get('atten_image_path', None),
+            atten_sino_path=paths.get('atten_sino_path', None),
         ),
         batch_size=batch_size,
         shuffle=shuffle,
         pin_memory=False,
+        collate_fn=collate_nested,
     )
 
     # ========================================================================================
@@ -381,10 +428,11 @@ def run_SUP(config, paths, settings):
         # SECTION 10: BATCH LOOP - FORWARD/BACKWARD PASS
         # ========================================================================================
         
-        for sino_scaled, act_map_scaled, *recon_data in iter(dataloader):
+        for act_data, atten_data, recon_data in iter(dataloader):
             # _____ SUBSECTION 10A: UNPACK BATCH DATA _____
-            recon1 = recon_data[0] if len(recon_data) > 0 else None
-            recon2 = recon_data[1] if len(recon_data) > 1 else None
+            sino_scaled, act_map_scaled = act_data
+            atten_sino, atten_image = atten_data
+            recon1, recon2 = recon_data
             
             # _____ SUBSECTION 10B: TIMING AND INPUT ROUTING _____
             _ = display_times('loader time', time_init_loader, show_times)
