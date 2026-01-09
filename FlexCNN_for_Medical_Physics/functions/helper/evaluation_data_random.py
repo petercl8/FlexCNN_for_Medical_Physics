@@ -79,7 +79,8 @@ def load_validation_batches(paths, config, settings):
         sino_batch = []
         image_batch = []
         for idx in indices:
-            sino, image = val_dataset[idx][:2]  # Unpack sino, image (ignore recon1/recon2)
+            act_data, atten_data, recon_data = val_dataset[idx]
+            sino, image = act_data
             sino_batch.append(sino)
             image_batch.append(image)
         
@@ -159,8 +160,10 @@ def load_qa_batches(paths, config, settings, augment=('SI', True)):
         hotMask_batch = []
         hotBackgroundMask_batch = []
         for idx in indices:
-            # Unpack sino, image, hotMask (recon1), hotBackgroundMask (recon2)
-            sino, image, hotMask, hotBackgroundMask = qa_dataset[idx][:4]
+            # Unpack nested structure: act_data, atten_data, recon_data
+            act_data, atten_data, recon_data = qa_dataset[idx]
+            sino, image = act_data
+            hotMask, hotBackgroundMask = recon_data
             sino_batch.append(sino)
             image_batch.append(image)
             hotMask_batch.append(hotMask)
