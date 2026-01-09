@@ -40,9 +40,9 @@ config_SUP_SI = {
   "sino_channels": 3, #3
   "sino_size": 288, #320
   "sup_base_criterion": nn.MSELoss(),
-  "sup_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
-  "sup_alpha_min": 0.2, # -1
-  "sup_half_life_examples": 2000,
+  "SI_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
+  "SI_alpha_min": 0.2, # -1
+  "SI_half_life_examples": 2000,
   "train_SI": True
 }
 

@@ -1,6 +1,13 @@
 from torch import nn
 
 config_CYCLEGAN={ # Works, yeah! ("4a92")
+    "network_type": "CYCLEGAN",
+    "SI_stats_criterion": None,
+    "SI_alpha_min": -1,
+    "SI_half_life_examples": 2000,
+    "IS_stats_criterion": None,
+    "IS_alpha_min": -1,
+    "IS_half_life_examples": 2000,
     "IS_disc_adv_criterion": nn.BCEWithLogitsLoss(),
     "IS_disc_b1": 0.3335905891003811,
     "IS_disc_b2": 0.999,

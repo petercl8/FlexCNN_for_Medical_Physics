@@ -61,6 +61,7 @@ def load_validation_batches(paths, config, settings):
         device='cpu',  # Load to CPU; caller handles device placement
         recon1_path=None,
         recon2_path=None,
+        atten_image_path=None,
     )
     
     # Load NUM_EVAL_BATCHES fresh random batches
@@ -141,6 +142,7 @@ def load_qa_batches(paths, config, settings, augment=('SI', True)):
         device='cpu',  # Load to CPU; caller handles device placement
         recon1_path=paths['tune_qa_hotMask_path'],      # Hot mask via recon1_path
         recon2_path=paths['tune_qa_hotBackgroundMask_path'],  # Hot background via recon2_path
+        atten_image_path=None, 
     )
     
     # Load NUM_EVAL_BATCHES fresh random batches with augmentation

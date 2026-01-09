@@ -41,6 +41,11 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_gen_hidden_dim': tune.lograndint(2, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
     'SI_skip_mode': tune.choice(['none','add','concat']),       # Skip-connection mode
 
+    # Statistical Regularization (SI-specific)
+    'SI_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    'SI_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
+    'SI_half_life_examples': tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
+
     # Discriminator Network
     'SI_disc_hidden_dim': tune.lograndint(10, 30),              # Discriminator channel scaling factor
     'SI_disc_patchGAN': tune.choice([True, False]),             # Use PatchGAN or not
@@ -80,6 +85,11 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_gen_hidden_dim': tune.lograndint(2, 30),
     'IS_skip_mode': tune.choice(['none','add','concat']),
 
+    # Statistical Regularization (IS-specific)
+    'IS_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    'IS_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
+    'IS_half_life_examples': tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
+
     # Discriminator Network
     'IS_disc_hidden_dim': tune.lograndint(10, 30),
     'IS_disc_patchGAN': tune.choice([True, False]),
@@ -118,9 +128,6 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': tune.loguniform(0.1, 0.999),
     'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]), # Could also include nn.KLDivLoss(reduction='batchmean'). Not prefixed with SI or IS because this is used for both.
-    'sup_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
-    'sup_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Setting to -1 means no stats loss, but unlike setting to 0, stats loss is not computed, saving time.
-    'sup_half_life_examples': tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
     # OVERWRITES: overwrites values from config_RAY_SI or config_RAY_IS. This is done so time isn't wasted looking for unused hyperparameters.
     'SI_disc_hidden_dim': 1,
     'SI_disc_patchGAN': 1,
@@ -149,9 +156,6 @@ config_SUP_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/co
     'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
     'gen_b2': tune.loguniform(0.1, 0.999),
     'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
-    'sup_stats_criterion': None,
-    'sup_alpha_min': -1,  # Setting to -1 means no stats loss, but unlike setting to 0, stats loss is not computed, saving time.
-    'sup_half_life_examples': None,
     }
 
 ##############

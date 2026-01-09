@@ -342,9 +342,11 @@ def run_trainable(config, paths, settings):
     gen = _create_generator(config, device)
 
     base_criterion = config['sup_base_criterion']
-    stats_criterion = config.get('sup_stats_criterion', None)
-    alpha_min = config.get('sup_alpha_min', 0.2)
-    half_life_examples = config.get('sup_half_life_examples', 2000)
+    # Use SI or IS prefixed stats params based on training direction
+    prefix = 'SI' if train_SI else 'IS'
+    stats_criterion = config.get(f'{prefix}_stats_criterion', None)
+    alpha_min = config.get(f'{prefix}_alpha_min', -1)
+    half_life_examples = config.get(f'{prefix}_half_life_examples', 2000)
     hybrid_loss = HybridLoss(
         base_loss=base_criterion,
         stats_loss=stats_criterion,

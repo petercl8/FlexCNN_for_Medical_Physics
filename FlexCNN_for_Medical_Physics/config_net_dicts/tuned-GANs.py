@@ -1,6 +1,7 @@
 from torch import nn
 
 config_GAN_SI = { # Older, this still outperforms the more recent tuning
+    'network_type': 'GAN',
     'SI_disc_adv_criterion': nn.MSELoss(),
     'SI_normalize': True, # True
     'SI_fixedScale': 1400, # 1      # Added later
@@ -28,6 +29,7 @@ config_GAN_SI = { # Older, this still outperforms the more recent tuning
     }
 
 config_GAN_IS = { # new, looks good by step 400, somewhat blocky. May be outperforming config_GAN_SI
+  "network_type": "GAN",
   "IS_disc_adv_criterion": nn.BCEWithLogitsLoss(),
   "IS_disc_b1": 0.3335905891003811,
   "IS_disc_b2": 0.999,
