@@ -374,7 +374,6 @@ def run_trainable(config, paths, settings):
             recon1_path=paths.get('recon1_path', None),
             recon2_path=paths.get('recon2_path', None),
             atten_image_path=paths.get('atten_image_path', None),
-            atten_sino_path=paths.get('atten_sino_path', None),
         ),
         batch_size=batch_size,
         shuffle=shuffle,
