@@ -43,6 +43,14 @@ def get_cycle_consistency_loss(real_X, fake_Y, gen_YX, cycle_criterion):
 def get_gen_loss(real_A, real_B, gen_AB, gen_BA, disc_A, disc_B, config):
     '''
     Function to calculate the total generator loss. Used to train the generators.
+    
+    Returns:
+        gen_loss: Total weighted generator loss tensor.
+        adv_loss: Adversarial loss scalar (0 if lambda_adv=0).
+        sup_loss: Supervisory loss scalar (0 if lambda_sup=0).
+        cycle_loss: Cycle-consistency loss scalar (0 if lambda_cycle=0 or cycle_criterion=None).
+        cycle_A: Reconstructed A tensor via cycle consistency (None if cycle disabled).
+        cycle_B: Reconstructed B tensor via cycle consistency (None if cycle disabled).
     '''
     supervisory_criterion = config['sup_base_criterion']
     cycle_criterion = config['cycle_criterion']
@@ -59,28 +67,35 @@ def get_gen_loss(real_A, real_B, gen_AB, gen_BA, disc_A, disc_B, config):
     else: # Even if we don't compute adversarial losses, we still need fake_A and fake_B for later code
         fake_A = gen_BA(real_B)
         fake_B = gen_AB(real_A)
+        adv_loss = 0
 
     # Supervisory Loss
     if lambda_sup != 0: # To save resources, we only run this code if lambda_sup != 0
         sup_loss_AB = get_supervisory_loss(fake_B, real_B, supervisory_criterion)
         sup_loss_BA = get_supervisory_loss(fake_A, real_A, supervisory_criterion)
         sup_loss = sup_loss_AB+sup_loss_BA
+    else:
+        sup_loss = 0
 
-    # Cycle-consistency Loss -- get_cycle_consistency_loss(real_X, fake_Y, gen_YX, cycle_criterion)
-    cycle_loss_AB, cycle_B = get_cycle_consistency_loss(real_B, fake_A, gen_AB, cycle_criterion)
-    cycle_loss_BA, cycle_A = get_cycle_consistency_loss(real_A, fake_B, gen_BA, cycle_criterion)
-    cycle_loss = cycle_loss_AB+cycle_loss_BA
+    # Cycle-consistency Loss (gated by both lambda_cycle and criterion availability)
+    if lambda_cycle != 0 and cycle_criterion is not None:
+        cycle_loss_AB, cycle_B = get_cycle_consistency_loss(real_B, fake_A, gen_AB, cycle_criterion)
+        cycle_loss_BA, cycle_A = get_cycle_consistency_loss(real_A, fake_B, gen_BA, cycle_criterion)
+        cycle_loss = cycle_loss_AB+cycle_loss_BA
+    else:
+        cycle_loss = 0
+        cycle_A = None
+        cycle_B = None
 
     # Total Generator Loss
-    if lambda_sup == 0:
-        gen_loss = lambda_adv*adv_loss+lambda_cycle*cycle_loss
-        return gen_loss, adv_loss.item(), 0, cycle_loss.item(), cycle_A, cycle_B
-    elif lambda_adv == 0:
-        gen_loss = lambda_sup*sup_loss+lambda_cycle*cycle_loss
-        return gen_loss, 0, sup_loss.item(), cycle_loss.item(), cycle_A, cycle_B
-    else:
-        gen_loss = lambda_adv*adv_loss+lambda_sup*sup_loss+lambda_cycle*cycle_loss
-        return gen_loss, adv_loss.item(), sup_loss.item(), cycle_loss.item(), cycle_A, cycle_B
+    gen_loss = lambda_adv*adv_loss+lambda_sup*sup_loss+lambda_cycle*cycle_loss
+    
+    # Extract scalar loss values for return (monitoring purposes)
+    adv_loss_scalar = adv_loss.item() if lambda_adv != 0 else 0
+    sup_loss_scalar = sup_loss.item() if lambda_sup != 0 else 0
+    cycle_loss_scalar = cycle_loss.item() if lambda_cycle != 0 and cycle_criterion is not None else 0
+    
+    return gen_loss, adv_loss_scalar, sup_loss_scalar, cycle_loss_scalar, cycle_A, cycle_B
 
 
 def patchwise_moment_loss(batch_pred,

@@ -1,20 +1,17 @@
 import os
 import ray
 from ray import air, tune
-import ray.train as train
 from ray.tune import CLIReporter, JupyterNotebookReporter
 from ray.tune.schedulers import ASHAScheduler, FIFOScheduler
 from ray.tune.search.hyperopt import HyperOptSearch
 from ray.tune.result_grid import ResultGrid
 
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_supervisory import run_SUP
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_generative_adversarial import run_GAN
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_cycle_consistency import run_CYCLE
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
 
 def tune_exp():
     print("placeholder")
 
-def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'):
+def tune_networks(config, paths, settings, tune_opts, base_dirs):
     """
     Tune networks using Ray Tune.
 
@@ -29,11 +26,9 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
     tune_opts : dict
         Tuning-specific options with keys:
         'tune_metric', 'tune_minutes', 'tune_exp_name', 'tune_scheduler',
-        'tune_restore', 'tune_max_t', 'grace_period', 'num_CPUs', 'num_GPUs'.
+        'tune_restore', 'tune_max_t', 'tune_grace_period', 'num_CPUs', 'num_GPUs'.
     base_dirs : dict
         Base directory paths (project_dirPath, etc.).
-    trainable : {'SUP','GAN','CYCLE'}
-        Which training function to run in trials.
 
     Returns
     -------
@@ -159,18 +154,9 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs, trainable='SUP'
         search_alg = HyperOptSearch(metric=optim_metric, mode=min_max)  # It's also possible to pass the search space directly to the search algorithm here.
                                                                     # But then the search space needs to be defined in terms of the specific search algorithm methods, rather than letting RayTune translate.
 
-    ## Which trainable do you want to use? ##
-    if trainable == 'SUP':
-        trainable_param = tune.with_parameters(run_SUP, paths=paths, settings=settings)
-        trainable_with_resources = tune.with_resources(trainable_param, {"CPU": cpus_per_trial, "GPU": gpus_per_trial})
-    elif trainable == 'GAN':
-        trainable_param = tune.with_parameters(run_GAN, paths=paths, settings=settings)
-        trainable_with_resources = tune.with_resources(trainable_param, {"CPU": cpus_per_trial, "GPU": gpus_per_trial})
-    elif trainable == 'CYCLE':
-        trainable_param = tune.with_parameters(run_CYCLE, paths=paths, settings=settings)
-        trainable_with_resources = tune.with_resources(trainable_param, {"CPU": cpus_per_trial, "GPU": gpus_per_trial})
-    else:
-        raise ValueError(f"Unsupported trainable='{trainable}'. Expected 'SUP', 'GAN', or 'CYCLE'.")
+    ## Unified trainable ##
+    trainable_param = tune.with_parameters(run_trainable, paths=paths, settings=settings)
+    trainable_with_resources = tune.with_resources(trainable_param, {"CPU": cpus_per_trial, "GPU": gpus_per_trial})
 
     ## If starting from scratch ##
     if tune_restore == False:

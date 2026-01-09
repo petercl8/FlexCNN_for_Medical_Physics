@@ -107,6 +107,10 @@ config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
     'IS_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
 }
 
+#####################
+# Supervised Spaces #
+#####################
+
 config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning
     # NEW: New parameters added to config_RAY_SI (related to generator optimizer)
     'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
@@ -132,6 +136,28 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'IS_disc_adv_criterion': 1,
     }
 
+config_SUP_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
+    # NEW
+    'cycle_criterion': None,
+    'lambda_adv': 0,
+    'lambda_sup': 1,
+    'lambda_cycle': 0,
+    # OVERWRITES
+    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
+    'gen_lr': tune.loguniform(0.5e-4,1e-2),
+    'gen_lr_scalar': tune.loguniform(0.1,10),  # learning rate mixing: gen_lr * gen_lr_scalar for one generator, gen_lr / gen_lr_scalar for the other
+    'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
+    'gen_b2': tune.loguniform(0.1, 0.999),
+    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    'sup_stats_criterion': None,
+    'sup_alpha_min': -1,  # Setting to -1 means no stats loss, but unlike setting to 0, stats loss is not computed, saving time.
+    'sup_half_life_examples': None,
+    }
+
+##############
+# GAN Spaces #
+##############
+
 config_RAY_GAN = { # This is MERGED with either config_RAY_IS or config_RAY_SI to form a single dictionary for a generative adversarial network.
     # NEW
     'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
@@ -156,22 +182,4 @@ config_GAN_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/co
     'gen_lr': tune.loguniform(0.5e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': 0.999, #tune.loguniform(0.1, 0.999),
-    }
-
-config_SUP_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
-    # NEW
-    'cycle_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
-    'lambda_adv': 0,
-    'lambda_sup': 1,
-    'lambda_cycle':  tune.uniform(0, 10),
-    # OVERWRITES
-    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
-    'gen_lr': tune.loguniform(0.5e-4,1e-2),
-    'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
-    'gen_b2': tune.loguniform(0.1, 0.999),
-    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
-    # NOT USED
-    'gen_adv_criterion': nn.MSELoss(), #tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.BCEWithLogitsLoss()]),
-    'IS_disc_lr': 1e-4, #tune.loguniform(1e-4,1e-2),
-    'SI_disc_lr': 1e-4, #tune.loguniform(1e-4,1e-2),
     }

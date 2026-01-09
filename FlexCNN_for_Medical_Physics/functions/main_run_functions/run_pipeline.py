@@ -1,8 +1,6 @@
 import time
 
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_supervisory import run_SUP
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_generative_adversarial import run_GAN
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_cycle_consistency import run_CYCLE
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.tune import tune_networks
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.test_by_chunks import test_by_chunks
 
@@ -29,40 +27,25 @@ def run_pipeline(
     run_mode = settings['run_mode']
     network_type = config['network_type']
 
+    allowed_types = ('SUP', 'CYCLESUP', 'CYCLESUP_FROZEN', 'CYCLEGAN', 'GAN')
+    if network_type not in allowed_types:
+        raise ValueError(f"Unknown network_type '{network_type}'.")
+
     if run_mode == 'tune':
-        if network_type == "SUP":
-            print('Tuning w/ Supervisory Only!')
-            time.sleep(3)
-            tune_networks(
-                config, paths, settings, tune_opts, base_dirs, trainable='SUP'
-            )
-
-        elif network_type == 'GAN':
-            print('Tuning a GAN!')
-            time.sleep(3)
-            tune_networks(
-                config, paths, settings, tune_opts, base_dirs, trainable='GAN'
-            )
-
-        elif network_type in ('CYCLESUP', 'CYCLEGAN'):
-            print('Tuning a Cycle!')
-            time.sleep(3)
-            tune_networks(
-                config, paths, settings, tune_opts, base_dirs, trainable='CYCLE'
-            )
+        print('Tuning with trainable pipeline.')
+        time.sleep(1)
+        tune_networks(
+            config, paths, settings, tune_opts, base_dirs
+        )
 
     elif run_mode in ('train', 'visualize'):
-        if network_type == "SUP":
-            run_SUP(config, paths, settings)
-
-        elif network_type == 'GAN':
-            run_GAN(config, paths, settings)
-
-        elif network_type in ('CYCLESUP', 'CYCLEGAN'):
-            run_CYCLE(config, paths, settings)
+        run_trainable(config, paths, settings)
 
     elif run_mode == 'test':
         test_by_chunks(
+            config,
+            paths,
+            settings,
             test_begin_at=test_opts['test_begin_at'],
             test_chunk_size=test_opts['test_chunk_size'],
             testset_size=test_opts['testset_size'],
@@ -74,3 +57,5 @@ def run_pipeline(
 
     elif run_mode == 'none':
         raise SystemExit
+    else:
+        raise ValueError(f"Unknown run_mode '{run_mode}'.")

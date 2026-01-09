@@ -1,5 +1,20 @@
-def test_by_chunks(test_begin_at=0, test_chunk_size=5000, testset_size = 35000, sample_division=1, part_name='batch_dataframe_part_',
-         test_merge_dataframes=False, test_csv_file='combined_dataframe'):
+import os
+import pandas as pd
+
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
+
+def test_by_chunks(
+    config,
+    paths,
+    settings,
+    test_begin_at=0,
+    test_chunk_size=5000,
+    testset_size=35000,
+    sample_division=1,
+    part_name='batch_dataframe_part_',
+    test_merge_dataframes=False,
+    test_csv_file='combined_dataframe'
+):
     '''
     Splits up testing the CNN (on a test set) into smaller chunks so that computer time-outs don't result in lost work.
 
@@ -14,6 +29,9 @@ def test_by_chunks(test_begin_at=0, test_chunk_size=5000, testset_size = 35000, 
 
     label_num=int(test_begin_at/test_chunk_size) # Which numbered dataframe parts file you start at.
 
+    test_dataframe_dirPath = paths['test_dataframe_dirPath']
+    os.makedirs(test_dataframe_dirPath, exist_ok=True)
+
     for index in range(test_begin_at, testset_size, test_chunk_size):
 
         save_filename = part_name+str(label_num)+'.csv'
@@ -24,17 +42,31 @@ def test_by_chunks(test_begin_at=0, test_chunk_size=5000, testset_size = 35000, 
         print('###############################################')
 
         # Since run_mode=='test', the training function returns a test dataframe. #
-        chunk_dataframe = run_SUP(config, offset=index, num_examples=test_chunk_size, sample_division=sample_division)
+        chunk_settings = dict(settings)
+        chunk_settings.update({
+            'run_mode': 'test',
+            'offset': index,
+            'num_examples': test_chunk_size,
+            'sample_division': sample_division,
+        })
+
+        chunk_dataframe = run_trainable(config, paths, chunk_settings)
         chunk_dataframe_path = os.path.join(test_dataframe_dirPath, save_filename)
         chunk_dataframe.to_csv(chunk_dataframe_path, index=False)
         label_num += 1
 
     if test_merge_dataframes==True:
         max_index = int(testset_size/test_chunk_size)-1
-        merge_test_chunks(max_index, part_name=part_name, test_csv_file=test_csv_file)
+        merge_test_chunks(
+            max_index,
+            test_dataframe_dirPath=test_dataframe_dirPath,
+            test_dataframe_path=os.path.join(test_dataframe_dirPath, f"{test_csv_file}.csv"),
+            part_name=part_name,
+            test_csv_file=test_csv_file
+        )
 
 
-def merge_test_chunks(max_index, part_name='batch_dataframe_part_', test_csv_file='combined_dataframe'):
+def merge_test_chunks(max_index, test_dataframe_dirPath, test_dataframe_path, part_name='batch_dataframe_part_', test_csv_file='combined_dataframe'):
     '''
     Function for merging smaller dataframes (which contain metrics for individual images) into a single larger dataframe.
 

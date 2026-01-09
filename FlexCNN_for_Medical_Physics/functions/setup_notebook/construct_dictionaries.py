@@ -12,6 +12,7 @@ def construct_config(
     config_GAN_IS=None,
     config_CYCLEGAN=None,
     config_CYCLESUP=None,
+    config_CYCLESUP_FROZEN=None,
     config_RAY_SI=None,
     config_RAY_SI_learnScale=None,
     config_RAY_SI_fixedScale=None,
@@ -57,6 +58,8 @@ def construct_config(
             config = config_CYCLEGAN
         elif network_type == 'CYCLESUP':
             config = config_CYCLESUP
+        elif network_type == 'CYCLESUP_FROZEN':
+            config = config_CYCLESUP_FROZEN
         else:
             raise ValueError(f"Unknown network_type '{network_type}'.")
         
@@ -71,9 +74,11 @@ def construct_config(
             mismatches.append(f"image_channels: config has {config.get('image_channels')}, but network_opts specifies {image_channels}")
         if config.get('sino_channels') != sino_channels:
             mismatches.append(f"sino_channels: config has {config.get('sino_channels')}, but network_opts specifies {sino_channels}")
-        
+        if config.get('network_type') != network_type:
+            mismatches.append(f"network_type: config has {config.get('network_type')}, but network_opts specifies {network_type}")
+
         if mismatches:
-            error_msg = f"\n❌ Network dimension mismatch detected!\n\nThe loaded configuration has different dimensions than your network_opts settings.\n"
+            error_msg = f"\n❌ Network dimension or type mismatch detected!\n\nThe loaded configuration has different dimensions than your network_opts settings.\n"
             error_msg += f"This usually means the checkpoint was trained with different input/output sizes.\n\n"
             error_msg += "Mismatches found:\n" + "\n".join(f"  • {m}" for m in mismatches)
             error_msg += f"\n\nPlease update your network_opts to match the trained network, or use a different checkpoint."
@@ -105,6 +110,8 @@ def construct_config(
                 else:
                     config = {**config_RAY_IS, **config_RAY_IS_learnScale ,**config_RAY_GAN}
         elif network_type == 'CYCLESUP':
+            config = {**config_SUP_SI, **config_SUP_IS, **config_SUP_RAY_cycle}
+        elif network_type == 'CYCLESUP_FROZEN':
             config = {**config_SUP_SI, **config_SUP_IS, **config_SUP_RAY_cycle}
         elif network_type == 'CYCLEGAN':
             config = {**config_GAN_SI, **config_GAN_IS, **config_GAN_RAY_cycle}

@@ -259,9 +259,9 @@ def _log_tune_debug(gen, epoch: int, batch_step: int, gen_loss, device: str) -> 
     )
 
 
-def run_SUP(config, paths, settings):
+def run_trainable(config, paths, settings):
     """
-    Train, test, or visualize a supervisory-loss network using explicit dicts.
+    Train, test, or visualize a network using the unified trainable pipeline.
     """
 
     # ========================================================================================
@@ -272,7 +272,7 @@ def run_SUP(config, paths, settings):
     tune_debug = settings.get('tune_debug', False)
     if tune_debug:
         logger.setLevel(logging.DEBUG)
-        logger.debug(f"[TUNE_DEBUG] Entering run_SUP; initial device request: {device}")
+        logger.debug(f"[TUNE_DEBUG] Entering run_trainable; initial device request: {device}")
     
     # Network configuration
     train_SI = config['train_SI']

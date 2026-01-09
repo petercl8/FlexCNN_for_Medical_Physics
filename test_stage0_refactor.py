@@ -18,7 +18,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
 
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_supervisory import (
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import (
     _create_generator,
     _create_optimizer,
     _build_checkpoint_dict,

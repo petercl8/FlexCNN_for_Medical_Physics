@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from ray import tune
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_supervisory import run_SUP
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
 import os
 
 
@@ -22,7 +22,7 @@ def PlotFrame(paths, tune_exp_name, ax, x_ticks, x_label, y_ticks, y_label, xlim
     experiment_path = os.path.join(paths['tune_storage_dirPath'], tune_exp_name)
 
     restored_tuner = tune.Tuner.restore(experiment_path,
-                                        trainable = tune.with_resources(run_SUP, {"CPU":4,"GPU":1}))
+                                        trainable = tune.with_resources(run_trainable, {"CPU":4,"GPU":1}))
     result_grid = restored_tuner.get_results()
 
     for i, result in enumerate(result_grid):
