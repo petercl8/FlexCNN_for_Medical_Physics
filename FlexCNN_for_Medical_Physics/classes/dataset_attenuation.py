@@ -115,6 +115,9 @@ def visualize_sinogram_alignment(
         atten_img = atten_images[idx].squeeze() * atten_image_scale
         atten_sino = project_attenuation(atten_img, target_height, circle=circle, theta=theta)
 
+        # Print shapes for debugging
+        print(f"Example {idx} (before resize): activity_sino shape: {activity_sino.shape}, atten_sino shape: {atten_sino.shape}")
+
         # Resize/pad activity
         if act_resize_type == 'crop_pad':
             act_torch, _ = crop_pad_sino(
@@ -146,7 +149,9 @@ def visualize_sinogram_alignment(
                 None, torch.from_numpy(atten_sino).unsqueeze(0).float(), atten_sino_size
             )
             atten_sino = atten_torch.squeeze().cpu().numpy()
-        
+
+        print(f"Example {idx} (after resize): activity_sino shape: {activity_sino.shape}, atten_sino shape: {atten_sino.shape}")
+
         # Scale sinograms and create overlay
         activity_sino_scaled = activity_sino * sino_scale
         atten_sino_scale_factor = activity_sino_scaled.sum() / (atten_sino.sum() + 1e-8)
