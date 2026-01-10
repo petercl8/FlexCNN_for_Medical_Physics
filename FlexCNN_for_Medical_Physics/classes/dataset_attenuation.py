@@ -175,9 +175,10 @@ def visualize_sinogram_alignment(
     atten_sino_batch = torch.cat(projected_atten_sino_list, dim=0)
     overlay_batch = torch.cat(overlay_list, dim=0)
     
-    show_multiple_matched_tensors(activity_sino_batch, atten_sino_batch, cmap=cmap, fig_size=fig_size)
-    show_multiple_matched_tensors(overlay_batch, cmap=cmap, fig_size=fig_size)
-    
     # Print scale factor
     avg_atten_sino_scale_factor = np.mean(atten_sino_scale_factors)
     print(f"atten_sino_scale_factor = {avg_atten_sino_scale_factor:.6f}")
+
+
+    show_multiple_matched_tensors(activity_sino_batch, atten_sino_batch, cmap=cmap, fig_size=fig_size)
+    show_multiple_matched_tensors(overlay_batch, cmap=cmap, fig_size=fig_size)
