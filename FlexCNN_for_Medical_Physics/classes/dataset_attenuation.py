@@ -58,6 +58,8 @@ def visualize_sinogram_alignment(
     num_examples=5,
     scale_num_examples=None,
     start_index=0,
+    randomize=False,
+    random_seed=None,
     fig_size=3,
     cmap='inferno',
     circle=False,
@@ -88,8 +90,20 @@ def visualize_sinogram_alignment(
     # Determine how many examples to display vs. use for scale estimation
     if scale_num_examples is None:
         scale_num_examples = num_examples
-    end_index_view = start_index + num_examples
-    end_index_scale = start_index + scale_num_examples
+
+    total_examples = activity_sinos.shape[0]
+    if randomize:
+        rng = np.random.default_rng(random_seed)
+        total_needed = max(scale_num_examples, num_examples)
+        chosen = rng.choice(total_examples, size=total_needed, replace=False)
+        scale_indices = chosen[:scale_num_examples]
+        view_indices = chosen[:num_examples]
+    else:
+        end_index_view = min(start_index + num_examples, total_examples)
+        end_index_scale = min(start_index + scale_num_examples, total_examples)
+        scale_indices = np.arange(start_index, end_index_scale)
+        view_indices = scale_indices[: end_index_view - start_index]
+    view_indices_set = set(view_indices.tolist())
     
     # Initialize lists for collecting tensors and scale factors
     activity_sino_scaled_list = []
@@ -98,7 +112,7 @@ def visualize_sinogram_alignment(
     atten_sino_scale_factors = []
     
     # ===== MAIN LOOP: Process each example =====
-    for idx in range(start_index, end_index_scale):
+    for idx in scale_indices:
         # Extract activity sinogram (N, C, H, W)
         activity_sino = activity_sinos[idx, 0, :, :].squeeze()
         
@@ -165,7 +179,7 @@ def visualize_sinogram_alignment(
         overlay = activity_sino_norm + atten_sino_norm
         
         # Store tensors for visualization examples only
-        if idx < end_index_view:
+        if idx in view_indices_set:
             activity_sino_scaled_list.append(torch.from_numpy(activity_sino_scaled).unsqueeze(0).unsqueeze(0).float())
             projected_atten_sino_list.append(torch.from_numpy(atten_sino_rescaled).unsqueeze(0).unsqueeze(0).float())
             overlay_list.append(torch.from_numpy(overlay).unsqueeze(0).unsqueeze(0).float())
