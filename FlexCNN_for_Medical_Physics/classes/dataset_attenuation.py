@@ -7,6 +7,10 @@ import sys
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from functions.helper.display_images import show_multiple_matched_tensors
+from classes.dataset_resizing import (
+    bilinear_resize_sino,
+    crop_pad_sino,
+)
 
 
 def project_attenuation(atten_image, target_height, circle=False, theta=None):
@@ -52,10 +56,19 @@ def visualize_sinogram_alignment(
     paths,
     settings,
     num_examples=5,
+    scale_num_examples=None,
     start_index=0,
     fig_size=3,
     cmap='inferno',
-    circle=False
+    circle=False,
+    # Resizing / alignment options
+    use_crop_pad=False,
+    crop_vert_size=None,
+    crop_target_width=None,
+    crop_pool_size=2,
+    crop_pad_type='sinogram',
+    use_bilinear_resize=False,
+    sino_size=None
 ):
     '''
     Visualize alignment between projected attenuation sinograms and activity sinograms.
@@ -63,18 +76,27 @@ def visualize_sinogram_alignment(
     This function:
     1. Loads attenuation images and activity sinograms
     2. Projects attenuation images to sinograms using the Radon transform
-    3. Scales both sinogram types so they have common counts/totals
-    4. Displays activity and attenuation sinograms side-by-side (matched scales)
-    5. Displays a normalized overlay for visual alignment inspection
-    6. Returns atten_sino_scale factor for use in dataloaders/training
+    3. Optionally applies crop/pad or bilinear resizing (from dataset_resizing) to both sinogram types
+    4. Scales both sinogram types so they have common counts/totals
+    5. Displays activity and attenuation sinograms side-by-side (matched scales)
+    6. Displays a normalized overlay for visual alignment inspection
+    7. Prints atten_sino_scale factor for use in dataloaders/training (no return)
     
     paths:         paths dictionary containing atten_image_path and sino_path
     settings:      settings dictionary containing atten_image_scale and sino_scale
-    num_examples:  number of examples to visualize
+    num_examples:        number of examples to visualize
+    scale_num_examples:  number of examples to use when estimating atten_sino_scale (defaults to num_examples)
     start_index:   index to start from in dataset
     fig_size:      figure size for display
     cmap:          colormap for display
     circle:        circle mode for radon transform
+    use_crop_pad:  apply crop/pad/pool from dataset_resizing.crop_pad_sino
+    crop_vert_size: vertical size to crop/pad to (required if use_crop_pad)
+    crop_target_width: horizontal width target (required if use_crop_pad)
+    crop_pool_size: pooling width for crop_pad_sino
+    crop_pad_type: padding type for crop_pad_sino ('sinogram' or 'zeros')
+    use_bilinear_resize: apply bilinear resize from dataset_resizing.bilinear_resize_sino
+    sino_size:      target sinogram size if bilinear resize is used (square)
     '''
     # Get file paths from paths dictionary
     atten_image_path = paths['atten_image_path']
@@ -97,11 +119,17 @@ def visualize_sinogram_alignment(
     atten_image_scale = settings['atten_image_scale']
     sino_scale = settings['sino_scale']
     
-    # Select examples
-    end_index = min(start_index + num_examples, len(atten_images), len(activity_sinos))
-    actual_num = end_index - start_index
+    # Determine how many examples to display vs. to use for scale estimation
+    if scale_num_examples is None:
+        scale_num_examples = num_examples
+
+    end_index_view = min(start_index + num_examples, len(atten_images), len(activity_sinos))
+    end_index_scale = min(start_index + scale_num_examples, len(atten_images), len(activity_sinos))
+    actual_num_view = end_index_view - start_index
+    actual_num_scale = end_index_scale - start_index
     
-    print(f"\nProcessing {actual_num} examples (indices {start_index} to {end_index-1})")
+    print(f"\nProcessing {actual_num_scale} examples for scale estimation (indices {start_index} to {end_index_scale-1})")
+    print(f"Displaying first {actual_num_view} examples for visualization")
     
     # Initialize lists for collecting tensors and scale factors
     activity_sino_scaled_list = []
@@ -110,7 +138,7 @@ def visualize_sinogram_alignment(
     atten_sino_scale_factors = []
     
     # ===== MAIN LOOP: Process each example =====
-    for idx in range(start_index, end_index):
+    for idx in range(start_index, end_index_scale):
         # --- Extract activity sinogram ---
         # Handle different array shapes (4D with channels, 3D without, etc.)
         if len(activity_sinos.shape) == 4:  # (N, C, H, W)
@@ -132,6 +160,38 @@ def visualize_sinogram_alignment(
         # --- Project attenuation image to sinogram ---
         atten_img = atten_images[idx].squeeze() * atten_image_scale
         atten_sino = project_attenuation(atten_img, target_height, circle=circle, theta=theta)
+
+        # --- Optional geometric alignment using dataset_resizing helpers ---
+        # Convert to torch tensors with channel dimension for helper functions
+        act_torch = torch.from_numpy(activity_sino).unsqueeze(0).float()
+        atten_torch = torch.from_numpy(atten_sino).unsqueeze(0).float()
+
+        # Apply crop/pad/pool if requested
+        if use_crop_pad:
+            if crop_vert_size is None or crop_target_width is None:
+                raise ValueError("crop_vert_size and crop_target_width must be provided when use_crop_pad=True")
+            act_torch, atten_torch = crop_pad_sino(
+                act_torch,
+                atten_torch,
+                vert_size=crop_vert_size,
+                target_width=crop_target_width,
+                pool_size=crop_pool_size,
+                pad_type=crop_pad_type,
+            )
+
+        # Apply bilinear resize if requested
+        if use_bilinear_resize:
+            if sino_size is None:
+                raise ValueError("sino_size must be provided when use_bilinear_resize=True")
+            act_torch, atten_torch = bilinear_resize_sino(
+                act_torch,
+                atten_torch,
+                sino_size,
+            )
+
+        # Back to numpy for scaling/overlay
+        activity_sino = act_torch.squeeze().cpu().numpy()
+        atten_sino = atten_torch.squeeze().cpu().numpy()
         
         # --- Scale sinograms for matched visualization ---
         # Activity sinogram: scale by sino_scale factor from settings
@@ -159,10 +219,11 @@ def visualize_sinogram_alignment(
         atten_sino_tensor = torch.from_numpy(atten_sino_scaled).unsqueeze(0).unsqueeze(0).float()
         overlay_tensor = torch.from_numpy(overlay).unsqueeze(0).unsqueeze(0).float()
         
-        # Append to lists
-        activity_sino_scaled_list.append(activity_sino_tensor)
-        projected_atten_sino_list.append(atten_sino_tensor)
-        overlay_list.append(overlay_tensor)
+        # Append to lists only for the examples we intend to visualize
+        if idx < end_index_view:
+            activity_sino_scaled_list.append(activity_sino_tensor)
+            projected_atten_sino_list.append(atten_sino_tensor)
+            overlay_list.append(overlay_tensor)
     
     # ===== END MAIN LOOP =====
     
@@ -205,5 +266,3 @@ def visualize_sinogram_alignment(
     print(f"\nAttenuation sinogram scale factor:")
     print(f"atten_sino_scale = {avg_atten_sino_scale:.6f}")
     print(f"(Use this value in settings['atten_sino_scale'] for training)")
-    
-    return activity_sino_batch, atten_sino_batch, overlay_batch, avg_atten_sino_scale

@@ -12,22 +12,25 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train'):
         dataset: 'train' (default) or 'test'
     
     Returns:
-        dict with keys 'recon1_scale' and 'recon2_scale'
+        dict with keys 'recon1_scale', 'recon2_scale', and 'atten_image_scale'
     
     Example:
         scales = compute_quantitative_reconstruction_scale(paths, dataset='train')
         recon1_scale = scales['recon1_scale']
         recon2_scale = scales['recon2_scale']
+        atten_image_scale = scales['atten_image_scale']
     """
     # Select paths based on dataset
     if dataset == 'train':
         image_path = paths['train_image_path']
         recon1_path = paths['train_recon1_path']
         recon2_path = paths['train_recon2_path']
+        atten_image_path = paths['train_atten_image_path']
     elif dataset == 'test':
         image_path = paths['test_image_path']
         recon1_path = paths['test_recon1_path']
         recon2_path = paths['test_recon2_path']
+        atten_image_path = paths['test_atten_image_path']
     else:
         raise ValueError("dataset must be 'train' or 'test'")
 
@@ -53,150 +56,24 @@ def compute_quantitative_reconstruction_scale(paths, dataset='train'):
     else:
         scales['recon2_scale'] = 1.0
 
+    # Compute atten_image scale: ratio of ground truth to attenuation image activity
+    if atten_image_path is not None:
+        atten_image_array = np.load(atten_image_path, mmap_mode='r')
+        total_atten_image_activity = atten_image_array.sum()
+        scales['atten_image_scale'] = float(total_image_activity / total_atten_image_activity)
+    else:
+        scales['atten_image_scale'] = 1.0
+
     # Print results
     print(f"\nReconstruction scaling factors for {dataset} dataset:")
     if scales['recon1_scale'] != 1.0:
         print(f"  recon1_scale: {scales['recon1_scale']:.6f}")
     if scales['recon2_scale'] != 1.0:
         print(f"  recon2_scale: {scales['recon2_scale']:.6f}")
+    if scales['atten_image_scale'] != 1.0:
+        print(f"  atten_image_scale: {scales['atten_image_scale']:.6f}")
 
     return scales
-
-
-def compute_sinogram_to_image_scale(paths, dataset='train', sample_number=None, clip_percentile_low=1, clip_percentile_high=99, scale_stat='median'):
-    """
-    Compute scaling factor to make sinograms comparable in magnitude to images.
-    
-    Computes the ratio of typical image pixel values to typical sinogram pixel values,
-    making sinogram inputs roughly match image target scale for training.
-    
-    Args:
-        paths: paths dictionary from setup_paths() containing data file paths
-        dataset: 'train' (default) or 'test'
-        sample_number: number of examples to sample for calculation (None = use all)
-        clip_percentile_low: lower percentile for clipping outliers (default 1)
-        clip_percentile_high: upper percentile for clipping outliers (default 99)
-        scale_stat: 'mean' or 'median' for computing typical values (default 'median')
-    
-    Returns:
-        float: sinogram_scale factor
-    
-    Example:
-        sinogram_scale = compute_sinogram_to_image_scale(paths, dataset='train', sample_number=1000)
-    """
-    # Select paths based on dataset
-    if dataset == 'train':
-        image_path = paths['train_image_path']
-        sinogram_path = paths.get('train_sino_path', None)
-    elif dataset == 'test':
-        image_path = paths['test_image_path']
-        sinogram_path = paths.get('test_sino_path', None)
-    else:
-        raise ValueError("dataset must be 'train' or 'test'")
-
-    if sinogram_path is None:
-        print(f"\nNo sinogram path found for {dataset} dataset, returning scale=1.0")
-        return 1.0
-
-    # Load arrays
-    image_array = np.load(image_path, mmap_mode='r')
-    sinogram_array = np.load(sinogram_path, mmap_mode='r')
-
-    # Optionally sample for calculation
-    if sample_number is not None:
-        total_examples = len(sinogram_array)
-        rng = np.random.default_rng()
-        indices = rng.choice(total_examples, size=min(sample_number, total_examples), replace=False)
-        sampled_sinograms = np.stack([sinogram_array[i] for i in indices], axis=0)
-        sampled_images = np.stack([image_array[i] for i in indices], axis=0)
-        sinogram_nonzero = sampled_sinograms[sampled_sinograms > 0]
-        image_nonzero = sampled_images[sampled_images > 0]
-    else:
-        sinogram_nonzero = sinogram_array[sinogram_array > 0]
-        image_nonzero = image_array[image_array > 0]
-
-    # Clip nonzero values before computing stat
-    if image_nonzero.size > 0:
-        image_low = np.percentile(image_nonzero, clip_percentile_low)
-        image_high = np.percentile(image_nonzero, clip_percentile_high)
-        image_clipped = np.clip(image_nonzero, image_low, image_high)
-        if scale_stat == 'mean':
-            stat_nonzero_image = float(np.mean(image_clipped))
-        else:
-            stat_nonzero_image = float(np.median(image_clipped))
-    else:
-        stat_nonzero_image = 0.0
-
-    if sinogram_nonzero.size > 0:
-        sino_low = np.percentile(sinogram_nonzero, clip_percentile_low)
-        sino_high = np.percentile(sinogram_nonzero, clip_percentile_high)
-        sinogram_clipped = np.clip(sinogram_nonzero, sino_low, sino_high)
-        if scale_stat == 'mean':
-            stat_nonzero_sinogram = float(np.mean(sinogram_clipped))
-        else:
-            stat_nonzero_sinogram = float(np.median(sinogram_clipped))
-    else:
-        stat_nonzero_sinogram = 1.0
-
-    sinogram_scale = stat_nonzero_image / stat_nonzero_sinogram if stat_nonzero_sinogram != 0 else 1.0
-
-    # Print results
-    print(f"\nSinogram-to-image scaling factor for {dataset} dataset:")
-    print(f"  sinogram_scale: {sinogram_scale:.6f}")
-    print(f"  (stat={scale_stat}, clip={clip_percentile_low}-{clip_percentile_high}%, samples={'all' if sample_number is None else sample_number})")
-
-    return sinogram_scale
-
-
-
-def compute_average_activity_per_image(paths, dataset='train'):
-    """
-    Compute the average total activity per image across the dataset.
-    
-    Calculates the mean of per-image sums (total activity per image) to provide
-    a typical scale for the data. Useful for setting initial learned scale ranges.
-    
-    Args:
-        paths: paths dictionary from setup_paths() containing data file paths
-        dataset: 'train' (default) or 'test'
-    
-    Returns:
-        float: mean activity per image
-    
-    Example:
-        avg_activity = compute_average_activity_per_image(paths, dataset='train')
-        print(f"Average activity per image: {avg_activity:.6f}")
-    """
-    # Select paths based on dataset
-    if dataset == 'train':
-        image_path = paths['train_image_path']
-    elif dataset == 'test':
-        image_path = paths['test_image_path']
-    else:
-        raise ValueError("dataset must be 'train' or 'test'")
-    
-    # Load ground truth images
-    image_array = np.load(image_path, mmap_mode='r')
-    
-    # Compute per-image activity sums
-    flat = image_array.reshape(len(image_array), -1)
-    per_image_sums = flat.sum(axis=1)
-    
-    # Compute average
-    avg_activity = float(per_image_sums.mean())
-    std_activity = float(per_image_sums.std())
-    min_activity = float(per_image_sums.min())
-    max_activity = float(per_image_sums.max())
-    
-    # Print results
-    print(f"\nActivity statistics for {dataset} dataset ({len(image_array)} images):")
-    print(f"  Average activity per image: {avg_activity:.6f}")
-    print(f"  Std dev activity per image: {std_activity:.6f}")
-    print(f"  Min activity per image: {min_activity:.6f}")
-    print(f"  Max activity per image: {max_activity:.6f}")
-    
-    return avg_activity
-
 
 
 def analyze_reconstruction_scale_distribution(paths, dataset='train', sample_mode='full', sample_size=1000, ratio_cap_multiple=None):
@@ -356,3 +233,138 @@ def analyze_reconstruction_scale_distribution(paths, dataset='train', sample_mod
         )
 
     return scales
+
+
+def compute_sinogram_to_image_scale(paths, dataset='train', sample_number=None, clip_percentile_low=1, clip_percentile_high=99, scale_stat='median'):
+    """
+    Compute scaling factor to make sinograms comparable in magnitude to images.
+    
+    Computes the ratio of typical image pixel values to typical sinogram pixel values,
+    making sinogram inputs roughly match image target scale for training.
+    
+    Args:
+        paths: paths dictionary from setup_paths() containing data file paths
+        dataset: 'train' (default) or 'test'
+        sample_number: number of examples to sample for calculation (None = use all)
+        clip_percentile_low: lower percentile for clipping outliers (default 1)
+        clip_percentile_high: upper percentile for clipping outliers (default 99)
+        scale_stat: 'mean' or 'median' for computing typical values (default 'median')
+    
+    Returns:
+        float: sinogram_scale factor
+    
+    Example:
+        sinogram_scale = compute_sinogram_to_image_scale(paths, dataset='train', sample_number=1000)
+    """
+    # Select paths based on dataset
+    if dataset == 'train':
+        image_path = paths['train_image_path']
+        sinogram_path = paths.get('train_sino_path', None)
+    elif dataset == 'test':
+        image_path = paths['test_image_path']
+        sinogram_path = paths.get('test_sino_path', None)
+    else:
+        raise ValueError("dataset must be 'train' or 'test'")
+
+    if sinogram_path is None:
+        print(f"\nNo sinogram path found for {dataset} dataset, returning scale=1.0")
+        return 1.0
+
+    # Load arrays
+    image_array = np.load(image_path, mmap_mode='r')
+    sinogram_array = np.load(sinogram_path, mmap_mode='r')
+
+    # Optionally sample for calculation
+    if sample_number is not None:
+        total_examples = len(sinogram_array)
+        rng = np.random.default_rng()
+        indices = rng.choice(total_examples, size=min(sample_number, total_examples), replace=False)
+        sampled_sinograms = np.stack([sinogram_array[i] for i in indices], axis=0)
+        sampled_images = np.stack([image_array[i] for i in indices], axis=0)
+        sinogram_nonzero = sampled_sinograms[sampled_sinograms > 0]
+        image_nonzero = sampled_images[sampled_images > 0]
+    else:
+        sinogram_nonzero = sinogram_array[sinogram_array > 0]
+        image_nonzero = image_array[image_array > 0]
+
+    # Clip nonzero values before computing stat
+    if image_nonzero.size > 0:
+        image_low = np.percentile(image_nonzero, clip_percentile_low)
+        image_high = np.percentile(image_nonzero, clip_percentile_high)
+        image_clipped = np.clip(image_nonzero, image_low, image_high)
+        if scale_stat == 'mean':
+            stat_nonzero_image = float(np.mean(image_clipped))
+        else:
+            stat_nonzero_image = float(np.median(image_clipped))
+    else:
+        stat_nonzero_image = 0.0
+
+    if sinogram_nonzero.size > 0:
+        sino_low = np.percentile(sinogram_nonzero, clip_percentile_low)
+        sino_high = np.percentile(sinogram_nonzero, clip_percentile_high)
+        sinogram_clipped = np.clip(sinogram_nonzero, sino_low, sino_high)
+        if scale_stat == 'mean':
+            stat_nonzero_sinogram = float(np.mean(sinogram_clipped))
+        else:
+            stat_nonzero_sinogram = float(np.median(sinogram_clipped))
+    else:
+        stat_nonzero_sinogram = 1.0
+
+    sinogram_scale = stat_nonzero_image / stat_nonzero_sinogram if stat_nonzero_sinogram != 0 else 1.0
+
+    # Print results
+    print(f"\nSinogram-to-image scaling factor for {dataset} dataset:")
+    print(f"  sinogram_scale: {sinogram_scale:.6f}")
+    print(f"  (stat={scale_stat}, clip={clip_percentile_low}-{clip_percentile_high}%, samples={'all' if sample_number is None else sample_number})")
+
+    return sinogram_scale
+
+
+
+def compute_average_activity_per_image(paths, dataset='train'):
+    """
+    Compute the average total activity per image across the dataset.
+    
+    Calculates the mean of per-image sums (total activity per image) to provide
+    a typical scale for the data. Useful for setting initial learned scale ranges.
+    
+    Args:
+        paths: paths dictionary from setup_paths() containing data file paths
+        dataset: 'train' (default) or 'test'
+    
+    Returns:
+        float: mean activity per image
+    
+    Example:
+        avg_activity = compute_average_activity_per_image(paths, dataset='train')
+        print(f"Average activity per image: {avg_activity:.6f}")
+    """
+    # Select paths based on dataset
+    if dataset == 'train':
+        image_path = paths['train_image_path']
+    elif dataset == 'test':
+        image_path = paths['test_image_path']
+    else:
+        raise ValueError("dataset must be 'train' or 'test'")
+    
+    # Load ground truth images
+    image_array = np.load(image_path, mmap_mode='r')
+    
+    # Compute per-image activity sums
+    flat = image_array.reshape(len(image_array), -1)
+    per_image_sums = flat.sum(axis=1)
+    
+    # Compute average
+    avg_activity = float(per_image_sums.mean())
+    std_activity = float(per_image_sums.std())
+    min_activity = float(per_image_sums.min())
+    max_activity = float(per_image_sums.max())
+    
+    # Print results
+    print(f"\nActivity statistics for {dataset} dataset ({len(image_array)} images):")
+    print(f"  Average activity per image: {avg_activity:.6f}")
+    print(f"  Std dev activity per image: {std_activity:.6f}")
+    print(f"  Min activity per image: {min_activity:.6f}")
+    print(f"  Max activity per image: {max_activity:.6f}")
+    
+    return avg_activity
