@@ -158,12 +158,12 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
     # If SI_normalize==False: leave activity unchanged; multiply reconstructions by their respective recon scales
     if SI_normalize:
         image_scaled = (SI_fixedScale * image_multChannel_resize).to(device) if image_multChannel_resize is not None else None
-        recon1 = (SI_fixedScale * recon1_multChannel_resize).to(device) if recon1_multChannel_resize is not None else None
-        recon2 = (SI_fixedScale * recon2_multChannel_resize).to(device) if recon2_multChannel_resize is not None else None
+        recon1_scaled = (SI_fixedScale * recon1_multChannel_resize).to(device) if recon1_multChannel_resize is not None else None
+        recon2_scaled = (SI_fixedScale * recon2_multChannel_resize).to(device) if recon2_multChannel_resize is not None else None
     else:
         image_scaled = (image_scale * image_multChannel_resize).to(device) if image_multChannel_resize is not None else None
-        recon1 = (recon1_scale * recon1_multChannel_resize).to(device) if recon1_multChannel_resize is not None else None
-        recon2 = (recon2_scale * recon2_multChannel_resize).to(device) if recon2_multChannel_resize is not None else None
+        recon1_scaled = (recon1_scale * recon1_multChannel_resize).to(device) if recon1_multChannel_resize is not None else None
+        recon2_scaled = (recon2_scale * recon2_multChannel_resize).to(device) if recon2_multChannel_resize is not None else None
 
     ## Apply Fixed Scales per desired behavior and move to device ##
     # Sinogram: multiply by IS_fixedScale only if IS_normalize==True; otherwise multiply by sino_scale if not normalized
@@ -179,7 +179,7 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
     # Return nested tuple structure: (act_data, atten_data, recon_data)
     act_data = (sino_scaled, image_scaled)
     atten_data = (atten_sino_scaled, atten_image_scaled)
-    recon_data = (recon1, recon2)
+    recon_data = (recon1_scaled, recon2_scaled)
 
     return act_data, atten_data, recon_data
 
