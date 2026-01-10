@@ -61,7 +61,7 @@ def visualize_sinogram_alignment(
     fig_size=3,
     cmap='inferno',
     circle=False,
-    theta='auto' # 'auto' to infer from activity sino width or privide numpy array of angles
+    theta='auto', # 'auto' to infer from activity sino width and pool size (or privide numpy array of angles)
     # Activity resize/pad options
     act_resize_type='crop_pad',   # 'crop_pad', 'bilinear', or None
     act_pad_type='sinogram', # 'sinoram' or 'zeros'
@@ -103,14 +103,16 @@ def visualize_sinogram_alignment(
         # Extract activity sinogram (N, C, H, W)
         activity_sino = activity_sinos[idx, 0, :, :].squeeze()
         
-        # Calculate theta from activity sinogram width (horizontal = num angles)
-        theta = np.linspace(0, 180, activity_sino.shape[1], endpoint=False)
+        # Calculate theta from activity sinogram width (and pool size) if needed
+        if theta == 'auto':
+            num_angles = activity_sino.shape[1]/act_pool_size
+            theta = np.linspace(0, 180, num_angles, endpoint=False)
+
+        # Target height = sino height, to get us in the right ballpark
         target_height = activity_sino.shape[0]
         
         # Project attenuation
         atten_img = atten_images[idx].squeeze() * atten_image_scale
-        if theta == 'auto':
-            theta = np.linspace(0, 180, activity_sino.shape[1], endpoint=False)
         atten_sino = project_attenuation(atten_img, target_height, circle=circle, theta=theta)
 
         # Resize/pad activity
