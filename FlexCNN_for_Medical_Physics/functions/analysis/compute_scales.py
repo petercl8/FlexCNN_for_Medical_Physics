@@ -333,38 +333,95 @@ def compute_average_activity_per_image(paths, dataset='train'):
         dataset: 'train' (default) or 'test'
     
     Returns:
-        float: mean activity per image
+        dict with keys 'image', 'recon1', 'recon2', 'atten_image', each containing:
+            - 'avg': mean activity per image
+            - 'std': standard deviation of activity per image
+            - 'min': minimum activity per image
+            - 'max': maximum activity per image
     
     Example:
-        avg_activity = compute_average_activity_per_image(paths, dataset='train')
-        print(f"Average activity per image: {avg_activity:.6f}")
+        stats = compute_average_activity_per_image(paths, dataset='train')
+        avg_activity = stats['image']['avg']
+        recon1_avg = stats['recon1']['avg']
     """
     # Select paths based on dataset
     if dataset == 'train':
         image_path = paths['train_image_path']
+        recon1_path = paths['train_recon1_path']
+        recon2_path = paths['train_recon2_path']
+        atten_image_path = paths['train_atten_image_path']
     elif dataset == 'test':
         image_path = paths['test_image_path']
+        recon1_path = paths['test_recon1_path']
+        recon2_path = paths['test_recon2_path']
+        atten_image_path = paths['test_atten_image_path']
     else:
         raise ValueError("dataset must be 'train' or 'test'")
     
-    # Load ground truth images
+    def _compute_stats(array):
+        """Helper function to compute statistics for an array."""
+        flat = array.reshape(len(array), -1)
+        per_image_sums = flat.sum(axis=1)
+        return {
+            'avg': float(per_image_sums.mean()),
+            'std': float(per_image_sums.std()),
+            'min': float(per_image_sums.min()),
+            'max': float(per_image_sums.max())
+        }
+    
+    # Load ground truth images and compute statistics
     image_array = np.load(image_path, mmap_mode='r')
+    stats = {}
+    stats['image'] = _compute_stats(image_array)
     
-    # Compute per-image activity sums
-    flat = image_array.reshape(len(image_array), -1)
-    per_image_sums = flat.sum(axis=1)
+    # Compute recon1 statistics
+    if recon1_path is not None:
+        recon1_array = np.load(recon1_path, mmap_mode='r')
+        stats['recon1'] = _compute_stats(recon1_array)
+    else:
+        stats['recon1'] = None
     
-    # Compute average
-    avg_activity = float(per_image_sums.mean())
-    std_activity = float(per_image_sums.std())
-    min_activity = float(per_image_sums.min())
-    max_activity = float(per_image_sums.max())
+    # Compute recon2 statistics
+    if recon2_path is not None:
+        recon2_array = np.load(recon2_path, mmap_mode='r')
+        stats['recon2'] = _compute_stats(recon2_array)
+    else:
+        stats['recon2'] = None
+    
+    # Compute atten_image statistics
+    if atten_image_path is not None:
+        atten_image_array = np.load(atten_image_path, mmap_mode='r')
+        stats['atten_image'] = _compute_stats(atten_image_array)
+    else:
+        stats['atten_image'] = None
     
     # Print results
     print(f"\nActivity statistics for {dataset} dataset ({len(image_array)} images):")
-    print(f"  Average activity per image: {avg_activity:.6f}")
-    print(f"  Std dev activity per image: {std_activity:.6f}")
-    print(f"  Min activity per image: {min_activity:.6f}")
-    print(f"  Max activity per image: {max_activity:.6f}")
+    print(f"  Image (ground truth):")
+    print(f"    Average activity per image: {stats['image']['avg']:.6f}")
+    print(f"    Std dev activity per image: {stats['image']['std']:.6f}")
+    print(f"    Min activity per image: {stats['image']['min']:.6f}")
+    print(f"    Max activity per image: {stats['image']['max']:.6f}")
     
-    return avg_activity
+    if stats['recon1'] is not None:
+        print(f"  Recon1:")
+        print(f"    Average activity per image: {stats['recon1']['avg']:.6f}")
+        print(f"    Std dev activity per image: {stats['recon1']['std']:.6f}")
+        print(f"    Min activity per image: {stats['recon1']['min']:.6f}")
+        print(f"    Max activity per image: {stats['recon1']['max']:.6f}")
+    
+    if stats['recon2'] is not None:
+        print(f"  Recon2:")
+        print(f"    Average activity per image: {stats['recon2']['avg']:.6f}")
+        print(f"    Std dev activity per image: {stats['recon2']['std']:.6f}")
+        print(f"    Min activity per image: {stats['recon2']['min']:.6f}")
+        print(f"    Max activity per image: {stats['recon2']['max']:.6f}")
+    
+    if stats['atten_image'] is not None:
+        print(f"  Attenuation image:")
+        print(f"    Average activity per image: {stats['atten_image']['avg']:.6f}")
+        print(f"    Std dev activity per image: {stats['atten_image']['std']:.6f}")
+        print(f"    Min activity per image: {stats['atten_image']['min']:.6f}")
+        print(f"    Max activity per image: {stats['atten_image']['max']:.6f}")
+    
+    return stats
