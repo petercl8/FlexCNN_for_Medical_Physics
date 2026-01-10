@@ -61,6 +61,8 @@ def visualize_sinogram_alignment(
     fig_size=3,
     cmap='inferno',
     circle=False,
+    theta_type='symmetrical', # Set to 'speed' to match activity sinogram angular sampling after pooling
+                        # Set to 'symmetrical' to match sampling before pooling.
     # Activity resize/pad options
     act_resize_type='crop_pad',   # 'crop_pad', 'bilinear', or None
     act_pad_type='sinogram', # 'sinoram' or 'zeros'
@@ -73,7 +75,7 @@ def visualize_sinogram_alignment(
     atten_pad_type='sinogram',
     atten_vert_size=288,
     atten_target_width=288,
-    atten_pool_size=1,
+    atten_pool_size=2,
     atten_sino_size=None,
 ):
     '''
@@ -103,8 +105,12 @@ def visualize_sinogram_alignment(
         activity_sino = activity_sinos[idx, 0, :, :].squeeze()
         
         # Calculate theta from activity sinogram width (and pool size) if needed
-        num_angles = int(activity_sino.shape[1]/act_pool_size)
-        theta = np.linspace(0, 180, num_angles, endpoint=False)
+        if theta_type == 'speed':
+            num_angles = int(activity_sino.shape[1]/act_pool_size)
+            theta = np.linspace(0, 180, num_angles, endpoint=False)
+        elif theta_type == 'symmetrical':
+            num_angles = activity_sino.shape[1]
+            theta = np.linspace(0, 180, num_angles, endpoint=False)
 
         # Target height = sino height, to get us in the right ballpark
         target_height = activity_sino.shape[0]
