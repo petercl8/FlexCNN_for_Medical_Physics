@@ -65,14 +65,14 @@ def visualize_sinogram_alignment(
     act_resize_type='crop_pad',   # 'crop_pad', 'bilinear', or None
     act_pad_type='sinogram',
     act_vert_size=288,
-    act_target_width=513,
-    act_pool_size=1,
+    act_target_width=288,
+    act_pool_size=2,
     act_sino_size=None,
     # Attenuation resize/pad options
-    atten_resize_type='crop_pad',
+    atten_resize_type='crop_pad', # 'crop_pad', 'bilinear', or None
     atten_pad_type='sinogram',
-    atten_vert_size=None,
-    atten_target_width=None,
+    atten_vert_size=288,
+    atten_target_width=288,
     atten_pool_size=1,
     atten_sino_size=None,
 ):
@@ -80,9 +80,9 @@ def visualize_sinogram_alignment(
     Quick visual alignment helper: load sinograms, optionally resize/pad both activity and attenuation,
     scale to common totals, show matched pairs and overlay, print atten_sino_scale_factor.
     '''
-    atten_images = np.load(paths['atten_image_path'], mmap_mode='r')
-    activity_sinos = np.load(paths['sino_path'], mmap_mode='r')
-    atten_image_scale = settings['atten_image_scale']
+    atten_images = np.load(paths['train_atten_image_path'], mmap_mode='r')
+    activity_sinos = np.load(paths['train_sino_path'], mmap_mode='r')
+    atten_image_scale = settings['train_atten_image_scale']
     sino_scale = settings['sino_scale']
     
     # Determine how many examples to display vs. use for scale estimation
