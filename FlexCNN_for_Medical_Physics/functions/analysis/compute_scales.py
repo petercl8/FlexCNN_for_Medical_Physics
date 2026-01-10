@@ -6,23 +6,29 @@ def compute_average_activity_per_image(paths, dataset='train'):
     Compute the average total activity per image across the dataset.
     
     Calculates the mean of per-image sums (total activity per image) to provide
-    a typical scale for the data. Useful for setting initial learned scale ranges.
+    a typical scale for the data. Also computes global scaling factors to match
+    reconstructions and attenuation images to ground truth.
     
     Args:
         paths: paths dictionary from setup_paths() containing data file paths
         dataset: 'train' (default) or 'test'
     
     Returns:
-        dict with keys 'image', 'recon1', 'recon2', 'atten_image', each containing:
-            - 'avg': mean activity per image
-            - 'std': standard deviation of activity per image
-            - 'min': minimum activity per image
-            - 'max': maximum activity per image
+        dict with keys 'image', 'recon1', 'recon2', 'atten_image', 'scales', where:
+            - 'image', 'recon1', 'recon2', 'atten_image' each contain:
+                - 'avg': mean activity per image
+                - 'std': standard deviation of activity per image
+                - 'min': minimum activity per image
+                - 'max': maximum activity per image
+            - 'scales' contains:
+                - 'recon1_scale': ratio of image to recon1 average activity
+                - 'recon2_scale': ratio of image to recon2 average activity
+                - 'atten_image_scale': ratio of image to atten_image average activity
     
     Example:
         stats = compute_average_activity_per_image(paths, dataset='train')
         avg_activity = stats['image']['avg']
-        recon1_avg = stats['recon1']['avg']
+        recon1_scale = stats['scales']['recon1_scale']
     """
     # Select paths based on dataset
     if dataset == 'train':
@@ -75,6 +81,23 @@ def compute_average_activity_per_image(paths, dataset='train'):
     else:
         stats['atten_image'] = None
     
+    # Compute scales (ratios of average activities)
+    stats['scales'] = {}
+    if stats['recon1'] is not None:
+        stats['scales']['recon1_scale'] = float(stats['image']['avg'] / stats['recon1']['avg'])
+    else:
+        stats['scales']['recon1_scale'] = 1.0
+    
+    if stats['recon2'] is not None:
+        stats['scales']['recon2_scale'] = float(stats['image']['avg'] / stats['recon2']['avg'])
+    else:
+        stats['scales']['recon2_scale'] = 1.0
+    
+    if stats['atten_image'] is not None:
+        stats['scales']['atten_image_scale'] = float(stats['image']['avg'] / stats['atten_image']['avg'])
+    else:
+        stats['scales']['atten_image_scale'] = 1.0
+    
     # Print results
     print(f"\nActivity statistics for {dataset} dataset ({len(image_array)} images):")
     print(f"  Image (ground truth):")
@@ -103,6 +126,14 @@ def compute_average_activity_per_image(paths, dataset='train'):
         print(f"    Std dev activity per image: {stats['atten_image']['std']:.6f}")
         print(f"    Min activity per image: {stats['atten_image']['min']:.6f}")
         print(f"    Max activity per image: {stats['atten_image']['max']:.6f}")
+    
+    print(f"\n  Scaling factors (ratio of image to reconstruction/attenuation average activity):")
+    if stats['scales']['recon1_scale'] != 1.0:
+        print(f"    recon1_scale: {stats['scales']['recon1_scale']:.6f}")
+    if stats['scales']['recon2_scale'] != 1.0:
+        print(f"    recon2_scale: {stats['scales']['recon2_scale']:.6f}")
+    if stats['scales']['atten_image_scale'] != 1.0:
+        print(f"    atten_image_scale: {stats['scales']['atten_image_scale']:.6f}")
     
     return stats
 
