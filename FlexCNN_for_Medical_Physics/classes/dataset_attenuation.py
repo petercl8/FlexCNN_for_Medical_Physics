@@ -65,18 +65,16 @@ def visualize_sinogram_alignment(
                         # Set to 'symmetrical' to match sampling before pooling.
     # Activity resize/pad options
     act_resize_type='crop_pad',   # 'crop_pad', 'bilinear', or None
-    act_pad_type='sinogram', # 'sinoram' or 'zeros'
-    act_vert_size=288,
+    act_pad_type='zeros', # 'sinoram' or 'zeros'
+    act_vert_size=288,  # Target vertical size. Also used for horizontal size if bilinear resizing is selected.
     act_target_width=288,
     act_pool_size=2,
-    act_sino_size=None,
     # Attenuation resize/pad options
     atten_resize_type='crop_pad', # 'crop_pad', 'bilinear', or None
-    atten_pad_type='sinogram',
-    atten_vert_size=288,
+    atten_pad_type='zeros',
+    atten_vert_size=288, # Target vertical size. Also used for horizontal size if bilinear resizing is selected.
     atten_target_width=288,
     atten_pool_size=2,
-    atten_sino_size=None,
 ):
     '''
     Quick visual alignment helper: load sinograms, optionally resize/pad both activity and attenuation,
@@ -134,7 +132,7 @@ def visualize_sinogram_alignment(
             activity_sino = act_torch.squeeze().cpu().numpy()
         elif act_resize_type == 'bilinear':
             act_torch, _ = bilinear_resize_sino(
-                torch.from_numpy(activity_sino).unsqueeze(0).float(), None, act_sino_size
+                torch.from_numpy(activity_sino).unsqueeze(0).float(), None, act_vert_size
             )
             activity_sino = act_torch.squeeze().cpu().numpy()
 
@@ -150,7 +148,7 @@ def visualize_sinogram_alignment(
             atten_sino = atten_torch.squeeze().cpu().numpy()
         elif atten_resize_type == 'bilinear':
             _, atten_torch = bilinear_resize_sino(
-                None, torch.from_numpy(atten_sino).unsqueeze(0).float(), atten_sino_size
+                None, torch.from_numpy(atten_sino).unsqueeze(0).float(), atten_vert_size
             )
             atten_sino = atten_torch.squeeze().cpu().numpy()
 
