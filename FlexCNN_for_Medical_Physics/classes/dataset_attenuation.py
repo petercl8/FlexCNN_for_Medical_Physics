@@ -105,7 +105,7 @@ def visualize_sinogram_alignment(
         
         # Calculate theta from activity sinogram width (and pool size) if needed
         if theta == 'auto':
-            num_angles = activity_sino.shape[1]/act_pool_size
+            num_angles = int(activity_sino.shape[1]/act_pool_size)
             theta = np.linspace(0, 180, num_angles, endpoint=False)
 
         # Target height = sino height, to get us in the right ballpark
