@@ -82,7 +82,7 @@ def visualize_sinogram_alignment(
     '''
     atten_images = np.load(paths['train_atten_image_path'], mmap_mode='r')
     activity_sinos = np.load(paths['train_sino_path'], mmap_mode='r')
-    atten_image_scale = settings['train_atten_image_scale']
+    atten_image_scale = settings['atten_image_scale']
     sino_scale = settings['sino_scale']
     
     # Determine how many examples to display vs. use for scale estimation
