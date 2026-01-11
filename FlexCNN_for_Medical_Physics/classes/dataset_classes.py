@@ -1,4 +1,3 @@
-from FlexCNN_for_Medical_Physics.classes.dataset_attenuation import generate_attenuation_sinogram
 import torch
 from torch import nn
 from torch.utils.data import Dataset
@@ -10,7 +9,7 @@ from .dataset_resizing import resize_image_data, crop_pad_sino, bilinear_resize_
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
 
-def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, recon2_array, 
+def NpArrayDataLoader(sino_array, image_array, atten_image_array, atten_sino_array, recon1_array, recon2_array, 
                       config, settings, augment=False, 
                       sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda',
                       sino_height=382, sino_width=513,
@@ -28,6 +27,7 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
     sino_array:          sinogram numpy array
     image_array:         activity map numpy array (ground truth)
     atten_image_array:   (optional) attenuation image numpy array
+    atten_sino_array:    (optional) precomputed attenuation sinogram numpy array
     recon1_array:        (optional) reconstruction 1 numpy array
     recon2_array:        (optional) reconstruction 2 numpy array
     config:              configuration dictionary with hyperparameters. Must contain: network_type, train_SI, image_size, 
@@ -79,23 +79,8 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
     sinogram_multChannel = torch.from_numpy(np.ascontiguousarray(sino_array[index,:])).float() if sino_array is not None else None
     recon1_multChannel = torch.from_numpy(np.ascontiguousarray(recon1_array[index,:])).float() if recon1_array is not None else None
     recon2_multChannel = torch.from_numpy(np.ascontiguousarray(recon2_array[index,:])).float() if recon2_array is not None else None
-
-    atten_image_multChannel_numpy = np.ascontiguousarray(atten_image_array[index,:]) if atten_image_array is not None else None
-    atten_image_singleChannel_numpy = atten_image_multChannel_numpy[0,:,:] if atten_image_multChannel_numpy is not None else None
-    atten_image_multChannel = torch.from_numpy(atten_image_multChannel_numpy).float() if atten_image_multChannel_numpy is not None else None
-
-    ## Generate Attenuation Sinogram ##
-    if atten_image_multChannel is not None:
-        # Generate attenuation sinogram on-the-fly
-        atten_sino_np = generate_attenuation_sinogram(
-            atten_image_singleChannel_numpy,
-            sino_height=sino_height,
-            sino_width=sino_width,
-            theta_type='symmetrical',
-        )
-        atten_sino_multChannel = torch.from_numpy(np.ascontiguousarray(atten_sino_np)).float().unsqueeze(0)
-    else:
-        atten_sino_multChannel = None  # Attenuation sinograms are created on-the-fly, not loaded from file
+    atten_image_multChannel = torch.from_numpy(np.ascontiguousarray(atten_image_array[index,:])).float() if atten_image_array is not None else None
+    atten_sino_multChannel = torch.from_numpy(np.ascontiguousarray(atten_sino_array[index,:])).float() if atten_sino_array is not None else None
 
     ## Resize Warning ##
     # Check if sinograms need resizing
@@ -117,12 +102,13 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
 
     #### AUGMENT AND RESIZE DATA ####
 
+    ## Augment Sinograms ##
     if augment[0]=='SI':
-        ### Augment Sinograms ### -     (We augment first so that the sinogram columns, which contain the full span of angles, are not truncated before sinogram-like augmentation.)
+        # We augment first so that the sinogram columns, which contain the full span of angles, are not truncated before sinogram-like augmentation.
         sinogram_multChannel, image_multChannel, atten_sino_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
             sinogram_multChannel, image_multChannel, atten_sino_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
         )
-        ### Resize sinogram ###
+        # Resize sinogram (like a Sinogram)
         if resize_sino:
             if sino_resize_type=='bilinear':
                 sinogram_multChannel_resize, atten_sino_multChannel_resize = bilinear_resize_sino(sinogram_multChannel, atten_sino_multChannel, sino_size)
@@ -133,7 +119,7 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
             atten_sino_multChannel_resize = atten_sino_multChannel
 
     if augment[0]=='II':
-        ### Resize Sinograms ### -     (If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.)
+        # If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.
         if resize_sino:
             if sino_resize_type=='bilinear':
                 sinogram_multChannel_resize, atten_sino_multChannel_resize = bilinear_resize_sino(sinogram_multChannel, atten_sino_multChannel, sino_size)
@@ -143,12 +129,12 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
             sinogram_multChannel_resize = sinogram_multChannel
             atten_sino_multChannel_resize = atten_sino_multChannel
 
-        ### Augment data ### -     with image-like augmentations) ###
+        # Augment data (with image-like augmentations)
         sinogram_multChannel_resize, image_multChannel, atten_sino_multChannel_resize, atten_image_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
             sinogram_multChannel_resize, image_multChannel, atten_sino_multChannel_resize, atten_image_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
         )
 
-    #### Resize Image Data ###
+    # Resize image data (only if needed)
     image_multChannel_resize, atten_image_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = resize_image_data(
         image_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image, image_pad_type=image_pad_type
     )
@@ -210,11 +196,12 @@ class NpArrayDataSet(Dataset):
     In the dataset used in our first two conference papers, the data repeat every 17500 steps but with different augmentations.
     For the dataset with FORE rebinning, the dataset contains no augmented examples; all augmentation is performed on the fly.
     '''
-    def __init__(self, sino_path, image_path, atten_image_path, recon1_path, recon2_path, config, settings, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda'):
+    def __init__(self, sino_path, image_path, atten_image_path, atten_sino_path, recon1_path, recon2_path, config, settings, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda'):
         '''
         sino_path:          path to sinograms in data set
         image_path:         path to images (ground truth activity maps) in data set
         atten_image_path:   (optional) path to attenuation image. If None, no attenuation image is loaded.
+        atten_sino_path:    (optional) path to precomputed attenuation sinogram. If None, no attenuation sinogram is loaded.
         recon1_path:        (optional) path to pre-computed reconstruction 1. If None, reconstructions will be computed on-the-fly.
         recon2_path:        (optional) path to pre-computed reconstruction 2. If None, reconstructions will be computed on-the-fly.
         config:             configuration dictionary with hyperparameters. Must contain: image_size, sino_size, 
@@ -233,6 +220,7 @@ class NpArrayDataSet(Dataset):
         recon1_array = np.load(recon1_path, mmap_mode='r') if recon1_path is not None else None
         recon2_array = np.load(recon2_path, mmap_mode='r') if recon2_path is not None else None
         atten_image_array = np.load(atten_image_path, mmap_mode='r') if atten_image_path is not None else None
+        atten_sino_array = np.load(atten_sino_path, mmap_mode='r') if atten_sino_path is not None else None
 
         ## Set Instance Variables ##
         if num_examples==-1:
@@ -241,12 +229,14 @@ class NpArrayDataSet(Dataset):
             self.recon1_array = recon1_array[offset:,:] if recon1_array is not None else None
             self.recon2_array = recon2_array[offset:,:] if recon2_array is not None else None
             self.atten_image_array = atten_image_array[offset:,:] if atten_image_array is not None else None
+            self.atten_sino_array = atten_sino_array[offset:,:] if atten_sino_array is not None else None
         else:
             self.image_array = image_array[offset : offset + num_examples, :] if image_array is not None else None
             self.sino_array = sino_array[offset : offset + num_examples, :] if sino_array is not None else None
             self.recon1_array = recon1_array[offset : offset + num_examples, :] if recon1_array is not None else None
             self.recon2_array = recon2_array[offset : offset + num_examples, :] if recon2_array is not None else None
             self.atten_image_array = atten_image_array[offset : offset + num_examples, :] if atten_image_array is not None else None
+            self.atten_sino_array = atten_sino_array[offset : offset + num_examples, :] if atten_sino_array is not None else None
 
         self.config = config
         self.settings = settings
@@ -256,10 +246,11 @@ class NpArrayDataSet(Dataset):
         self.recon1_path = recon1_path
         self.recon2_path = recon2_path
         self.atten_image_path = atten_image_path
+        self.atten_sino_path = atten_sino_path
 
     def __len__(self):
         # Use first non-None array to determine length
-        for arr in [self.image_array, self.sino_array, self.atten_image_array, self.recon1_array, self.recon2_array]:
+        for arr in [self.image_array, self.sino_array, self.atten_image_array, self.atten_sino_array, self.recon1_array, self.recon2_array]:
             if arr is not None:
                 length = int(len(arr)/self.sample_division)
                 return length
@@ -273,7 +264,7 @@ class NpArrayDataSet(Dataset):
             device_arg = 'cpu'
 
         act_data, atten_data, recon_data = NpArrayDataLoader(
-            self.sino_array, self.image_array, self.atten_image_array,
+            self.sino_array, self.image_array, self.atten_image_array, self.atten_sino_array,
             self.recon1_array, self.recon2_array,
             self.config, self.settings,
             augment=self.augment, index=idx, device=device_arg)
