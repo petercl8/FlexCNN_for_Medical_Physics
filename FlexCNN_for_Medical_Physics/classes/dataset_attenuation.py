@@ -140,7 +140,8 @@ def visualize_sinogram_alignment(
         end_index_scale = min(start_index + scale_num_examples, total_examples)
         scale_indices = np.arange(start_index, end_index_scale)
         view_indices = scale_indices[: end_index_view - start_index]
-    view_indices_set = set(view_indices.tolist())
+    view_indices_idx = view_indices.tolist()
+
     
     # Initialize lists for collecting tensors and scale factors
     activity_sino_list = []
@@ -226,5 +227,5 @@ def visualize_sinogram_alignment(
     atten_sino_batch = atten_sino_batch * atten_sino_scale_factor
     
 
-    show_multiple_matched_tensors(activity_sino_batch[view_indices_set], atten_sino_batch[view_indices_set], cmap=cmap, fig_size=fig_size)
-    show_multiple_matched_tensors(overlay_batch[view_indices_set], cmap=cmap, fig_size=fig_size)
+    show_multiple_matched_tensors(activity_sino_batch[view_indices_idx], atten_sino_batch[view_indices_idx], cmap=cmap, fig_size=fig_size)
+    show_multiple_matched_tensors(overlay_batch[view_indices_idx], cmap=cmap, fig_size=fig_size)
