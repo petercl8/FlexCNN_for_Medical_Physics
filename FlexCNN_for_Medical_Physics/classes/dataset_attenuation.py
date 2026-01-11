@@ -55,7 +55,8 @@ def project_attenuation(atten_image, target_height, circle=False, theta=None):
 
 def generate_attenuation_sinogram(
     atten_img,
-    activity_sino,
+    sino_width,
+    target_height,
     circle=False,
     theta_type='symmetrical', # Set to 'speed' to match activity sinogram angular sampling after pooling
                         # Set to 'symmetrical' to match sampling before pooling.
@@ -65,18 +66,14 @@ def generate_attenuation_sinogram(
     Generate attenuation sinogram for a given index by projecting the corresponding
     attenuation image to match the activity sinogram dimensions and angular sampling.   
     '''         
-            
     # Calculate theta from activity sinogram width (and pool size) if needed
     if theta_type == 'speed':
-        num_angles = int(activity_sino.shape[1]/act_creation_pool_size)
+        num_angles = int(sino_with/act_creation_pool_size)
         theta = np.linspace(0, 180, num_angles, endpoint=False)
     elif theta_type == 'symmetrical':
-        num_angles = activity_sino.shape[1]
+        num_angles = sino_width
         theta = np.linspace(0, 180, num_angles, endpoint=False)
 
-    # Target height = sino height, to get us in the right ballpark
-    target_height = activity_sino.shape[0]
-    
     # Project attenuation
     atten_sino = project_attenuation(atten_img, target_height, circle=circle, theta=theta)
 
@@ -160,9 +157,16 @@ def visualize_sinogram_alignment(
         activity_sino = activity_sino * sino_scale
 
         # Generate attenuation sinogram
+        sino_width = activity_sino.shape[1]
+        target_height = activity_sino.shape[0]
+
+        print('sino_width:', sino_width)
+        print('target_height:', target_height)
+
         atten_sino = generate_attenuation_sinogram(
             atten_img,
-            activity_sino,
+            sino_width,
+            target_height,
             circle=circle,
             theta_type=theta_type,
             act_creation_pool_size=act_creation_pool_size,
@@ -214,7 +218,6 @@ def visualize_sinogram_alignment(
         atten_sino_norm = atten_sino / (atten_sino.sum() + 1e-8)
         overlay_list.append(torch.from_numpy(activity_sino_norm + atten_sino_norm).unsqueeze(0).unsqueeze(0).float())
         
-
     # Concatenate Lists into Batches
     activity_sino_batch = torch.cat(activity_sino_list, dim=0)
     atten_sino_batch = torch.cat(atten_sino_list, dim=0)
