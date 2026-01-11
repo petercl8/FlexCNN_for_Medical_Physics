@@ -220,7 +220,7 @@ def visualize_sinogram_alignment(
     overlay_batch = torch.cat(overlay_list, dim=0)
 
     # Calculate and store scale factors
-    atten_sino_scale_factor = activity_sino_batch.sum(dim=(1,2,3)) / (atten_sino_batch.sum(dim=(1,2,3)) + 1e-8).mean().item()
+    atten_sino_scale_factor = activity_sino_batch.mean().item() / atten_sino_batch.mean().item()
     print(f"atten_sino_scale_factor = {atten_sino_scale_factor}")
 
     # Scale attenuation sinograms for display
