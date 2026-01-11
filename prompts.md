@@ -87,21 +87,11 @@ Stage 1: Update code (#dataset_classes.py, #stitching_notebook.ipynb, #run_super
 
 Stage 2: If loading attenuation maps, we also need to "load" their sinogram pairs. I figure the best way to do this (to avoid storing unnecessary data) is to create the sinograms on the fly. The attenuation maps can be transformed in real time using a radon transform to create the attenuation sinograms. I already have some code written which does forward projection (in #reconstruction_projection). We need to update that code to create these sinograms that are of approximately the same dimensions as the activity sihnograms. We could then call that code from the dataloader to load sinograms and return them (along with everything else) to the trainable. That would keep code generation nicely siloed.
 
-Stage 3: Update code to allow for tuning/training of the atten_map->atten_sinogram network ("attenuation network"). Checkpoint code could remain mostly as it currently stands. We already have a lot of search dictionaries in #search_spaces.py . I'd prefer not to complicate things unless necessary. The current scheme involved merging one or more dictionaries depending upon the tesk. This occurs in #file:construct_dictionaries.py.  For a supervisory SI tuning, config_RAY_SI is combined with config_RAY_SUP and then either config_RAY_SI_learnScale or config_RAY_IS_fixedScale. This scaffolding was originally written for cycleGANs but I don't see why we couldn't use the exact same plan for this new scheme. All hyperparameters which belong determine (attenuation map)->(attenuation sinogram) architecture can start with IS_* keys. Any hyperparameters related to the fitting model are contained within Config_RAY_SUP dictionary. These keys can be reused, first for training the attenuation network and then for the activity network. There should be no issue because once the attenuation network is frozen, it won't need hyperparameters like gen_lr, gen_b1, etc. Therefore, when checkpointing, you should only ever need one dictionary of hyperparameters for both networks. I also believe that this can all be done without breaking future uses of this scheme for CycleGANs. Let me know if this isn't clear or, even if it is, if you think another plan would be better.
+Stage 3: Update code to allow for tuning/training of the atten_map->atten_sinogram network ("attenuation network"). Checkpoint code could remain mostly as it currently stands.
 
-Stage 4: Update code to allow for loading two networks (attenuation and activity) from checkpoints. Do we need to save network weights in separate files for the two networks? I'm not sure. Since we are training the networks sequentially (not simultaneously) I suspect we may need to add that complication but I'm not sure.
+Stage 4: Update code to allow for loading two networks (attenuation and activity) from checkpoints. Do we need to save network weights in separate files for the two networks?
 
-Stage 5: Update code to allow for simultaneous training (of activity network), inference only (of attenuation network), and feature transfer. Here, we also need to include introduction of learnable scaling parameters for injected features. There should also be options to turn off one or more of those feature injections for albation. I suppose you could think of the toggles as hyperparameters that could be tuned. We should create a new dictionary that applies only that apply in dual network use. Something like:
-
-config_RAY_DUAL = {
-    'inject_bottleneck': True,  # Always injected (not tunable)
-    'inject_dec_to_enc': tune.choice([True, False]),  # Ablation toggle
-    'inject_enc_to_dec': tune.choice([True, False]),  # Ablation toggle
-    'feature_scale_init': 0.1,  # Initial value for learnable scaling params
-    'feature_scale_lr_mult': tune.loguniform(0.1, 10.0),  # LR multiplier for scaling params
-}
-
-This is only my plan and it may not be the right way to do things. I've never done something like this in Pytorch before, so I will need to dialogue with you about how we will accomplish this before we formalize our plan. Please repeat back to me your understanding of this task. Once I'm satisfied you understand the assignment, we can start talking about the plan.
+Stage 5: Update code to allow for simultaneous training (of activity network), inference only (of attenuation network), and feature transfer. Here, we also need to include introduction of learnable scaling parameters for injected features. There should also be options to turn off one or more of those feature injections for albation.
 
 
 ----

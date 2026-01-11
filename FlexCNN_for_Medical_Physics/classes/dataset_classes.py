@@ -9,7 +9,6 @@ from .dataset_resizing import resize_image_data, crop_pad_sino, bilinear_resize_
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
 
-
 def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, recon2_array, config, settings, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda'):
     global resize_warned
     '''

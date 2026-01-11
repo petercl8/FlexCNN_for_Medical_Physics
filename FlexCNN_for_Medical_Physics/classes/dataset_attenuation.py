@@ -1,3 +1,4 @@
+from concurrent.futures import process
 import numpy as np
 import torch
 from skimage.transform import radon, resize
@@ -52,6 +53,38 @@ def project_attenuation(atten_image, target_height, circle=False, theta=None):
     return atten_sino
 
 
+def generate_attenuation_sinogram(
+    atten_img,
+    activity_sino,
+    atten_image_scale,
+    circle=False,
+    theta_type='symmetrical', # Set to 'speed' to match activity sinogram angular sampling after pooling
+                        # Set to 'symmetrical' to match sampling before pooling.
+    act_creation_pool_size=2,
+):
+    '''
+    Generate attenuation sinogram for a given index by projecting the corresponding
+    attenuation image to match the activity sinogram dimensions and angular sampling.   
+    '''         
+            
+    # Calculate theta from activity sinogram width (and pool size) if needed
+    if theta_type == 'speed':
+        num_angles = int(activity_sino.shape[1]/act_creation_pool_size)
+        theta = np.linspace(0, 180, num_angles, endpoint=False)
+    elif theta_type == 'symmetrical':
+        num_angles = activity_sino.shape[1]
+        theta = np.linspace(0, 180, num_angles, endpoint=False)
+
+    # Target height = sino height, to get us in the right ballpark
+    target_height = activity_sino.shape[0]
+    
+    # Project attenuation
+    atten_img = atten_img * atten_image_scale
+    atten_sino = project_attenuation(atten_img, target_height, circle=circle, theta=theta)
+
+    return atten_sino
+
+
 def visualize_sinogram_alignment(
     paths,
     settings,
@@ -70,6 +103,7 @@ def visualize_sinogram_alignment(
     act_pad_type='zeros', # 'sinoram' or 'zeros'
     act_vert_size=288,  # Target vertical size. Also used for horizontal size if bilinear resizing is selected.
     act_target_width=288,
+    act_creation_pool_size=2,
     act_pool_size=2,
     # Attenuation resize/pad options
     atten_resize_type='crop_pad', # 'crop_pad', 'bilinear', or None
@@ -115,21 +149,17 @@ def visualize_sinogram_alignment(
     for idx in scale_indices:
         # Extract activity sinogram (N, C, H, W)
         activity_sino = activity_sinos[idx, 0, :, :].squeeze()
+        atten_img = atten_images[idx].squeeze()
         
-        # Calculate theta from activity sinogram width (and pool size) if needed
-        if theta_type == 'speed':
-            num_angles = int(activity_sino.shape[1]/act_pool_size)
-            theta = np.linspace(0, 180, num_angles, endpoint=False)
-        elif theta_type == 'symmetrical':
-            num_angles = activity_sino.shape[1]
-            theta = np.linspace(0, 180, num_angles, endpoint=False)
-
-        # Target height = sino height, to get us in the right ballpark
-        target_height = activity_sino.shape[0]
-        
-        # Project attenuation
-        atten_img = atten_images[idx].squeeze() * atten_image_scale
-        atten_sino = project_attenuation(atten_img, target_height, circle=circle, theta=theta)
+        # Generate corresponding attenuation sinogram
+        atten_sino = generate_attenuation_sinogram(
+            atten_img,
+            activity_sino,
+            atten_image_scale,
+            circle=circle,
+            theta_type=theta_type,
+            act_creation_pool_size=act_creation_pool_size,
+        )
 
         # Print shapes for debugging
         print(f"Example {idx} (before resize): activity_sino shape: {activity_sino.shape}, atten_sino shape: {atten_sino.shape}")

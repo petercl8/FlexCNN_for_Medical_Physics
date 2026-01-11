@@ -267,8 +267,9 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
     settings['recon1_scale'] = common_settings['recon1_scale']
     settings['recon2_scale'] = common_settings['recon2_scale']
     settings['image_scale'] = common_settings['image_scale']
-    settings['atten_image_scale'] = common_settings.get('atten_image_scale', 1.0)
-    
+    settings['atten_image_scale'] = common_settings['atten_image_scale']
+    settings['atten_sino_scale'] = common_settings['atten_sino_scale']
+
     # Mode-specific
     if run_mode == 'tune':
         settings['augment'] = tune_opts['tune_augment']
