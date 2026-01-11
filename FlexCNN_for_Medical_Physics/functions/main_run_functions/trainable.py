@@ -586,8 +586,8 @@ def run_trainable(config, paths, settings):
                     show_multiple_matched_tensors(target[0:8], CNN_output[0:8])
 
                     if atten_image_scaled is not None and atten_sino_scaled is not None:
-                        show_single_unmatched_tensor(atten_image_scaled[0:2], fig_size=15)
-                        show_single_unmatched_tensor(atten_sino_scaled[0:2], fig_size=15)   
+                        show_single_unmatched_tensor(atten_image_scaled[0:2], fig_size=5)
+                        show_single_unmatched_tensor(atten_sino_scaled[0:2], fig_size=5)   
 
 
                 # _____ VISUALIZATION: Test Mode _____
