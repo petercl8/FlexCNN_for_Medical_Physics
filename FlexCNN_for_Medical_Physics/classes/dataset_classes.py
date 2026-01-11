@@ -81,13 +81,14 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
     recon2_multChannel = torch.from_numpy(np.ascontiguousarray(recon2_array[index,:])).float() if recon2_array is not None else None
 
     atten_image_multChannel_numpy = np.ascontiguousarray(atten_image_array[index,:]) if atten_image_array is not None else None
+    atten_image_singleChannel_numpy = atten_image_multChannel_numpy[0,:,:] if atten_image_multChannel_numpy is not None else None
     atten_image_multChannel = torch.from_numpy(atten_image_multChannel_numpy).float() if atten_image_multChannel_numpy is not None else None
 
     ## Generate Attenuation Sinogram ##
     if atten_image_multChannel is not None:
         # Generate attenuation sinogram on-the-fly
         atten_sino_np = generate_attenuation_sinogram(
-            atten_image_multChannel_numpy,
+            atten_image_singleChannel_numpy,
             sino_height=sino_height,
             sino_width=sino_width,
             theta_type='symmetrical',
@@ -116,13 +117,12 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
 
     #### AUGMENT AND RESIZE DATA ####
 
-    ## Augment Sinograms ##
     if augment[0]=='SI':
-        # We augment first so that the sinogram columns, which contain the full span of angles, are not truncated before sinogram-like augmentation.
+        ### Augment Sinograms ### -     (We augment first so that the sinogram columns, which contain the full span of angles, are not truncated before sinogram-like augmentation.)
         sinogram_multChannel, image_multChannel, atten_sino_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel = AugmentSinoImageDataRecons(
             sinogram_multChannel, image_multChannel, atten_sino_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
         )
-        # Resize sinogram (like a Sinogram)
+        ### Resize sinogram ###
         if resize_sino:
             if sino_resize_type=='bilinear':
                 sinogram_multChannel_resize, atten_sino_multChannel_resize = bilinear_resize_sino(sinogram_multChannel, atten_sino_multChannel, sino_size)
@@ -133,7 +133,7 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
             atten_sino_multChannel_resize = atten_sino_multChannel
 
     if augment[0]=='II':
-        # If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.
+        ### Resize Sinograms ### -     (If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.)
         if resize_sino:
             if sino_resize_type=='bilinear':
                 sinogram_multChannel_resize, atten_sino_multChannel_resize = bilinear_resize_sino(sinogram_multChannel, atten_sino_multChannel, sino_size)
@@ -143,12 +143,12 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
             sinogram_multChannel_resize = sinogram_multChannel
             atten_sino_multChannel_resize = atten_sino_multChannel
 
-        # Augment data (with image-like augmentations)
+        ### Augment data ### -     with image-like augmentations) ###
         sinogram_multChannel_resize, image_multChannel, atten_sino_multChannel_resize, atten_image_multChannel, recon1_multChannel, recon2_multChannel = AugmentImageImageDataRecons(
             sinogram_multChannel_resize, image_multChannel, atten_sino_multChannel_resize, atten_image_multChannel, recon1_multChannel, recon2_multChannel, flip_channels=augment[1]
         )
 
-    # Resize image data (only if needed)
+    #### Resize Image Data ###
     image_multChannel_resize, atten_image_multChannel_resize, recon1_multChannel_resize, recon2_multChannel_resize = resize_image_data(
         image_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=resize_image, image_pad_type=image_pad_type
     )
@@ -194,7 +194,7 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
 
     # Attenuation: apply scaling only (no normalization)
     atten_image_scaled = (atten_image_scale * atten_image_multChannel_resize).to(device) if atten_image_multChannel_resize is not None else None
-    atten_sino_scaled = None  # Attenuation sinograms are created on-the-fly, not loaded and scaled here
+    atten_sino_scaled = (atten_sino_scale * atten_sino_multChannel_resize).to(device) if atten_sino_multChannel_resize is not None else None
 
     # Return nested tuple structure: (act_data, atten_data, recon_data)
     act_data = (sino_scaled, image_scaled)
