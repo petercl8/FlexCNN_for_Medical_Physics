@@ -159,9 +159,6 @@ def visualize_sinogram_alignment(
         sino_width = activity_sino.shape[1]
         sino_height = activity_sino.shape[0]
 
-        print('sino_width:', sino_width)
-        print('sino_height:', sino_height)
-
         atten_sino = generate_attenuation_sinogram(
             atten_img,
             sino_height,
