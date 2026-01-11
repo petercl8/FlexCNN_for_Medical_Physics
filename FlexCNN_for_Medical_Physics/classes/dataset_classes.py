@@ -1,3 +1,4 @@
+from FlexCNN_for_Medical_Physics.classes.dataset_attenuation import generate_attenuation_sinogram
 import torch
 from torch import nn
 from torch.utils.data import Dataset
@@ -9,7 +10,12 @@ from .dataset_resizing import resize_image_data, crop_pad_sino, bilinear_resize_
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
 
-def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, recon2_array, config, settings, augment=False, sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda'):
+def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, recon2_array, 
+                      config, settings, augment=False, 
+                      sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda',
+                      sino_height=382, sino_width=513,
+                      ):
+    
     global resize_warned
     '''
     Function to load a sinogram, activity map, optionally reconstructions, and optionally attenuation data. 
@@ -73,8 +79,22 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
     sinogram_multChannel = torch.from_numpy(np.ascontiguousarray(sino_array[index,:])).float() if sino_array is not None else None
     recon1_multChannel = torch.from_numpy(np.ascontiguousarray(recon1_array[index,:])).float() if recon1_array is not None else None
     recon2_multChannel = torch.from_numpy(np.ascontiguousarray(recon2_array[index,:])).float() if recon2_array is not None else None
-    atten_image_multChannel = torch.from_numpy(np.ascontiguousarray(atten_image_array[index,:])).float() if atten_image_array is not None else None
-    atten_sino_multChannel = None  # Attenuation sinograms are created on-the-fly, not loaded from file
+
+    atten_image_multChannel_numpy = np.ascontiguousarray(atten_image_array[index,:]) if atten_image_array is not None else None
+    atten_image_multChannel = torch.from_numpy(atten_image_multChannel_numpy).float() if atten_image_multChannel_numpy is not None else None
+
+    ## Generate Attenuation Sinogram ##
+    if atten_image_multChannel is not None:
+        # Generate attenuation sinogram on-the-fly
+        atten_sino_np = generate_attenuation_sinogram(
+            atten_image_multChannel_numpy,
+            sino_height=sino_height,
+            sino_width=sino_width,
+            theta_type='symmetrical',
+        )
+        atten_sino_multChannel = torch.from_numpy(np.ascontiguousarray(atten_sino_np)).float().unsqueeze(0)
+    else:
+        atten_sino_multChannel = None  # Attenuation sinograms are created on-the-fly, not loaded from file
 
     ## Resize Warning ##
     # Check if sinograms need resizing
