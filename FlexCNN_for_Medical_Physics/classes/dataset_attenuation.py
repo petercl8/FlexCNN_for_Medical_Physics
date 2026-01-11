@@ -7,7 +7,7 @@ import sys
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from functions.helper.display_images import show_multiple_matched_tensors
+from functions.helper.display_images import show_multiple_matched_tensors, show_multiple_unmatched_tensors
 from classes.dataset_resizing import (
     bilinear_resize_sino,
     crop_pad_sino,
@@ -224,5 +224,5 @@ def visualize_sinogram_alignment(
     print(f"atten_sino_scale_factor = {avg_atten_sino_scale_factor:.6f}")
 
 
-    show_multiple_matched_tensors(activity_sino_batch, atten_sino_batch, cmap=cmap, fig_size=fig_size)
+    show_multiple_unmatched_tensors(activity_sino_batch, atten_sino_batch, cmap=cmap, fig_size=fig_size)
     show_multiple_matched_tensors(overlay_batch, cmap=cmap, fig_size=fig_size)

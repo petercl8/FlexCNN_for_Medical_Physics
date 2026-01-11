@@ -65,7 +65,8 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, recon1_array, 
     recon2_scale = settings['recon2_scale']
     sino_scale = settings['sino_scale']
     image_scale = settings['image_scale']
-    atten_image_scale = settings.get('atten_image_scale', 1.0)
+    atten_image_scale = settings['atten_image_scale']
+    atten_sino_scale = settings['atten_sino_scale']
 
     ## Select Data, Convert to Tensors ##
     image_multChannel = torch.from_numpy(np.ascontiguousarray(image_array[index,:])).float() if image_array is not None else None
