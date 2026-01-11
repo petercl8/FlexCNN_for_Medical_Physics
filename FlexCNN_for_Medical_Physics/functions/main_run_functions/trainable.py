@@ -432,7 +432,7 @@ def run_trainable(config, paths, settings):
         for act_data, atten_data, recon_data in iter(dataloader):
             # _____ SUBSECTION 10A: UNPACK BATCH DATA _____
             sino_scaled, act_map_scaled = act_data
-            atten_sino, atten_image = atten_data
+            atten_sino_scaled, atten_image_scaled = atten_data
             recon1, recon2 = recon_data
             
             # _____ SUBSECTION 10B: TIMING AND INPUT ROUTING _____
@@ -584,6 +584,11 @@ def run_trainable(config, paths, settings):
                     print(input_.shape)
                     print('Target/Output:')
                     show_multiple_matched_tensors(target[0:8], CNN_output[0:8])
+
+                    if atten_image_scaled is not None and atten_sino_scaled is not None:
+                        show_single_unmatched_tensor(atten_image_scaled[0:2], fig_size=15)
+                        show_single_unmatched_tensor(atten_sino_scaled[0:2], fig_size=15)   
+
 
                 # _____ VISUALIZATION: Test Mode _____
                 if run_mode == 'test':
