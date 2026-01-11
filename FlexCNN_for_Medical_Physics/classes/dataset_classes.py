@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 from torch.utils.data import Dataset
-from torchvision import transforms
 import numpy as np
 from .dataset_augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
 from .dataset_resizing import resize_image_data, crop_pad_sino, bilinear_resize_sino
@@ -12,7 +11,6 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 def NpArrayDataLoader(sino_array, image_array, atten_image_array, atten_sino_array, recon1_array, recon2_array, 
                       config, settings, augment=False, 
                       sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda',
-                      sino_height=382, sino_width=513,
                       ):
     
     global resize_warned
@@ -141,9 +139,10 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, atten_sino_arr
 
     #### (Optional) Normalize Resized Outputs ####
     if SI_normalize:
-        a = torch.reshape(image_multChannel_resize, (image_channels,-1))
-        a = nn.functional.normalize(a, p=1, dim = 1)
-        image_multChannel_resize = torch.reshape(a, (image_channels, image_size, image_size))
+        if image_multChannel_resize is not None:
+            a = torch.reshape(image_multChannel_resize, (image_channels,-1))
+            a = nn.functional.normalize(a, p=1, dim = 1)
+            image_multChannel_resize = torch.reshape(a, (image_channels, image_size, image_size))
         if recon1_multChannel_resize is not None:
             b = torch.reshape(recon1_multChannel_resize, (image_channels,-1))
             b = nn.functional.normalize(b, p=1, dim = 1)
@@ -153,9 +152,14 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, atten_sino_arr
             c = nn.functional.normalize(c, p=1, dim = 1)
             recon2_multChannel_resize = torch.reshape(c, (image_channels, image_size, image_size))
     if IS_normalize:
-        a = torch.reshape(sinogram_multChannel_resize, (sino_channels,-1))
-        a = nn.functional.normalize(a, p=1, dim = 1)
-        sinogram_multChannel_resize = torch.reshape(a, (sino_channels, sino_size, sino_size))
+        if sinogram_multChannel_resize is not None:
+            a = torch.reshape(sinogram_multChannel_resize, (sino_channels,-1))
+            a = nn.functional.normalize(a, p=1, dim = 1)
+            sinogram_multChannel_resize = torch.reshape(a, (sino_channels, sino_size, sino_size))
+        if atten_sino_multChannel_resize is not None:
+            b = torch.reshape(atten_sino_multChannel_resize, (sino_channels,-1))
+            b = nn.functional.normalize(b, p=1, dim = 1)
+            atten_sino_multChannel_resize = torch.reshape(b, (sino_channels, sino_size, sino_size))
 
 
     #### Scale and Move to Device ####
