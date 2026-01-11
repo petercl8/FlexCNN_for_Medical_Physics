@@ -146,7 +146,6 @@ def visualize_sinogram_alignment(
     activity_sino_list = []
     atten_sino_list = []
     overlay_list = []
-    atten_sino_scale_factors = []
     
     # ===== MAIN LOOP: Process each example =====
     for idx in scale_indices:
@@ -227,5 +226,5 @@ def visualize_sinogram_alignment(
     atten_sino_batch = atten_sino_batch * atten_sino_scale_factor
     
 
-    show_multiple_matched_tensors(activity_sino_batch[view_indices], atten_sino_batch[view_indices], cmap=cmap, fig_size=fig_size)
-    show_multiple_matched_tensors(overlay_batch[view_indices], cmap=cmap, fig_size=fig_size)
+    show_multiple_matched_tensors(activity_sino_batch[view_indices_set], atten_sino_batch[view_indices_set], cmap=cmap, fig_size=fig_size)
+    show_multiple_matched_tensors(overlay_batch[view_indices_set], cmap=cmap, fig_size=fig_size)
