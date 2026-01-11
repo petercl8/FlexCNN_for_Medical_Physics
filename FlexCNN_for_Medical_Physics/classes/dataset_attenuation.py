@@ -56,7 +56,6 @@ def project_attenuation(atten_image, target_height, circle=False, theta=None):
 def generate_attenuation_sinogram(
     atten_img,
     activity_sino,
-    atten_image_scale,
     circle=False,
     theta_type='symmetrical', # Set to 'speed' to match activity sinogram angular sampling after pooling
                         # Set to 'symmetrical' to match sampling before pooling.
@@ -79,7 +78,6 @@ def generate_attenuation_sinogram(
     target_height = activity_sino.shape[0]
     
     # Project attenuation
-    atten_img = atten_img * atten_image_scale
     atten_sino = project_attenuation(atten_img, target_height, circle=circle, theta=theta)
 
     return atten_sino
@@ -116,12 +114,17 @@ def visualize_sinogram_alignment(
     Quick visual alignment helper: load sinograms, optionally resize/pad both activity and attenuation,
     scale to common totals, show matched pairs and overlay, print atten_sino_scale_factor.
     '''
-    atten_images = np.load(paths['train_atten_image_path'], mmap_mode='r')
+
+    # Load Raw Data
     activity_sinos = np.load(paths['train_sino_path'], mmap_mode='r')
-    atten_image_scale = settings['atten_image_scale']
+    atten_images = np.load(paths['train_atten_image_path'], mmap_mode='r')
+
+    # Load Scales
     sino_scale = settings['sino_scale']
+    atten_image_scale = settings['atten_image_scale']
+
     
-    # Determine how many examples to display vs. use for scale estimation
+    # Determine which examples to show
     if scale_num_examples is None:
         scale_num_examples = num_examples
 
@@ -140,22 +143,25 @@ def visualize_sinogram_alignment(
     view_indices_set = set(view_indices.tolist())
     
     # Initialize lists for collecting tensors and scale factors
-    activity_sino_scaled_list = []
-    projected_atten_sino_list = []
+    activity_sino_list = []
+    atten_sino_list = []
     overlay_list = []
     atten_sino_scale_factors = []
     
     # ===== MAIN LOOP: Process each example =====
     for idx in scale_indices:
-        # Extract activity sinogram (N, C, H, W)
+        # Extract activity sinogram and attenuation image
         activity_sino = activity_sinos[idx, 0, :, :].squeeze()
         atten_img = atten_images[idx].squeeze()
         
-        # Generate corresponding attenuation sinogram
+        # Scale activity sinogram and attenuation image
+        atten_img = atten_img * atten_image_scale
+        activity_sino = activity_sino * sino_scale
+
+        # Generate attenuation sinogram
         atten_sino = generate_attenuation_sinogram(
             atten_img,
             activity_sino,
-            atten_image_scale,
             circle=circle,
             theta_type=theta_type,
             act_creation_pool_size=act_creation_pool_size,
@@ -198,31 +204,28 @@ def visualize_sinogram_alignment(
 
         print(f"Example {idx} (after resize): activity_sino shape: {activity_sino.shape}, atten_sino shape: {atten_sino.shape}")
 
-        # Scale sinograms and create overlay
-        activity_sino_scaled = activity_sino * sino_scale
-        atten_sino_scale_factor = activity_sino_scaled.sum() / (atten_sino.sum() + 1e-8)
-        atten_sino_scale_factors.append(atten_sino_scale_factor)
-        atten_sino_rescaled = atten_sino * atten_image_scale * atten_sino_scale_factor
-        
+        # Store Activity & Sino Tensors
+        activity_sino_list.append(torch.from_numpy(activity_sino).unsqueeze(0).unsqueeze(0).float())
+        atten_sino_list.append(torch.from_numpy(atten_sino).unsqueeze(0).unsqueeze(0).float())
+
+        # Create Overlays
         activity_sino_norm = activity_sino / (activity_sino.sum() + 1e-8)
         atten_sino_norm = atten_sino / (atten_sino.sum() + 1e-8)
-        overlay = activity_sino_norm + atten_sino_norm
+        overlay_list.append(torch.from_numpy(activity_sino_norm + atten_sino_norm).unsqueeze(0).unsqueeze(0).float())
         
-        # Store tensors for visualization examples only
-        if idx in view_indices_set:
-            activity_sino_scaled_list.append(torch.from_numpy(activity_sino_scaled).unsqueeze(0).unsqueeze(0).float())
-            projected_atten_sino_list.append(torch.from_numpy(atten_sino_rescaled).unsqueeze(0).unsqueeze(0).float())
-            overlay_list.append(torch.from_numpy(overlay).unsqueeze(0).unsqueeze(0).float())
-    
-    # Concatenate and display
-    activity_sino_batch = torch.cat(activity_sino_scaled_list, dim=0)
-    atten_sino_batch = torch.cat(projected_atten_sino_list, dim=0)
+
+    # Concatenate Lists into Batches
+    activity_sino_batch = torch.cat(activity_sino_list, dim=0)
+    atten_sino_batch = torch.cat(atten_sino_list, dim=0)
     overlay_batch = torch.cat(overlay_list, dim=0)
+
+    # Calculate and store scale factors
+    atten_sino_scale_factor = activity_sino_batch.sum(dim=(1,2,3)) / (atten_sino_batch.sum(dim=(1,2,3)) + 1e-8).mean().item()
+    print(f"atten_sino_scale_factor = {atten_sino_scale_factor}")
+
+    # Scale attenuation sinograms for display
+    atten_sino_batch = atten_sino_batch * atten_sino_scale_factor
     
-    # Print scale factor
-    avg_atten_sino_scale_factor = np.mean(atten_sino_scale_factors)
-    print(f"atten_sino_scale_factor = {avg_atten_sino_scale_factor:.6f}")
 
-
-    show_multiple_unmatched_tensors(activity_sino_batch, atten_sino_batch, cmap=cmap, fig_size=fig_size)
-    show_multiple_matched_tensors(overlay_batch, cmap=cmap, fig_size=fig_size)
+    show_multiple_matched_tensors(activity_sino_batch[view_indices], atten_sino_batch[view_indices], cmap=cmap, fig_size=fig_size)
+    show_multiple_matched_tensors(overlay_batch[view_indices], cmap=cmap, fig_size=fig_size)
