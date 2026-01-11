@@ -58,7 +58,7 @@ def generate_attenuation_sinogram(
     circle=False,
     theta_type='symmetrical', # Set to 'speed' to match activity sinogram angular sampling after pooling
                         # Set to 'symmetrical' to match sampling before pooling.
-    act_creation_pool_size=2, # Only used if theta_type is 'speed'
+    atten_creation_pool_size=2, # Only used if theta_type is 'speed'
 ):
     '''
     Generate attenuation sinogram for a given index by projecting the corresponding
@@ -69,7 +69,7 @@ def generate_attenuation_sinogram(
 
     # Calculate theta from activity sinogram width (and pool size) if needed
     if theta_type == 'speed':
-        num_angles = int(sino_width/act_creation_pool_size)
+        num_angles = int(sino_width/atten_creation_pool_size)
         theta = np.linspace(0, 180, num_angles, endpoint=False)
     else:
         num_angles = sino_width
@@ -104,13 +104,13 @@ def visualize_sinogram_alignment(
     act_pad_type='zeros', # 'sinoram' or 'zeros'
     act_vert_size=288,  # Target vertical size. Also used for horizontal size if bilinear resizing is selected.
     act_target_width=288,
-    act_creation_pool_size=2,
     act_pool_size=2,
     # Attenuation resize/pad options
     atten_resize_type='crop_pad', # 'crop_pad', 'bilinear', or None
     atten_pad_type='zeros',
     atten_vert_size=288, # Target vertical size. Also used for horizontal size if bilinear resizing is selected.
     atten_target_width=288,
+    atten_creation_pool_size=2, # Only used if theta_type is 'speed'
     atten_pool_size=2,
 ):
     '''
@@ -172,7 +172,7 @@ def visualize_sinogram_alignment(
             sino_width,
             circle=circle,
             theta_type=theta_type,
-            act_creation_pool_size=act_creation_pool_size,
+            atten_creation_pool_size=atten_creation_pool_size,
         )
 
         # Print shapes for debugging
@@ -238,3 +238,60 @@ def visualize_sinogram_alignment(
 
     show_multiple_matched_tensors(activity_sino_batch[view_indices_batch], atten_sino_batch[view_indices_batch], cmap=cmap, fig_size=fig_size)
     show_multiple_matched_tensors(overlay_batch[view_indices_batch], cmap=cmap, fig_size=fig_size)
+
+
+
+def precompute_atten_sinos(
+    project_dirPath,
+    data_dirName,
+    atten_image_fileName,
+    atten_sino_fileName,
+    sino_height=382,
+    sino_width=512,
+    theta_type='symmetrical',
+    atten_creation_pool_size=2,
+    circle=False,
+):
+    """
+    Precompute attenuation sinograms to disk using memmap-based writes.
+
+    Args:
+        project_dirPath (str): Absolute path to project root.
+        data_dirName (str): Dataset directory relative to project root.
+        atten_image_fileName (str): File name of attenuation images (.npy). Shape expected (N, H, W) or (N, 1, H, W).
+        atten_sino_fileName (str): Output file name for attenuation sinograms (.npy). Saved under data_dirName.
+        sino_height (int): Target sinogram height (detector elements).
+        sino_width (int): Target sinogram width (number of angles).
+        theta_type (str): 'symmetrical' or 'speed' (passed to generate_attenuation_sinogram).
+        atten_creation_pool_size (int): Pool size used when theta_type == 'speed'.
+        circle (bool): Radon circle mode.
+    """
+
+    from tqdm import trange
+
+    dataset_path = os.path.join(project_dirPath, data_dirName)
+    atten_image_path = os.path.join(dataset_path, atten_image_fileName)
+    atten_sino_path = os.path.join(dataset_path, atten_sino_fileName)
+
+    atten_images = np.load(atten_image_path, mmap_mode='r')
+    if atten_images.ndim == 4:
+        atten_images = atten_images[:, 0]  # drop channel if present
+
+    num_samples = atten_images.shape[0]
+
+    # Create memmap output with channel dimension (N, 1, H, W)
+    out = np.memmap(atten_sino_path, dtype=np.float32, mode='w+', shape=(num_samples, 1, sino_height, sino_width))
+
+    for i in trange(num_samples, desc='Precomputing atten sinos'):
+        atten_sino = generate_attenuation_sinogram(
+            atten_images[i],
+            sino_height=sino_height,
+            sino_width=sino_width,
+            circle=circle,
+            theta_type=theta_type,
+            atten_creation_pool_size=atten_creation_pool_size,
+        )
+        out[i, 0] = atten_sino
+
+    # Ensure data is written
+    out.flush()
