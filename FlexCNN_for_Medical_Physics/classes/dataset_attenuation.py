@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib.format import open_memmap
 import torch
 from skimage.transform import radon, resize
 import os
@@ -275,8 +276,12 @@ def precompute_atten_sinos(
 
     num_samples = atten_images.shape[0]
 
-    # Create memmap output with channel dimension (N, 1, H, W)
-    out = np.memmap(atten_sino_path, dtype=np.float32, mode='w+', shape=(num_samples, 1, sino_height, sino_width))
+    # Enforce .npy output for compatibility with np.load(..., mmap_mode='r')
+    if not atten_sino_path.endswith('.npy'):
+        raise ValueError(f"atten_sino_fileName must end with .npy, got: {atten_sino_path}")
+
+    # Create .npy memmap with channel dimension (N, 1, H, W)
+    out = open_memmap(atten_sino_path, mode='w+', dtype=np.float32, shape=(num_samples, 1, sino_height, sino_width))
 
     for i in trange(num_samples, desc='Precomputing atten sinos'):
         atten_sino = generate_attenuation_sinogram(
