@@ -155,10 +155,6 @@ def visualize_sinogram_alignment(
         activity_sino = activity_sinos[idx, 0, :, :].squeeze()
         atten_img = atten_images[idx].squeeze()
         
-        # Scale activity sinogram and attenuation image
-        atten_img = atten_img * atten_image_scale
-        activity_sino = activity_sino * sino_scale
-
         # Generate attenuation sinogram
         sino_width = activity_sino.shape[1]
         sino_height = activity_sino.shape[0]
@@ -212,7 +208,10 @@ def visualize_sinogram_alignment(
 
         print(f"Example {idx} (after resize): activity_sino shape: {activity_sino.shape}, atten_sino shape: {atten_sino.shape}")
 
-        # Store Activity & Sino Tensors
+        # Scale activity sinogram
+        activity_sino = activity_sino * sino_scale
+
+        # Store Sinograms
         activity_sino_list.append(torch.from_numpy(activity_sino).unsqueeze(0).unsqueeze(0).float())
         atten_sino_list.append(torch.from_numpy(atten_sino).unsqueeze(0).unsqueeze(0).float())
 
