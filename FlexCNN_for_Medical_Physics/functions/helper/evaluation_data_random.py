@@ -17,13 +17,10 @@ from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, cust
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric
 from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_simple_phantom
 
-# Number of batches to sample and average per evaluation
-NUM_EVAL_BATCHES = 1
 
-
-def load_validation_batches(paths, config, settings):
+def load_validation_batch(paths, config, settings):
     """
-    Load multiple fresh random validation batches without augmentation.
+    Load a fresh random validation batch without augmentation.
     
     Each call loads a new random sample from the validation set. No deterministic
     seeding, so batches vary across evaluations. No augmentation since the validation
@@ -35,7 +32,7 @@ def load_validation_batches(paths, config, settings):
         settings: dict with 'tune_eval_batch_size' (e.g., 32)
     
     Returns:
-        list of dicts, each with keys 'sino' and 'image' (tensors on CPU)
+        dict with keys 'sino' and 'image' (tensors on CPU)
     
     Raises:
         ValueError: if validation paths are not set
@@ -62,39 +59,35 @@ def load_validation_batches(paths, config, settings):
         recon1_path=None,
         recon2_path=None,
         atten_image_path=None,
+        atten_sino_path=None
     )
     
-    # Load NUM_EVAL_BATCHES fresh random batches
-    batches = [] # a list of dicts with 'sino' and 'image' tensors
-    for _ in range(NUM_EVAL_BATCHES):
-        # Sample a fresh random batch (no fixed seed; differs each call)
-        # Allow replacement when requested batch size exceeds dataset size
-        indices = np.random.choice(
-            len(val_dataset),
-            size=tune_eval_batch_size,
-            replace=(tune_eval_batch_size > len(val_dataset))
-        )
-        
-        # Extract the batch
-        sino_batch = []
-        image_batch = []
-        for idx in indices:
-            act_data, atten_data, recon_data = val_dataset[idx]
-            sino, image = act_data
-            sino_batch.append(sino)
-            image_batch.append(image)
-        
-        batches.append({
-            'sino': torch.stack(sino_batch),
-            'image': torch.stack(image_batch),
-        })
+    # Sample a fresh random batch (no fixed seed; differs each call)
+    # Allow replacement when requested batch size exceeds dataset size
+    indices = np.random.choice(
+        len(val_dataset),
+        size=tune_eval_batch_size,
+        replace=(tune_eval_batch_size > len(val_dataset))
+    )
     
-    return batches
+    # Extract the batch
+    sino_batch = []
+    image_batch = []
+    for idx in indices:
+        act_data, atten_data, recon_data = val_dataset[idx]
+        sino, image = act_data
+        sino_batch.append(sino)
+        image_batch.append(image)
+    
+    return {
+        'sino': torch.stack(sino_batch),
+        'image': torch.stack(image_batch),
+    }
 
 
-def load_qa_batches(paths, config, settings, augment=('SI', True)):
+def load_qa_batch(paths, config, settings, augment=('SI', True)):
     """
-    Load multiple fresh random QA phantom batches with augmentation and masks.
+    Load a fresh random QA phantom batch with augmentation and masks.
     
     Each call loads a new random sample from the QA set. Augmentations are applied
     to exploit limited phantom data. Masks are loaded via recon1_path to ensure
@@ -110,8 +103,7 @@ def load_qa_batches(paths, config, settings, augment=('SI', True)):
         augment: type of augmentation to apply to images, sinograms & masks
     
     Returns:
-        list of dicts, each with keys 'sino', 'image', 'hotMask', 'hotBackgroundMask'
-        (all tensors on CPU)
+        dict with keys 'sino', 'image', 'hotMask', 'hotBackgroundMask' (all tensors on CPU)
     
     Raises:
         ValueError: if QA paths are not set
@@ -144,149 +136,117 @@ def load_qa_batches(paths, config, settings, augment=('SI', True)):
         recon1_path=paths['tune_qa_hotMask_path'],      # Hot mask via recon1_path
         recon2_path=paths['tune_qa_hotBackgroundMask_path'],  # Hot background via recon2_path
         atten_image_path=None, 
+        atten_sino_path=None,
     )
     
-    # Load NUM_EVAL_BATCHES fresh random batches with augmentation
-    batches = []
-    for _ in range(NUM_EVAL_BATCHES):
-        # Sample a fresh random batch (no fixed seed; differs each call)
-        indices = np.random.choice(len(qa_dataset), size=tune_eval_batch_size, replace=True) # Allow replacement due to small QA set
-
-        # THRE HERE
-
-        # Extract the batch
-        sino_batch = []
-        image_batch = []
-        hotMask_batch = []
-        hotBackgroundMask_batch = []
-        for idx in indices:
-            # Unpack nested structure: act_data, atten_data, recon_data
-            act_data, atten_data, recon_data = qa_dataset[idx]
-            sino, image = act_data
-            hotMask, hotBackgroundMask = recon_data
-            sino_batch.append(sino)
-            image_batch.append(image)
-            hotMask_batch.append(hotMask)
-            hotBackgroundMask_batch.append(hotBackgroundMask)
-        
-        batches.append({
-            'sino': torch.stack(sino_batch),
-            'image': torch.stack(image_batch),
-            'hotMask': torch.stack(hotMask_batch),
-            'hotBackgroundMask': torch.stack(hotBackgroundMask_batch),
-        })
+    # Sample a fresh random batch (no fixed seed; differs each call)
+    indices = np.random.choice(len(qa_dataset), size=tune_eval_batch_size, replace=True) # Allow replacement due to small QA set
     
-    return batches
+    # Extract the batch
+    sino_batch = []
+    image_batch = []
+    hotMask_batch = []
+    hotBackgroundMask_batch = []
+    for idx in indices:
+        # Unpack nested structure: act_data, atten_data, recon_data
+        act_data, atten_data, recon_data = qa_dataset[idx]
+        sino, image = act_data
+        hotMask, hotBackgroundMask = recon_data
+        sino_batch.append(sino)
+        image_batch.append(image)
+        hotMask_batch.append(hotMask)
+        hotBackgroundMask_batch.append(hotBackgroundMask)
+    
+    return {
+        'sino': torch.stack(sino_batch),
+        'image': torch.stack(image_batch),
+        'hotMask': torch.stack(hotMask_batch),
+        'hotBackgroundMask': torch.stack(hotBackgroundMask_batch),
+    }
 
 
-def evaluate_val(gen, batches, device, train_SI):
+def evaluate_val(gen, batch, device, train_SI):
     """
-    Evaluate network on multiple validation batches and average metrics.
+    Evaluate network on a validation batch and compute metrics.
     
-    Each batch is moved to device, evaluated, and metrics are averaged across all batches.
-    Batches remain on CPU until evaluation to minimize GPU memory pressure.
+    Batch is moved to device, evaluated, and metrics are computed.
+    Batch remains on CPU until evaluation to minimize GPU memory pressure.
     
     Args:
         gen: Generator network (assumed in eval mode)
-        batches: list of dicts, each with 'sino' and 'image' tensors (on CPU)
+        batch: dict with 'sino' and 'image' tensors (on CPU)
         device: torch device to move tensors to
         train_SI: bool, True for sino→image, False for image→sino
     
     Returns:
-        dict with averaged metric results: {'MSE': float, 'SSIM': float, 'CUSTOM': float}
+        dict with metric results: {'MSE': float, 'SSIM': float, 'CUSTOM': float}
     """
-    mse_sum = 0.0
-    ssim_sum = 0.0
-    custom_sum = 0.0
-    num_batches = len(batches)
+    eval_sino = batch['sino'].to(device)
+    eval_image = batch['image'].to(device)
     
-    for batch in batches:
-        eval_sino = batch['sino'].to(device)
-        eval_image = batch['image'].to(device)
-        
-        # Assign inputs/targets based on train_SI
-        if train_SI:
-            eval_input = eval_sino
-            eval_target = eval_image
-        else:
-            eval_input = eval_image
-            eval_target = eval_sino
-        
-        # Generate network output
-        with torch.no_grad():
-            eval_output = gen(eval_input)
-        
-        # Accumulate metrics
-        mse_sum += calculate_metric(eval_target, eval_output, MSE)
-        ssim_sum += calculate_metric(eval_target, eval_output, SSIM)
-        custom_sum += custom_metric(eval_target, eval_output)
-        
-        # Explicit cleanup to prevent memory accumulation during tuning
-        del eval_sino, eval_image, eval_input, eval_target, eval_output
+    # Assign inputs/targets based on train_SI
+    if train_SI:
+        eval_input = eval_sino
+        eval_target = eval_image
+    else:
+        eval_input = eval_image
+        eval_target = eval_sino
     
-    # Clear batch list to free CPU memory
-    batches.clear()
+    # Generate network output
+    with torch.no_grad():
+        eval_output = gen(eval_input)
     
-    # Return averaged metrics
+    # Calculate metrics
+    mse_val = calculate_metric(eval_target, eval_output, MSE)
+    ssim_val = calculate_metric(eval_target, eval_output, SSIM)
+    custom_val = custom_metric(eval_target, eval_output)
+    
+    # Explicit cleanup to prevent memory accumulation during tuning
+    del eval_sino, eval_image, eval_input, eval_target, eval_output
+    
+    # Return metrics
     return {
-        'MSE': mse_sum / num_batches,
-        'SSIM': ssim_sum / num_batches,
-        'CUSTOM': custom_sum / num_batches
+        'MSE': mse_val,
+        'SSIM': ssim_val,
+        'CUSTOM': custom_val
     }
 
 
-def evaluate_qa(gen, batches, device, use_ground_truth_rois=False):
+def evaluate_qa(gen, batch, device, use_ground_truth_rois=False):
     """
-    Evaluate network on multiple QA phantom batches and average contrast metrics.
+    Evaluate network on a QA phantom batch and compute contrast metrics.
     
-    Each batch is moved to device, evaluated, and ROI metrics are averaged across all batches.
-    Batches remain on CPU until evaluation to minimize GPU memory pressure.
+    Batch is moved to device, evaluated, and ROI metrics are computed.
+    Batch remains on CPU until evaluation to minimize GPU memory pressure.
     
     Args:
         gen: Generator network (assumed in eval mode)
-        batches: list of dicts, each with 'sino', 'image', 'hotMask', 'hotBackgroundMask' tensors (on CPU)
+        batch: dict with 'sino', 'image', 'hotMask', 'hotBackgroundMask' tensors (on CPU)
         device: torch device to move tensors to
-        settings: dict with optional 'tune_qa_hot_weight' (kept for compatibility)
         use_ground_truth_rois: bool, if True use ground truth for ROI checks (for validation)
 
     Returns:
-        dict with averaged metric results:
+        dict with metric results:
             - 'CR_symmetric': float
             - 'hot_underestimation': float
             - 'cold_overestimation': float
     """
-    num_batches = len(batches)
-    CR_symmetric_sum = 0.0
-    hot_under_sum = 0.0
-    cold_over_sum = 0.0
-
-    for batch in batches:
-        eval_sino = batch['sino'].to(device)
-        eval_image = batch['image'].to(device)
-        hotMask = batch['hotMask'].to(device)
-        
-        # Generate network output (sino → reconstructed image)
-        with torch.no_grad():
-            network_output = gen(eval_sino)
-        
-        # Optionally substitute ground truth for ROI checks to validate mask correctness
-        eval_output = eval_image if use_ground_truth_rois else network_output
-        
-        # Symmetric phantom metrics (returns dict)
-        cr_metrics = ROI_simple_phantom(eval_image, eval_output, hotMask)
-        CR_symmetric_sum += cr_metrics['CR_symmetric']
-        hot_under_sum += cr_metrics['hot_underestimation']
-        cold_over_sum += cr_metrics['cold_overestimation']
-        
-        # Explicit cleanup to prevent memory accumulation during tuning
-        del eval_sino, eval_image, hotMask, network_output, eval_output
+    eval_sino = batch['sino'].to(device)
+    eval_image = batch['image'].to(device)
+    hotMask = batch['hotMask'].to(device)
     
-    # Clear batch list to free CPU memory
-    batches.clear()
+    # Generate network output (sino → reconstructed image)
+    with torch.no_grad():
+        network_output = gen(eval_sino)
     
-    # Return averaged metrics
-    return {
-        'CR_symmetric': CR_symmetric_sum / num_batches,
-        'hot_underestimation': hot_under_sum / num_batches,
-        'cold_overestimation': cold_over_sum / num_batches,
-    }
+    # Optionally substitute ground truth for ROI checks to validate mask correctness
+    eval_output = eval_image if use_ground_truth_rois else network_output
+    
+    # Symmetric phantom metrics (returns dict)
+    cr_metrics = ROI_simple_phantom(eval_image, eval_output, hotMask)
+    
+    # Explicit cleanup to prevent memory accumulation during tuning
+    del eval_sino, eval_image, hotMask, network_output, eval_output
+    
+    # Return metrics
+    return cr_metrics

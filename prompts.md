@@ -120,28 +120,6 @@ D) Do the stages I propose make sense to you? If not, please propose new ones. I
 
 
 =============
-DUAL TRAINING
-=============
-I have an idea that is related to what we've been going over. It's kind of a combination of cycle-consistency and feature injection. Regular cycle-consistency is used to tell a network "what" it should output. It constrains the outputs so that it is possible to reverse-map them. But that's not really what we are looking for when we are trying to increase generalization. (After all, with direct reconstruction we already have targets--unlike with CycleGANs). Rather, we are    trying to tell the network "how" to produce the outputs. I wonder if it would be useful, then, to set up a scheme with sinogram->image and image->sinogram networks (all activity), but in this case we train both networks simultaneously with supervised learning and do feature injection (as with  our frozen-backbone attenuation scheme). This would force both networks to be symmetrical. I believe this could be cleanly folded into our current plan with only a few minor changes. Do you understand what I'm getting at?
-
------
-ChatGPT suggestions:
-S->I lr = base_lr * 1.0
-I->S lr = base_lr * 0.5
-
-If you see convergence issues or asymmetric behavior, you can split:
--sup_alpha_min
--gen_lr
--optionally other regularization / dropout parameterss
-
-
-Remedial Steps
-==============
-D (loss hardening)—fast, prevents runtime errors.
-B (config flow)—ensures network_type is visible everywhere.
-A (notebook comments)—documents new options. ADD PASING CYCLESUP_FROZEN TO construct_dictionaries
-C (dataloader scaffolding)—adds structure for Stage 2 without breaking Stage 1.
-E (quick verification)—confirm end-to-end config assembly.
-
-
-I believe we still need to make a coupe changes to #s
+tune_dataframe for qa -X
+get rid of random batches -X
+get rid of .get() statements

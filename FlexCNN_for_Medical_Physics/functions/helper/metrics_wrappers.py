@@ -100,16 +100,14 @@ def reconstruct_images_and_update_test_dataframe(sino_tensor, CNN_output, act_ma
     return test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output
 
 
-def update_tune_dataframe(tune_dataframe, tune_dataframe_path, model, config, mean_CNN_MSE, mean_CNN_SSIM, mean_CNN_CUSTOM):
+def update_tune_dataframe(tune_dataframe, tune_dataframe_path, model, config, metrics):
     '''
     Function to update the tune_dataframe for each trial run that makes it partway through the tuning process.
 
     tune_dataframe      a dataframe that stores model and IQA metric information for a particular trial
     model               model being trained (in tuning)
     config              configuration dictionary
-    mean_CNN_MSE        mean MSE for the CNN
-    mean_CNN_SSIM       mean SSIM for the CNN
-    mean_CNN_CUSTOM     mean custom metric for the CNN
+    metrics             dictionary of metrics returned by evaluate_val() or evaluate_qa()
 
     '''
     # Extract values from config dictionary
@@ -127,11 +125,26 @@ def update_tune_dataframe(tune_dataframe, tune_dataframe_path, model, config, me
     # Calculate number of trainable weights in CNN
     num_params = sum(map(torch.numel, model.parameters()))
 
-    # Concatenate Dataframe
-    add_frame = pd.DataFrame({'SI_dropout': SI_dropout, 'SI_exp_kernel': SI_exp_kernel, 'SI_gen_fill': SI_gen_fill, 'SI_gen_hidden_dim': SI_gen_hidden_dim,
-                            'SI_gen_neck': SI_gen_neck, 'SI_layer_norm': SI_layer_norm, 'SI_normalize': SI_normalize, 'SI_pad_mode': SI_pad_mode, 'batch_size': batch_size,
-                            'gen_lr': gen_lr, 'num_params': num_params, 'mean_CNN_MSE': mean_CNN_MSE, 'mean_CNN_SSIM': mean_CNN_SSIM, 'mean_CNN_CUSTOM': mean_CNN_CUSTOM}, index=[0])
+    # Build hyperparameters dict
+    hyperparams = {
+        'SI_dropout': SI_dropout,
+        'SI_exp_kernel': SI_exp_kernel,
+        'SI_gen_fill': SI_gen_fill,
+        'SI_gen_hidden_dim': SI_gen_hidden_dim,
+        'SI_gen_neck': SI_gen_neck,
+        'SI_layer_norm': SI_layer_norm,
+        'SI_normalize': SI_normalize,
+        'SI_pad_mode': SI_pad_mode,
+        'batch_size': batch_size,
+        'gen_lr': gen_lr,
+        'num_params': num_params
+    }
 
+    # Merge hyperparameters with metrics
+    row_data = {**hyperparams, **metrics}
+
+    # Concatenate Dataframe
+    add_frame = pd.DataFrame(row_data, index=[0])
     tune_dataframe = pd.concat([tune_dataframe, add_frame], axis=0)
 
     # Save Dataframe to File
