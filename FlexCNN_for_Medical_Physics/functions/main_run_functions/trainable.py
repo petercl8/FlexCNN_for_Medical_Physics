@@ -53,7 +53,7 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     run_mode = settings['run_mode']
     device = settings['device']
-    tune_debug = settings['tune_debug']
+    tune_debug = settings.get('tune_debug', False)
     if tune_debug:
         logger.setLevel(logging.DEBUG)
         logger.debug(f"[TUNE_DEBUG] Entering run_trainable; initial device request: {device}")
