@@ -50,8 +50,11 @@ def construct_config(
 
     # If not tuning (or forcing tuning with a fixed config for debugging), choose config dictionary based on run_mode and network_type
     if run_mode in ['train', 'test', 'visualize', 'none'] or tune_opts.get('tune_force_fixed_config')==True:
-        if network_type == 'SUP':
+        if network_type == 'SUP_ACT':
             config = config_SUP_SI if train_SI else config_SUP_IS
+        elif network_type == 'SUP_ATTEN':
+            config = config_SUP_SI
+            train_SI = True # Atten networks always train SI
         elif network_type == 'GAN':
             config = config_GAN_SI if train_SI else config_GAN_IS
         elif network_type == 'CYCLEGAN':
