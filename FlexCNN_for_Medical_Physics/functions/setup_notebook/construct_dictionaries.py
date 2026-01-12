@@ -342,7 +342,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['save_state'] = False
         settings['offset'] = 0
         settings['show_times'] = test_opts['test_show_times']
-        settings['sample_division'] = test_opts.get('test_sample_division', 1)
+        settings['sample_division'] = test_opts['test_sample_division', 1]
         settings['test_display_step'] = test_opts['test_display_step'] # Used in compute_display_step()
         #settings['test_batch_size'] = test_opts['test_batch_size']
     

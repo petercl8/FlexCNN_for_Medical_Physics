@@ -81,18 +81,15 @@ def run_trainable(config, paths, settings):
         tune_dataframe_fraction = settings['tune_dataframe_fraction']
         tune_max_t = settings['tune_max_t']
         tune_restore = settings['tune_restore']
-    elif run_mode == 'visualize':
-        visualize_batch_size = settings['visualize_batch_size']
-    
-    # File paths
+        tune_dataframe_path = paths['tune_dataframe_path']
     checkpoint_path = paths['checkpoint_path']
-    tune_dataframe_path = paths['tune_dataframe_path']
+
 
     # ========================================================================================
     # SECTION 2: COMPUTE BATCH SIZE AND RUNTIME PARAMETERS
     # ========================================================================================
     # Convert batch_base2_exponent to batch_size for tune/train modes
-    if 'batch_base2_exponent' in config and settings['run_mode'] in ('tune', 'train'):
+    if 'batch_base2_exponent' in config and run_mode in ('tune', 'train'):
         config['batch_size'] = 2 ** config['batch_base2_exponent']
 
     batch_size = config['batch_size']
@@ -329,9 +326,8 @@ def run_trainable(config, paths, settings):
 
                 # _____ VISUALIZATION: Visualization Mode _____
                 if run_mode == 'visualize':
-                    visualize_offset = settings['visualize_offset']
                     batch_data['batch_step'] = batch_step
-                    visualize_mode(batch_data, visualize_batch_size, visualize_offset)
+                    visualize_mode(batch_data, batch_size, offset)
 
                 # _____ STATE SAVING _____
                 if save_state:
