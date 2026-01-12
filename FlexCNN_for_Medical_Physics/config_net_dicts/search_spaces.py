@@ -145,7 +145,7 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'IS_disc_adv_criterion': 1,
     }
 
-config_SUP_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
+config_RAY_SUP_FROZEN = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
     # NEW
     'cycle_criterion': None,
     'lambda_adv': 0,
@@ -173,7 +173,7 @@ config_RAY_GAN = { # This is MERGED with either config_RAY_IS or config_RAY_SI t
     'gen_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]),
     }
 
-config_GAN_RAY_cycle = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent generative adversarial network.
+config_RAY_GAN_CYCLE = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent generative adversarial network.
     # NEW
     'cycle_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
     'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),

@@ -47,7 +47,7 @@ def NpArrayDataLoader(sino_array, image_array, atten_image_array, atten_sino_arr
     sino_channels = config['sino_channels']
 
     ## Set Normalization Variables ##
-    if (network_type=='GAN') or (network_type=='SUP'):
+    if (network_type=='GAN') or (network_type=='SUP_ATTEN') or (network_type=='SUP_ACT'): # supervisory network
         if train_SI==True:
             SI_normalize=config['SI_normalize']
             SI_fixedScale=config['SI_fixedScale']

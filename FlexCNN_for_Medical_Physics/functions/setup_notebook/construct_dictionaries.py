@@ -11,8 +11,7 @@ def construct_config(
     config_GAN_SI=None,
     config_GAN_IS=None,
     config_CYCLEGAN=None,
-    config_CYCLESUP=None,
-    config_CYCLESUP_FROZEN=None,
+    config_FROZEN=None,
     config_RAY_SI=None,
     config_RAY_SI_learnScale=None,
     config_RAY_SI_fixedScale=None,
@@ -20,9 +19,9 @@ def construct_config(
     config_RAY_IS_learnScale=None,
     config_RAY_IS_fixedScale=None,
     config_RAY_SUP=None,
+    config_RAY_SUP_FROZEN=None,
     config_RAY_GAN=None,
-    config_SUP_RAY_cycle=None,
-    config_GAN_RAY_cycle=None):
+    config_RAY_GAN_CYCLE=None):
 
     """
     Combines configuration dictionaries based on run_mode, network_type, and train_SI.
@@ -58,10 +57,8 @@ def construct_config(
             config = config_GAN_SI if train_SI else config_GAN_IS
         elif network_type == 'CYCLEGAN':
             config = config_CYCLEGAN
-        elif network_type == 'CYCLESUP':
-            config = config_CYCLESUP
-        elif network_type == 'CYCLESUP_FROZEN':
-            config = config_CYCLESUP_FROZEN
+        elif network_type == 'FROZEN':
+            config = config_FROZEN
         else:
             raise ValueError(f"Unknown network_type '{network_type}'.")
         
@@ -89,7 +86,7 @@ def construct_config(
     # If tuning, we need to construct the dictionary from smaller pieces
     elif run_mode == 'tune':
         # First, we add user normalization and scaling options. These must be added before combining dicts (below).
-        if network_type == 'SUP':
+        if network_type == 'SUP_ACT':
             if train_SI:
                 if SI_normalize:
                     config = {**config_RAY_SI, **config_RAY_SI_fixedScale ,**config_RAY_SUP}
@@ -100,6 +97,11 @@ def construct_config(
                     config = {**config_RAY_IS, **config_RAY_IS_fixedScale ,**config_RAY_SUP}
                 else:
                     config = {**config_RAY_IS, **config_RAY_IS_learnScale ,**config_RAY_SUP}
+        elif network_type == 'SUP_ATTEN':
+            if SI_normalize: # For SUP_ATTEN, only tune sinogram-->image networks
+                config = {**config_RAY_SI, **config_RAY_SI_fixedScale ,**config_RAY_SUP}
+            else:
+                config = {**config_RAY_SI, **config_RAY_SI_learnScale ,**config_RAY_SUP}
         elif network_type == 'GAN':
             if train_SI:
                 if SI_normalize:
@@ -111,12 +113,10 @@ def construct_config(
                     config = {**config_RAY_IS, **config_RAY_IS_fixedScale ,**config_RAY_GAN}
                 else:
                     config = {**config_RAY_IS, **config_RAY_IS_learnScale ,**config_RAY_GAN}
-        elif network_type == 'CYCLESUP':
-            config = {**config_SUP_SI, **config_SUP_IS, **config_SUP_RAY_cycle}
-        elif network_type == 'CYCLESUP_FROZEN':
-            config = {**config_SUP_SI, **config_SUP_IS, **config_SUP_RAY_cycle}
+        elif network_type == 'FROZEN':
+            config = {**config_SUP_SI, **config_SUP_IS, **config_RAY_SUP_FROZEN}
         elif network_type == 'CYCLEGAN':
-            config = {**config_GAN_SI, **config_GAN_IS, **config_GAN_RAY_cycle}
+            config = {**config_GAN_SI, **config_GAN_IS, **config_RAY_GAN_CYCLE}
         else:
             raise ValueError(f"Unknown network_type '{network_type}'.")
 

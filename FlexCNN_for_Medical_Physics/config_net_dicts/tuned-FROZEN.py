@@ -1,4 +1,4 @@
-config_CYCLESUP={
+config_FROZEN={
     "network_type": "CYCLESUP",
     "SI_stats_criterion": None,
     "SI_alpha_min": -1,
