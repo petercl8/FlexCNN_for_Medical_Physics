@@ -11,9 +11,10 @@ import torch
 import logging
 
 from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
-from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric, update_tune_dataframe
+from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric, update_tune_dataframe, reconstruct_images_and_update_test_dataframe
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, patchwise_moment_metric
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_single_unmatched_tensor, show_multiple_matched_tensors
+from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
 from FlexCNN_for_Medical_Physics.functions.helper.evaluation_data_random import load_validation_batch, load_qa_batch, evaluate_val, evaluate_qa
 
 # Module logger for optional Tune debug output
@@ -172,29 +173,49 @@ def save_checkpoint(checkpoint_dict: dict, checkpoint_path: str) -> None:
     torch.save(checkpoint_dict, checkpoint_path)
 
 
-def load_checkpoint(checkpoint_path: str) -> tuple:
+def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs):
     """
-    Load checkpoint from file.
+    Load checkpoint if needed and initialize epoch/batch state based on run_mode.
     
     Args:
-        checkpoint_path: Path to checkpoint file.
+        load_state: Boolean indicating whether to load from checkpoint
+        run_mode: String indicating run mode ('train', 'tune', 'test', 'visualize')
+        checkpoint_path: Path to checkpoint file
+        num_epochs: Number of epochs to run
     
     Returns:
-        Tuple of (epoch, batch_step, gen_state_dict, gen_opt_state_dict).
+        Tuple of (start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict)
+        For test/visualize, gen_state_dict and gen_opt_state_dict are returned for proper loading.
     
     Raises:
-        FileNotFoundError if checkpoint file does not exist.
+        FileNotFoundError if checkpoint file does not exist and load_state is True
     """
-    if not os.path.exists(checkpoint_path):
-        raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
+    if load_state:
+        if not os.path.exists(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
+        
+        checkpoint = torch.load(checkpoint_path)
+        epoch_loaded = checkpoint['epoch']
+        batch_step_loaded = checkpoint['batch_step']
+        gen_state_dict = checkpoint['gen_state_dict']
+        gen_opt_state_dict = checkpoint['gen_opt_state_dict']
+        
+        if run_mode in ('test', 'visualize'):
+            start_epoch = 0
+            end_epoch = 1
+            batch_step = 0
+        else:  # train/tune mode
+            start_epoch = epoch_loaded
+            end_epoch = num_epochs
+            batch_step = batch_step_loaded
+    else:
+        start_epoch = 0
+        batch_step = 0
+        end_epoch = num_epochs
+        gen_state_dict = None
+        gen_opt_state_dict = None
     
-    checkpoint = torch.load(checkpoint_path)
-    epoch = checkpoint['epoch']
-    batch_step = checkpoint['batch_step']
-    gen_state_dict = checkpoint['gen_state_dict']
-    gen_opt_state_dict = checkpoint['gen_opt_state_dict']
-    
-    return epoch, batch_step, gen_state_dict, gen_opt_state_dict
+    return start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict
 
 
 def log_tune_debug(gen, epoch: int, batch_step: int, gen_loss, device: str) -> None:
@@ -438,3 +459,93 @@ def visualize_mode(batch_data, visualize_batch_size, visualize_offset):
         else:
             print('Target/Output:')
             show_multiple_matched_tensors(target[0:visualize_batch_size], CNN_output[0:visualize_batch_size])
+
+
+def route_batch_inputs(is_atten, train_SI, batch_tensors):
+    """
+    Route batch inputs to correct input/target based on domain and direction.
+    
+    Args:
+        is_atten: Boolean indicating attenuation domain (SUP_ATTEN)
+        train_SI: Boolean indicating sinogram->image direction (only checked if is_atten=False)
+        batch_tensors: Dict with 'sino_scaled', 'act_map_scaled', 'atten_sino_scaled', 'atten_image_scaled'
+    
+    Returns:
+        Tuple of (input_, target)
+    """
+    if is_atten:
+        # Attenuation domain: always sino->image (train_SI forced to True)
+        input_ = batch_tensors['atten_sino_scaled']
+        target = batch_tensors['atten_image_scaled']
+    else:
+        # Activity domain: use configured train_SI direction
+        if train_SI:
+            input_ = batch_tensors['sino_scaled']
+            target = batch_tensors['act_map_scaled']
+        else:
+            input_ = batch_tensors['act_map_scaled']
+            target = batch_tensors['sino_scaled']
+    
+    return input_, target
+
+
+def generate_reconstructions(recon1, recon2, input_, config):
+    """
+    Generate or pass-through reconstructions for visualization and test mode.
+    
+    Args:
+        recon1: Precomputed recon1 or None
+        recon2: Precomputed recon2 or None
+        input_: Input tensor (sinogram) for FBP/MLEM reconstruction
+        config: Configuration dict with 'image_size', 'SI_normalize', 'SI_fixedScale'
+    
+    Returns:
+        Tuple of (recon1_output, recon2_output)
+    """
+    if recon1 is not None:
+        recon1_output = recon1
+    else:
+        recon1_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
+    
+    if recon2 is not None:
+        recon2_output = recon2
+    else:
+        recon2_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
+    
+    return recon1_output, recon2_output
+
+
+def compute_test_metrics(is_atten, input_, CNN_output, target, act_map_scaled, test_dataframe, config, recon1, recon2):
+    """
+    Compute test metrics and update dataframe based on domain.
+    
+    Args:
+        is_atten: Boolean indicating attenuation domain
+        input_: Input tensor
+        CNN_output: Network output tensor
+        target: Target tensor
+        act_map_scaled: Activity map (used for activity domain only)
+        test_dataframe: Test results dataframe
+        config: Configuration dict
+        recon1: Precomputed recon1 or None
+        recon2: Precomputed recon2 or None
+    
+    Returns:
+        Tuple of (test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output)
+    """
+    if is_atten:
+        # Attenuation: no recon comparisons; compute network metrics only
+        mean_CNN_MSE = calculate_metric(target, CNN_output, MSE)
+        mean_CNN_SSIM = calculate_metric(target, CNN_output, SSIM)
+        recon1_output = None
+        recon2_output = None
+        mean_recon1_MSE = None
+        mean_recon1_SSIM = None
+        mean_recon2_MSE = None
+        mean_recon2_SSIM = None
+    else:
+        # Activity: full recon comparisons
+        test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
+            reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_map_scaled, test_dataframe, config, compute_MLEM=False, recon1=recon1, recon2=recon2)
+    
+    return test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output

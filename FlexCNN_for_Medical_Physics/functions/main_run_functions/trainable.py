@@ -1,5 +1,3 @@
-
-import os
 import time
 import torch
 import pandas as pd
@@ -13,21 +11,16 @@ from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
 
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import (
     calculate_metric,
-    reconstruct_images_and_update_test_dataframe,
-    update_tune_dataframe
 )
 
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import (
     SSIM,
     MSE,
-    patchwise_moment_metric
 )
 from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import (
-    show_single_unmatched_tensor,
-    show_multiple_matched_tensors
 )
-from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init, weights_init_he
+from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
 from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
     compute_display_step,
     get_tune_session
@@ -38,12 +31,15 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     create_optimizer,
     build_checkpoint_dict,
     save_checkpoint,
-    load_checkpoint,
     log_tune_debug,
     report_tune_metrics,
     visualize_train,
     visualize_test,
-    visualize_mode
+    visualize_mode,
+    route_batch_inputs,
+    generate_reconstructions_for_visualization,
+    compute_test_metrics,
+    init_checkpoint_state
 )
 
 # Module logger for optional Tune debug output
@@ -61,7 +57,7 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     run_mode = settings['run_mode']
     device = settings['device']
-    tune_debug = settings.get('tune_debug', False)
+    tune_debug = settings['tune_debug']
     if tune_debug:
         logger.setLevel(logging.DEBUG)
         logger.debug(f"[TUNE_DEBUG] Entering run_trainable; initial device request: {device}")
@@ -73,31 +69,30 @@ def run_trainable(config, paths, settings):
     # Force train_SI=True for attenuation domain
     if is_atten:
         config['train_SI'] = True
-    
     train_SI = config['train_SI']
     
     # Data loading configuration
-    augment = settings.get('augment', False)
-    shuffle = settings.get('shuffle', True)
-    offset = settings.get('offset', 0)
-    num_examples = settings.get('num_examples', -1)
-    sample_division = settings.get('sample_division', 1)
+    augment = settings['augment']
+    shuffle = settings['shuffle']
+    offset = settings['offset']
+    num_examples = settings['num_examples']
+    sample_division = settings['sample_division']
     
     # Training/Tuning configuration
-    num_epochs = settings.get('num_epochs', 1)
-    load_state = settings.get('load_state', False)
-    save_state = settings.get('save_state', False)
-    show_times = settings.get('show_times', False)
+    num_epochs = settings['num_epochs']
+    load_state = settings['load_state']
+    save_state = settings['save_state']
+    show_times = settings['show_times']
     
     # Display/Reporting configuration
-    visualize_batch_size = settings.get('visualize_batch_size', 9)
-    tune_dataframe_fraction = settings.get('tune_dataframe_fraction', 1.0)
-    tune_max_t = settings.get('tune_max_t', 0)
-    tune_restore = settings.get('tune_restore', False)
+    visualize_batch_size = settings['visualize_batch_size']
+    tune_dataframe_fraction = settings['tune_dataframe_fraction']
+    tune_max_t = settings['tune_max_t']
+    tune_restore = settings['tune_restore']
     
     # File paths
-    checkpoint_path = paths.get('checkpoint_path', None)
-    tune_dataframe_path = paths.get('tune_dataframe_path', None)
+    checkpoint_path = paths['checkpoint_path']
+    tune_dataframe_path = paths['tune_dataframe_path']
 
     # ========================================================================================
     # SECTION 2: COMPUTE BATCH SIZE AND RUNTIME PARAMETERS
@@ -138,9 +133,9 @@ def run_trainable(config, paths, settings):
     base_criterion = config['sup_base_criterion']
     # Use SI or IS prefixed stats params based on training direction
     prefix = 'SI' if train_SI else 'IS'
-    stats_criterion = config.get(f'{prefix}_stats_criterion', None)
-    alpha_min = config.get(f'{prefix}_alpha_min', -1)
-    half_life_examples = config.get(f'{prefix}_half_life_examples', 2000)
+    stats_criterion = config[f'{prefix}_stats_criterion']
+    alpha_min = config[f'{prefix}_alpha_min']
+    half_life_examples = config[f'{prefix}_half_life_examples']
     hybrid_loss = HybridLoss(
         base_loss=base_criterion,
         stats_loss=stats_criterion,
@@ -193,24 +188,18 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     # SECTION 7: LOAD OR INITIALIZE CHECKPOINT AND WEIGHTS
     # ========================================================================================
+    start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict = init_checkpoint_state(
+        load_state, run_mode, checkpoint_path, num_epochs
+    )
     if load_state:
-        epoch_loaded, batch_step_loaded, gen_state_dict, gen_opt_state_dict = load_checkpoint(checkpoint_path)
         gen.load_state_dict(gen_state_dict)
         gen_opt.load_state_dict(gen_opt_state_dict)
-        if run_mode in ('test', 'visualize'):
-            gen.eval()
-            start_epoch = 0
-            end_epoch = 1
-            batch_step = 0
-        else:  # train/tune mode
-            start_epoch = epoch_loaded
-            end_epoch = num_epochs
-            batch_step = batch_step_loaded
     else:
         gen = gen.apply(weights_init_he)
-        start_epoch = 0
-        batch_step = 0
-        end_epoch = num_epochs
+
+    # Set to eval mode for test/visualize
+    if run_mode in ('test', 'visualize'):
+        gen.eval()
 
     # ========================================================================================
     # SECTION 8: INITIALIZE RUNNING METRICS AND TIMERS
@@ -219,7 +208,6 @@ def run_trainable(config, paths, settings):
     mean_CNN_SSIM = 0
     mean_CNN_MSE = 0
     report_num = 1  # First report to RayTune is report_num = 1
-    eval_cache = {}  # Evaluation cache for 'val' and 'qa' modes
 
     # Timing trackers
     time_init_full = time.time()    # Full step time (reset at display)
@@ -248,18 +236,13 @@ def run_trainable(config, paths, settings):
             _ = display_times('loader time', time_init_loader, show_times)
             time_init_full = display_times('FULL STEP TIME', time_init_full, show_times)
             
-            if is_atten:
-                # Attenuation domain: always sino->image (train_SI forced to True)
-                target = atten_image_scaled
-                input_ = atten_sino_scaled
-            else:
-                # Activity domain: use configured train_SI direction
-                if train_SI:
-                    target = act_map_scaled
-                    input_ = sino_scaled
-                else:
-                    target = sino_scaled
-                    input_ = act_map_scaled
+            batch_tensors = {
+                'sino_scaled': sino_scaled,
+                'act_map_scaled': act_map_scaled,
+                'atten_sino_scaled': atten_sino_scaled,
+                'atten_image_scaled': atten_image_scaled
+            }
+            input_, target = route_batch_inputs(is_atten, train_SI, batch_tensors)
 
             # _____ SUBSECTION 10C: FORWARD PASS & TRAINING STEP (tune/train only) _____
             if run_mode in ('tune', 'train'):
@@ -303,31 +286,14 @@ def run_trainable(config, paths, settings):
 
             # Test: Calculate individual image metrics and store in dataframe
             if run_mode == 'test':
-                if is_atten:
-                    # Attenuation: no recon comparisons; compute network metrics only
-                    mean_CNN_MSE += calculate_metric(target, CNN_output, MSE) / display_step
-                    mean_CNN_SSIM += calculate_metric(target, CNN_output, SSIM) / display_step
-                else:
-                    # Activity: full recon comparisons
-                    test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
-                        reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_map_scaled, test_dataframe, config, compute_MLEM=False, recon1=recon1, recon2=recon2)
+                test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
+                    compute_test_metrics(is_atten, input_, CNN_output, target, act_map_scaled, test_dataframe, config, recon1, recon2)
 
             # Visualize: Generate reconstructions for display if necessary
             if run_mode == 'visualize':
-                if is_atten:
-                    # Attenuation: no recon generation; visualize_mode will handle missing recon gracefully
-                    pass
-                else:
-                    # Activity: generate recon comparisons
-                    if recon1 is not None:
-                        recon1_output = recon1
-                    else:
-                        recon1_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
-                    
-                    if recon2 is not None:
-                        recon2_output = recon2
-                    else:
-                        recon2_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
+                if not is_atten:
+                    # Activity domain: generate recon comparisons
+                    recon1_output, recon2_output = generate_reconstructions_for_visualization(recon1, recon2, input_, config)
 
             _ = display_times('metrics time', time_init_metrics, show_times)
 
@@ -369,7 +335,7 @@ def run_trainable(config, paths, settings):
 
                 # _____ VISUALIZATION: Visualization Mode _____
                 if run_mode == 'visualize':
-                    visualize_offset = settings.get('visualize_offset', 0)
+                    visualize_offset = settings['visualize_offset']
                     batch_data['batch_step'] = batch_step
                     visualize_mode(batch_data, visualize_batch_size, visualize_offset)
 
