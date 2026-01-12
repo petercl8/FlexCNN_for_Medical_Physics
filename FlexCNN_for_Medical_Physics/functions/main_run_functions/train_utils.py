@@ -5,7 +5,6 @@ Provides infrastructure functions (generator/optimizer creation, checkpointing),
 reporting functions (tuning metrics, visualization), and batch collation for
 reuse across trainable_supervisory.py, trainable_frozen_backbone.py, and trainable.py.
 """
-
 import os
 import torch
 import logging
@@ -195,6 +194,7 @@ def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
         
         checkpoint = torch.load(checkpoint_path)
+        
         epoch_loaded = checkpoint['epoch']
         batch_step_loaded = checkpoint['batch_step']
         gen_state_dict = checkpoint['gen_state_dict']
