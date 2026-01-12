@@ -122,4 +122,5 @@ D) Do the stages I propose make sense to you? If not, please propose new ones. I
 =============
 tune_dataframe for qa -X
 get rid of random batches -X
-get rid of .get() statements
+refactor trainable.py -X
+update for attenuation data -
