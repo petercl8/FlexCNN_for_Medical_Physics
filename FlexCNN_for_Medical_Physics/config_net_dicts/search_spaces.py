@@ -69,6 +69,7 @@ config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
 config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
     'SI_normalize': True,
     'SI_fixedScale': 1,
+    'SI_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'SI_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
     'SI_gen_final_activ': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
 }
@@ -113,6 +114,7 @@ config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
 config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
     'IS_normalize': True,
     'IS_fixedScale': 1,
+    'IS_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'IS_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
     'IS_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
 }

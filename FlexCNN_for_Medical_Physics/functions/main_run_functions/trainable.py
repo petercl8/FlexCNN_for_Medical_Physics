@@ -78,21 +78,11 @@ def run_trainable(config, paths, settings):
     
     # Display/Reporting configuration (mode-specific)
     if run_mode == 'tune':
-        visualize_batch_size = None
         tune_dataframe_fraction = settings['tune_dataframe_fraction']
         tune_max_t = settings['tune_max_t']
         tune_restore = settings['tune_restore']
     elif run_mode == 'visualize':
         visualize_batch_size = settings['visualize_batch_size']
-        tune_dataframe_fraction = None
-        tune_max_t = None
-        tune_restore = None
-    else:
-        # train/test
-        visualize_batch_size = None
-        tune_dataframe_fraction = None
-        tune_max_t = None
-        tune_restore = None
     
     # File paths
     checkpoint_path = paths['checkpoint_path']
