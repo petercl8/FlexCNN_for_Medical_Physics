@@ -53,8 +53,7 @@ def construct_config(
         if network_type == 'SUP_ACT':
             config = config_SUP_SI if train_SI else config_SUP_IS
         elif network_type == 'SUP_ATTEN':
-            config = config_SUP_SI
-            train_SI = True # Atten networks always train SI
+            config = config_SUP_SI # Currently only SI supervisory attention networks are supported
         elif network_type == 'GAN':
             config = config_GAN_SI if train_SI else config_GAN_IS
         elif network_type == 'CYCLEGAN':
@@ -131,11 +130,18 @@ def construct_config(
     else:
         raise ValueError(f"Unknown run_mode '{run_mode}'.")
 
+
+    ## Overrides ##
     # Override batch size for test or visualize modes. Otherwise, when testing or visualizing, the batch size from training/tuning would be used.
     if run_mode == 'test':
         config['batch_size'] = test_opts['test_batch_size']
     elif run_mode == 'visualize':
         config['batch_size'] = viz_opts['visualize_batch_size']
+    # Override train_SI for SUP_ATTEN networks (currently only SI attention is supported)
+    if network_type == 'SUP_ATTEN':
+        config['train_SI'] = True
+
+
 
     return config
 

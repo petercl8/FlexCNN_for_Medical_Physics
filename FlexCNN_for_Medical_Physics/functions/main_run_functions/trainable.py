@@ -61,10 +61,6 @@ def run_trainable(config, paths, settings):
     # Network configuration
     network_type = config['network_type']
     is_atten = (network_type == 'SUP_ATTEN')
-    
-    # Force train_SI=True for attenuation domain
-    if is_atten:
-        config['train_SI'] = True
     train_SI = config['train_SI']
     
     # Data loading configuration
