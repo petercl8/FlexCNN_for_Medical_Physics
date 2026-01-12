@@ -322,11 +322,6 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['tune_report_for'] = tune_opts['tune_report_for']
         settings['tune_eval_batch_size'] = tune_opts['tune_eval_batch_size']
         settings['tune_qa_hot_weight'] = tune_opts['tune_qa_hot_weight']
-        # Ensure visualization/tune keys exist for downstream brittle access
-        settings['visualize_batch_size'] = None
-        settings['tune_dataframe_fraction'] = tune_opts['tune_dataframe_fraction']
-        settings['tune_max_t'] = tune_opts['tune_max_t']
-        settings['tune_restore'] = tune_opts['tune_restore']
 
     elif run_mode == 'train':
         settings['augment'] = train_opts['train_augment']
@@ -338,10 +333,6 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['show_times'] = train_opts['train_show_times']
         settings['sample_division'] = train_opts['train_sample_division']
         settings['train_display_step'] = train_opts['train_display_step'] # Used in compute_display_step()
-        settings['visualize_batch_size'] = None
-        settings['tune_dataframe_fraction'] = None
-        settings['tune_max_t'] = None
-        settings['tune_restore'] = None
     
     elif run_mode == 'test':
         settings['augment'] = (None, False) # If testing, do not augment
@@ -353,10 +344,6 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['show_times'] = test_opts['test_show_times']
         settings['sample_division'] = test_opts.get('test_sample_division', 1)
         settings['test_display_step'] = test_opts['test_display_step'] # Used in compute_display_step()
-        settings['visualize_batch_size'] = None
-        settings['tune_dataframe_fraction'] = None
-        settings['tune_max_t'] = None
-        settings['tune_restore'] = None
         #settings['test_batch_size'] = test_opts['test_batch_size']
     
     elif run_mode in ['visualize', 'none']:
@@ -368,10 +355,6 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['show_times'] = False
         settings['offset'] = viz_opts['visualize_offset']
         settings['sample_division'] = 1
-        settings['visualize_batch_size'] = viz_opts['visualize_batch_size']
-        settings['tune_dataframe_fraction'] = None
-        settings['tune_max_t'] = None
-        settings['tune_restore'] = None
         #settings['visualize_batch_size'] = viz_opts['visualize_batch_size']
     else:
         raise ValueError(f"Unknown run_mode: {run_mode}")
