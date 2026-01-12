@@ -119,9 +119,9 @@ def create_optimizer(model, config: dict) -> torch.optim.Adam:
     
     # Determine scale LR multiplier based on direction
     if train_SI:
-        scale_lr_mult = config.get('SI_output_scale_lr_mult', 1.0)
+        scale_lr_mult = config['SI_output_scale_lr_mult']
     else:
-        scale_lr_mult = config.get('IS_output_scale_lr_mult', 1.0)
+        scale_lr_mult = config['IS_output_scale_lr_mult']
     
     # If model has learnable output scale, create separate param group for it
     if getattr(model, 'output_scale_learnable', False):
@@ -489,7 +489,7 @@ def route_batch_inputs(is_atten, train_SI, batch_tensors):
     return input_, target
 
 
-def generate_reconstructions(recon1, recon2, input_, config):
+def generate_reconstructions_for_visualization(recon1, recon2, input_, config):
     """
     Generate or pass-through reconstructions for visualization and test mode.
     
