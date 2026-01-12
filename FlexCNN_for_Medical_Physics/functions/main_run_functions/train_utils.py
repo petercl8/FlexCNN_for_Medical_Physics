@@ -360,8 +360,8 @@ def visualize_train(batch_data, target, CNN_output, mean_gen_loss, mean_CNN_MSE,
     show_multiple_matched_tensors(target[0:8], CNN_output[0:8])
 
     if atten_image_scaled is not None and atten_sino_scaled is not None:
-        show_single_unmatched_tensor(atten_image_scaled[0:2], fig_size=1)
-        show_single_unmatched_tensor(atten_sino_scaled[0:2], fig_size=1)
+        show_single_unmatched_tensor(atten_image_scaled[0:2], fig_size=2)
+        show_single_unmatched_tensor(atten_sino_scaled[0:2], fig_size=2)
 
 
 def visualize_test(batch_data, target, CNN_output, mean_CNN_MSE, mean_CNN_SSIM, 
