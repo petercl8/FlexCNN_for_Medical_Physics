@@ -4,7 +4,6 @@ import pandas as pd
 import logging
 from torch.utils.data import DataLoader
 
-from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.classes.losses import HybridLoss
 from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
@@ -16,9 +15,6 @@ from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import (
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import (
     SSIM,
     MSE,
-)
-from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
-from FlexCNN_for_Medical_Physics.functions.helper.display_images import (
 )
 from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
 from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
