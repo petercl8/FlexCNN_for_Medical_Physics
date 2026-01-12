@@ -321,15 +321,13 @@ def report_tune_metrics(gen, paths, config, settings, tune_dataframe, tune_dataf
     return tune_dataframe
 
 
-def visualize_train(batch_data, target, CNN_output, mean_gen_loss, mean_CNN_MSE, mean_CNN_SSIM, 
+def visualize_train(batch_data, mean_gen_loss, mean_CNN_MSE, mean_CNN_SSIM, 
                     epoch, batch_step, example_num):
     """
     Display training progress: metrics, input/target/output visualizations.
     
     Args:
-        batch_data: Dict with 'input', 'target', 'atten_image', 'atten_sino' (some may be None)
-        target: Target tensor for current batch
-        CNN_output: Network output for current batch
+        batch_data: Dict with 'input', 'target', 'CNN_output', 'recon1_output', 'recon2_output'
         mean_gen_loss: Mean generator loss over display_step
         mean_CNN_MSE: Mean MSE over display_step
         mean_CNN_SSIM: Mean SSIM over display_step
@@ -338,8 +336,10 @@ def visualize_train(batch_data, target, CNN_output, mean_gen_loss, mean_CNN_MSE,
         example_num: Current example number
     """
     input_ = batch_data['input']
-    atten_image_scaled = batch_data.get('atten_image')
-    atten_sino_scaled = batch_data.get('atten_sino')
+    target = batch_data['target']
+    CNN_output = batch_data['CNN_output']
+    recon1_output = batch_data['recon1_output']
+    recon2_output = batch_data['recon2_output']
     
     print('================Training===================')
     print(f'CURRENT PROGRESS: epoch: {epoch} / batch_step: {batch_step} / image #: {example_num}')
@@ -358,21 +358,19 @@ def visualize_train(batch_data, target, CNN_output, mean_gen_loss, mean_CNN_MSE,
     print(input_.shape)
     print('Target/Output:')
     show_multiple_matched_tensors(target[0:8], CNN_output[0:8])
+    
+    if recon1_output is not None and recon2_output is not None:
+        print('Recon1/Recon2:')
+        show_multiple_matched_tensors(recon1_output[0:8], recon2_output[0:8])
 
-    if atten_image_scaled is not None and atten_sino_scaled is not None:
-        show_single_unmatched_tensor(atten_image_scaled[0:2], fig_size=2)
-        show_single_unmatched_tensor(atten_sino_scaled[0:2], fig_size=2)
 
-
-def visualize_test(batch_data, target, CNN_output, mean_CNN_MSE, mean_CNN_SSIM, 
+def visualize_test(batch_data, mean_CNN_MSE, mean_CNN_SSIM, 
                    mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM):
     """
     Display test results: metrics and comparisons with reconstructions.
     
     Args:
-        batch_data: Dict with 'input', 'recon1_output', 'recon2_output'
-        target: Target tensor for current batch
-        CNN_output: Network output for current batch
+        batch_data: Dict with 'input', 'target', 'CNN_output', 'recon1_output', 'recon2_output'
         mean_CNN_MSE: Mean network MSE
         mean_CNN_SSIM: Mean network SSIM
         mean_recon1_MSE: Mean recon1 MSE
@@ -381,31 +379,42 @@ def visualize_test(batch_data, target, CNN_output, mean_CNN_MSE, mean_CNN_SSIM,
         mean_recon2_SSIM: Mean recon2 SSIM
     """
     input_ = batch_data['input']
+    target = batch_data['target']
+    CNN_output = batch_data['CNN_output']
     recon1_output = batch_data['recon1_output']
     recon2_output = batch_data['recon2_output']
     
     print('==================Testing==================')
-    print(f'mean_CNN_MSE/mean_recon2_MSE/mean_recon1_MSE : {mean_CNN_MSE}/{mean_recon2_MSE}/{mean_recon1_MSE}')
-    print(f'mean_CNN_SSIM/mean_recon2_SSIM/mean_recon1_SSIM: {mean_CNN_SSIM}/{mean_recon2_SSIM}/{mean_recon1_SSIM}')
+    if recon1_output is not None and recon2_output is not None:
+        print(f'mean_CNN_MSE/mean_recon2_MSE/mean_recon1_MSE : {mean_CNN_MSE}/{mean_recon2_MSE}/{mean_recon1_MSE}')
+        print(f'mean_CNN_SSIM/mean_recon2_SSIM/mean_recon1_SSIM: {mean_CNN_SSIM}/{mean_recon2_SSIM}/{mean_recon1_SSIM}')
+    else:
+        print(f'mean_CNN_MSE : {mean_CNN_MSE}')
+        print(f'mean_CNN_SSIM: {mean_CNN_SSIM}')
     print('===========================================')
     print('Input Sinogram:')
     show_single_unmatched_tensor(input_[0:2], fig_size=25)
-    print('Target/Output/Recon2/Recon1:')
-    show_multiple_matched_tensors(target[0:9], CNN_output[0:9], recon2_output[0:9], recon1_output[0:9])
+    
+    if recon1_output is not None and recon2_output is not None:
+        print('Target/Output/Recon2/Recon1:')
+        show_multiple_matched_tensors(target[0:9], CNN_output[0:9], recon2_output[0:9], recon1_output[0:9])
+    else:
+        print('Target/Output:')
+        show_multiple_matched_tensors(target[0:9], CNN_output[0:9])
 
 
-def visualize_mode(batch_data, target, CNN_output, visualize_batch_size, visualize_offset):
+def visualize_mode(batch_data, visualize_batch_size, visualize_offset):
     """
     Display visualization mode outputs: input, target, reconstructions, network output.
     
     Args:
-        batch_data: Dict with 'input', 'recon1_output', 'recon2_output' (some may be None)
-        target: Target tensor for current batch
-        CNN_output: Network output for current batch
+        batch_data: Dict with 'input', 'target', 'CNN_output', 'recon1_output', 'recon2_output'
         visualize_batch_size: Number of images to display
         visualize_offset: Offset for display numbering
     """
     input_ = batch_data['input']
+    target = batch_data['target']
+    CNN_output = batch_data['CNN_output']
     recon1_output = batch_data.get('recon1_output')
     recon2_output = batch_data.get('recon2_output')
     

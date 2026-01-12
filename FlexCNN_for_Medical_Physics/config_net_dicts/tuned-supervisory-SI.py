@@ -43,6 +43,7 @@ config_SUP_SI = {
   "SI_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
   "SI_alpha_min": 0.2, # -1
   "SI_half_life_examples": 2000,
+  "network_type": "SUP_ACT",
   "train_SI": True
 }
 

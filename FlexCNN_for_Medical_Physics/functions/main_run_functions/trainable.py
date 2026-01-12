@@ -67,6 +67,13 @@ def run_trainable(config, paths, settings):
         logger.debug(f"[TUNE_DEBUG] Entering run_trainable; initial device request: {device}")
     
     # Network configuration
+    network_type = config['network_type']
+    is_atten = (network_type == 'SUP_ATTEN')
+    
+    # Force train_SI=True for attenuation domain
+    if is_atten:
+        config['train_SI'] = True
+    
     train_SI = config['train_SI']
     
     # Data loading configuration
@@ -147,6 +154,18 @@ def run_trainable(config, paths, settings):
     gen_opt = create_optimizer(gen, config)
 
     # ========================================================================================
+    # SECTION 5A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
+    # ========================================================================================
+    if network_type == 'SUP_ACT':
+        paths['atten_image_path'] = None
+        paths['atten_sino_path'] = None
+    elif network_type == 'SUP_ATTEN':
+        paths['image_path'] = None
+        paths['sino_path'] = None
+        paths['recon1_path'] = None
+        paths['recon2_path'] = None
+
+    # ========================================================================================
     # SECTION 6: BUILD DATA LOADER
     # ========================================================================================
     dataloader = DataLoader(
@@ -222,17 +241,25 @@ def run_trainable(config, paths, settings):
             sino_scaled, act_map_scaled = act_data
             atten_sino_scaled, atten_image_scaled = atten_data
             recon1, recon2 = recon_data
+            recon1_output = recon1
+            recon2_output = recon2
             
             # _____ SUBSECTION 10B: TIMING AND INPUT ROUTING _____
             _ = display_times('loader time', time_init_loader, show_times)
             time_init_full = display_times('FULL STEP TIME', time_init_full, show_times)
             
-            if train_SI:
-                target = act_map_scaled
-                input_ = sino_scaled
+            if is_atten:
+                # Attenuation domain: always sino->image (train_SI forced to True)
+                target = atten_image_scaled
+                input_ = atten_sino_scaled
             else:
-                target = sino_scaled
-                input_ = act_map_scaled
+                # Activity domain: use configured train_SI direction
+                if train_SI:
+                    target = act_map_scaled
+                    input_ = sino_scaled
+                else:
+                    target = sino_scaled
+                    input_ = act_map_scaled
 
             # _____ SUBSECTION 10C: FORWARD PASS & TRAINING STEP (tune/train only) _____
             if run_mode in ('tune', 'train'):
@@ -276,20 +303,31 @@ def run_trainable(config, paths, settings):
 
             # Test: Calculate individual image metrics and store in dataframe
             if run_mode == 'test':
-                test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
-                    reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_map_scaled, test_dataframe, config, compute_MLEM=False, recon1=recon1, recon2=recon2)
+                if is_atten:
+                    # Attenuation: no recon comparisons; compute network metrics only
+                    mean_CNN_MSE += calculate_metric(target, CNN_output, MSE) / display_step
+                    mean_CNN_SSIM += calculate_metric(target, CNN_output, SSIM) / display_step
+                else:
+                    # Activity: full recon comparisons
+                    test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
+                        reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_map_scaled, test_dataframe, config, compute_MLEM=False, recon1=recon1, recon2=recon2)
 
             # Visualize: Generate reconstructions for display if necessary
             if run_mode == 'visualize':
-                if recon1 is not None:
-                    recon1_output = recon1
+                if is_atten:
+                    # Attenuation: no recon generation; visualize_mode will handle missing recon gracefully
+                    pass
                 else:
-                    recon1_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
-                
-                if recon2 is not None:
-                    recon2_output = recon2
-                else:
-                    recon2_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
+                    # Activity: generate recon comparisons
+                    if recon1 is not None:
+                        recon1_output = recon1
+                    else:
+                        recon1_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
+                    
+                    if recon2 is not None:
+                        recon2_output = recon2
+                    else:
+                        recon2_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
 
             _ = display_times('metrics time', time_init_metrics, show_times)
 
@@ -300,6 +338,15 @@ def run_trainable(config, paths, settings):
             if batch_step % display_step == 0:
                 time_init_visualization = time.time()
                 example_num = batch_step * batch_size
+
+                # Construct unified batch_data for all visualization calls
+                batch_data = {
+                    'input': input_,
+                    'target': target,
+                    'CNN_output': CNN_output,
+                    'recon1_output': recon1_output,
+                    'recon2_output': recon2_output
+                }
 
                 # _____ REPORTING: Ray Tune Validation (tune mode) _____
                 if run_mode == 'tune' and session is not None:
@@ -312,35 +359,19 @@ def run_trainable(config, paths, settings):
 
                 # _____ VISUALIZATION: Training Mode _____
                 if run_mode == 'train':
-                    batch_data = {
-                        'input': input_,
-                        'target': target,
-                        'atten_image': atten_image_scaled,
-                        'atten_sino': atten_sino_scaled
-                    }
-                    visualize_train(batch_data, target, CNN_output, mean_gen_loss, mean_CNN_MSE, 
+                    visualize_train(batch_data, mean_gen_loss, mean_CNN_MSE, 
                                   mean_CNN_SSIM, epoch, batch_step, example_num)
 
                 # _____ VISUALIZATION: Test Mode _____
                 if run_mode == 'test':
-                    batch_data = {
-                        'input': input_,
-                        'recon1_output': recon1_output,
-                        'recon2_output': recon2_output
-                    }
-                    visualize_test(batch_data, target, CNN_output, mean_CNN_MSE, mean_CNN_SSIM,
+                    visualize_test(batch_data, mean_CNN_MSE, mean_CNN_SSIM,
                                  mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM)
 
                 # _____ VISUALIZATION: Visualization Mode _____
                 if run_mode == 'visualize':
                     visualize_offset = settings.get('visualize_offset', 0)
-                    batch_data = {
-                        'input': input_,
-                        'recon1_output': recon1_output,
-                        'recon2_output': recon2_output,
-                        'batch_step': batch_step
-                    }
-                    visualize_mode(batch_data, target, CNN_output, visualize_batch_size, visualize_offset)
+                    batch_data['batch_step'] = batch_step
+                    visualize_mode(batch_data, visualize_batch_size, visualize_offset)
 
                 # _____ STATE SAVING _____
                 if save_state:
