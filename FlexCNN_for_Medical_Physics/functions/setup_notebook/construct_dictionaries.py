@@ -205,8 +205,8 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     # Mode-specific data file paths (activity domain renamed to act_*)
     paths['tune_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_sino_file'])
     paths['tune_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_image_file'])
-    paths['tune_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon1_file']) if data_files['tune_recon1_file'] is not None else None
-    paths['tune_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon2_file']) if data_files['tune_recon2_file'] is not None else None
+    paths['tune_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_recon1_file']) if data_files['tune_act_recon1_file'] is not None else None
+    paths['tune_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_recon2_file']) if data_files['tune_act_recon2_file'] is not None else None
     paths['tune_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_image_file']) if data_files['tune_atten_image_file'] is not None else None
     paths['tune_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_sino_file']) if data_files['tune_atten_sino_file'] is not None else None
     paths['tune_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_act_sino_file']) if data_files['tune_val_act_sino_file'] is not None else None
