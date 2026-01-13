@@ -44,7 +44,7 @@ config_ACT_SI = {
   "SI_alpha_min": -1, # -1
   "SI_half_life_examples": 2000,
   "SI_output_scale_lr_mult": 1.0,  # No learnable output scale
-  "network_type": "SUP_ACT",
+  "network_type": "ACT",
   "train_SI": True
 }
 
@@ -71,7 +71,7 @@ config_ACT_SI = {
   "gen_lr": 0.0005750756280291565,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "network_type": "SUP",
+  "network_type": "ACT",
   "gen_sino_channels": 3,
   "gen_sino_size": 180,
   "sup_base_criterion": nn.MSELoss(),
@@ -105,7 +105,7 @@ config_ACT_SI = {
   "gen_lr": 0.0002493478013431121,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "network_type": "SUP",
+  "network_type": "ACT",
   "gen_sino_channels": 1,
   "gen_sino_size": 180,
   "sup_base_criterion": nn.MSELoss(), # nn.MSELoss()
@@ -138,7 +138,7 @@ config_ACT_SI = {
   "sup_stats_criterion": None,
   "sup_alpha_min": 0.2,
   "sup_half_life_examples": 2000,
-  "network_type": "SUP",
+  "network_type": "ACT",
   "gen_image_channels":1,
   "gen_sino_channels": 3,
   "gen_image_size":180,
