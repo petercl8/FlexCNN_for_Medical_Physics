@@ -15,10 +15,10 @@ class Generator_288(nn.Module):
         super(Generator_288, self).__init__()
 
         if gen_SI:
-            input_size = config['sino_size']
-            input_channels = config['sino_channels']
-            output_size = config['image_size']
-            output_channels = config['image_channels']
+            input_size = config['gen_sino_size']
+            input_channels = config['gen_sino_channels']
+            output_size = config['gen_image_size']
+            output_channels = config['gen_image_channels']
 
             normalize_key = 'SI_normalize'
             fixed_key = 'SI_fixedScale'
@@ -38,10 +38,10 @@ class Generator_288(nn.Module):
             self.final_activation = config['SI_gen_final_activ']
             self.normalize = config['SI_normalize']
         else:
-            input_size = config['image_size']
-            input_channels = config['image_channels']
-            output_size = config['sino_size']
-            output_channels = config['sino_channels']
+            input_size = config['gen_image_size']
+            input_channels = config['gen_image_channels']
+            output_size = config['gen_sino_size']
+            output_channels = config['gen_sino_channels']
 
             normalize_key = 'IS_normalize'
             fixed_key = 'IS_fixedScale'
@@ -234,8 +234,8 @@ class Generator_320(nn.Module):
         and optionally merge them into the decoder at matching scales.
 
         Args:
-            config: Dictionary containing network hyperparameters and data dimensions (sino_size, image_size,
-                    sino_channels, image_channels). Direction-specific keys (SI_* for sinogram->image,
+                config: Dictionary containing network hyperparameters and data dimensions (gen_sino_size, gen_image_size,
+                    gen_sino_channels, gen_image_channels). Direction-specific keys (SI_* for sinogram->image,
                     IS_* for image->sinogram) control network architecture:
                     - {SI,IS}_gen_neck: Bottleneck spatial size {'narrow', 'medium', 'wide'} (mapped to 1, 5, 10 for 320)
                     - {SI,IS}_exp_kernel: Expanding kernel size {3, 4}
@@ -257,10 +257,10 @@ class Generator_320(nn.Module):
         super(Generator_320, self).__init__()
 
         if gen_SI:
-            input_size = config['sino_size']
-            input_channels = config['sino_channels']
-            output_size = config['image_size']
-            output_channels = config['image_channels']
+            input_size = config['gen_sino_size']
+            input_channels = config['gen_sino_channels']
+            output_size = config['gen_image_size']
+            output_channels = config['gen_image_channels']
 
             normalize_key = 'SI_normalize'
             fixed_key = 'SI_fixedScale'
@@ -280,10 +280,10 @@ class Generator_320(nn.Module):
             self.final_activation = config['SI_gen_final_activ']
             self.normalize = config['SI_normalize']
         else:
-            input_size = config['image_size']
-            input_channels = config['image_channels']
-            output_size = config['sino_size']
-            output_channels = config['sino_channels']
+            input_size = config['gen_image_size']
+            input_channels = config['gen_image_channels']
+            output_size = config['gen_sino_size']
+            output_channels = config['gen_sino_channels']
 
             normalize_key = 'IS_normalize'
             fixed_key = 'IS_fixedScale'
@@ -481,8 +481,8 @@ class Generator_180(nn.Module):
         and optionally merge them into the decoder at matching scales.
 
         Args:
-            config: Dictionary containing network hyperparameters and data dimensions (sino_size, image_size,
-                    sino_channels, image_channels). Direction-specific keys (SI_* for sinogram->image,
+                config: Dictionary containing network hyperparameters and data dimensions (gen_sino_size, gen_image_size,
+                    gen_sino_channels, gen_image_channels). Direction-specific keys (SI_* for sinogram->image,
                     IS_* for image->sinogram) control network architecture:
                     - {SI,IS}_gen_neck: Bottleneck spatial size {'narrow', 'medium', 'wide'} (mapped to 1, 5, 11 for 180)
                     - {SI,IS}_exp_kernel: Expanding kernel size {3, 4}
@@ -504,10 +504,10 @@ class Generator_180(nn.Module):
         super(Generator_180, self).__init__()
 
         if gen_SI:
-            input_size = config['sino_size']
-            input_channels = config['sino_channels']
-            output_size = config['image_size']
-            output_channels = config['image_channels']
+            input_size = config['gen_sino_size']
+            input_channels = config['gen_sino_channels']
+            output_size = config['gen_image_size']
+            output_channels = config['gen_image_channels']
 
             normalize_key = 'SI_normalize'
             fixed_key = 'SI_fixedScale'
@@ -527,10 +527,10 @@ class Generator_180(nn.Module):
             self.final_activation = config['SI_gen_final_activ']
             self.normalize = config['SI_normalize']
         else:
-            input_size = config['image_size']
-            input_channels = config['image_channels']
-            output_size = config['sino_size']
-            output_channels = config['sino_channels']
+            input_size = config['gen_image_size']
+            input_channels = config['gen_image_channels']
+            output_size = config['gen_sino_size']
+            output_channels = config['gen_sino_channels']
 
             normalize_key = 'IS_normalize'
             fixed_key = 'IS_fixedScale'

@@ -27,8 +27,8 @@ def load_validation_batch(paths, config, settings):
     set is large and diverse.
     
     Args:
-        paths: dict with 'tune_val_sino_path', 'tune_val_image_path'
-        config: dict with 'image_size', 'sino_size', 'image_channels', 'sino_channels'
+        paths: dict with 'tune_val_act_sino_path', 'tune_val_act_image_path'
+        config: dict with 'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels'
         settings: dict with 'tune_eval_batch_size' (e.g., 32)
     
     Returns:
@@ -38,17 +38,17 @@ def load_validation_batch(paths, config, settings):
         ValueError: if validation paths are not set
     """
     # Check paths
-    if paths.get('tune_val_sino_path') is None or paths.get('tune_val_image_path') is None:
+    if paths.get('tune_val_act_sino_path') is None or paths.get('tune_val_act_image_path') is None:
         raise ValueError(
-            "tune_report_for='val' requires tune_val_sino_path and tune_val_image_path to be set."
+            "tune_report_for='val' requires tune_val_act_sino_path and tune_val_act_image_path to be set."
         )
     
     tune_eval_batch_size = settings.get('tune_eval_batch_size', 32)
     
     # Load full validation set (memory-mapped for efficiency)
     val_dataset = NpArrayDataSet(
-        image_path=paths['tune_val_image_path'],
-        sino_path=paths['tune_val_sino_path'],
+        act_image_path=paths['tune_val_act_image_path'],
+        act_sino_path=paths['tune_val_act_sino_path'],
         config=config,
         settings=settings,
         augment=(None, False),  # No augmentation for validation
@@ -56,8 +56,8 @@ def load_validation_batch(paths, config, settings):
         num_examples=-1,  # Load entire validation set
         sample_division=1,
         device='cpu',  # Load to CPU; caller handles device placement
-        recon1_path=None,
-        recon2_path=None,
+        act_recon1_path=None,
+        act_recon2_path=None,
         atten_image_path=None,
         atten_sino_path=None
     )
@@ -94,11 +94,11 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
     augmentations are consistent between masks and images.
     
     Args:
-        paths: dict with 'tune_qa_sino_path', 'tune_qa_image_path',
+         paths: dict with 'tune_qa_act_sino_path', 'tune_qa_act_image_path',
                'tune_qa_hotMask_path', 'tune_qa_hotBackgroundMask_path'
                (hotMask passed as recon1_path; hotBackgroundMask as recon2_path
                to ensure augmentations align across all tensors)
-        config: dict with 'image_size', 'sino_size', 'image_channels', 'sino_channels'
+         config: dict with 'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels'
         settings: dict with 'tune_eval_batch_size' (e.g., 32) and 'augment' matching training
         augment: type of augmentation to apply to images, sinograms & masks
     
@@ -110,7 +110,7 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
     """
     # Check paths
     required_qa_paths = [
-        'tune_qa_sino_path', 'tune_qa_image_path', 'tune_qa_hotMask_path',
+        'tune_qa_act_sino_path', 'tune_qa_act_image_path', 'tune_qa_hotMask_path',
         'tune_qa_hotBackgroundMask_path'
     ]
     if not all(paths.get(p) is not None for p in required_qa_paths):
@@ -124,8 +124,8 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
     # Use training-time augmentations for QA (same pipeline)
     # Pass hotMask via recon1_path and hotBackgroundMask via recon2_path so augmentations apply consistently
     qa_dataset = NpArrayDataSet(
-        image_path=paths['tune_qa_image_path'],
-        sino_path=paths['tune_qa_sino_path'],
+        act_image_path=paths['tune_qa_act_image_path'],
+        act_sino_path=paths['tune_qa_act_sino_path'],
         config=config,
         settings=settings,
         augment=augment,  # Enable augmentation for QA using training pipeline setting
@@ -133,8 +133,8 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
         num_examples=-1,  # Load entire QA set
         sample_division=1,
         device='cpu',  # Load to CPU; caller handles device placement
-        recon1_path=paths['tune_qa_hotMask_path'],      # Hot mask via recon1_path
-        recon2_path=paths['tune_qa_hotBackgroundMask_path'],  # Hot background via recon2_path
+        act_recon1_path=paths['tune_qa_hotMask_path'],      # Hot mask via recon1_path
+        act_recon2_path=paths['tune_qa_hotBackgroundMask_path'],  # Hot background via recon2_path
         atten_image_path=None, 
         atten_sino_path=None,
     )

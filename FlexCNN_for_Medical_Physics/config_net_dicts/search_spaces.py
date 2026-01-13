@@ -118,11 +118,6 @@ config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
     'IS_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
     'IS_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
 }
-
-#####################
-# Supervised Spaces #
-#####################
-
 config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning
     # NEW: New parameters added to config_RAY_SI (related to generator optimizer)
     'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
@@ -145,24 +140,29 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'IS_disc_adv_criterion': 1,
     }
 
-config_RAY_SUP_FROZEN = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
-    # NEW
+config_RAY_SUP_FROZEN = { # Frozen-specific hyperparameters merged with config_RAY_SUP for frozen backbone networks
+    'injection_scale_init': tune.uniform(0.5, 2.0),      # Initial value for feature injection scaling (narrow range centered at 1.0)
+    'injection_scale_lr_mult': tune.uniform(0.5, 2.0),   # Learning rate multiplier for injection scale parameters
+    }
+
+####################
+# Currently Unused #
+####################
+
+config_RAY_SUP_SIMULT= { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
+    # SHARED HYPERPARAMETERS
+    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
+    'gen_lr': tune.loguniform(0.5e-4,1e-2),
+    'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
+    'gen_b2': tune.loguniform(0.1, 0.999),
+    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    # SPECIFICALLY FOR SSIMULTANEOUS TRAINING
+    'gen_lr_scalar': tune.loguniform(0.1,10),  # learning rate mixing: gen_lr * gen_lr_scalar for one generator, gen_lr / gen_lr_scalar for the other
     'cycle_criterion': None,
     'lambda_adv': 0,
     'lambda_sup': 1,
     'lambda_cycle': 0,
-    # OVERWRITES
-    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
-    'gen_lr': tune.loguniform(0.5e-4,1e-2),
-    'gen_lr_scalar': tune.loguniform(0.1,10),  # learning rate mixing: gen_lr * gen_lr_scalar for one generator, gen_lr / gen_lr_scalar for the other
-    'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
-    'gen_b2': tune.loguniform(0.1, 0.999),
-    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
     }
-
-##############
-# GAN Spaces #
-##############
 
 config_RAY_GAN = { # This is MERGED with either config_RAY_IS or config_RAY_SI to form a single dictionary for a generative adversarial network.
     # NEW

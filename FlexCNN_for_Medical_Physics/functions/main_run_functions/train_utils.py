@@ -69,7 +69,7 @@ def create_generator(config: dict, device: str):
     Instantiate the appropriate Generator class based on config input size.
     
     Args:
-        config: Configuration dictionary containing 'image_size', 'sino_size', 'train_SI'.
+        config: Configuration dictionary containing 'gen_image_size', 'gen_sino_size', 'train_SI'.
         device: Device to place generator on (e.g., 'cuda:0' or 'cpu').
     
     Returns:
@@ -79,11 +79,11 @@ def create_generator(config: dict, device: str):
         ValueError if input_size is not 180, 288, or 320.
     """
     train_SI = config['train_SI']
-    image_size = config['image_size']
-    sino_size = config['sino_size']
+    gen_image_size = config['gen_image_size']
+    gen_sino_size = config['gen_sino_size']
     
     # Determine input size based on train_SI direction
-    input_size = sino_size if train_SI else image_size
+    input_size = gen_sino_size if train_SI else gen_image_size
     
     # Select appropriate Generator class
     if input_size == 180:
@@ -461,30 +461,40 @@ def visualize_mode(batch_data, visualize_batch_size, visualize_offset):
             show_multiple_matched_tensors(target[0:visualize_batch_size], CNN_output[0:visualize_batch_size])
 
 
-def route_batch_inputs(is_atten, train_SI, batch_tensors):
+def route_batch_inputs(train_SI, batch_tensors, network_type=None):
     """
     Route batch inputs to correct input/target based on domain and direction.
+    For CONCAT networks, concatenates activity and attenuation sinograms.
     
     Args:
-        is_atten: Boolean indicating attenuation domain (SUP_ATTEN)
-        train_SI: Boolean indicating sinogram->image direction (only checked if is_atten=False)
+        train_SI: Boolean indicating sinogram->image direction (only checked if network_type is not ATTEN)
         batch_tensors: Dict with 'sino_scaled', 'act_map_scaled', 'atten_sino_scaled', 'atten_image_scaled'
+        network_type: String indicating network type (enables CONCAT concatenation)
     
     Returns:
         Tuple of (input_, target)
     """
-    if is_atten:
-        # Attenuation domain: always sino->image (train_SI forced to True)
-        input_ = batch_tensors['atten_sino_scaled']
-        target = batch_tensors['atten_image_scaled']
+    if network_type == 'CONCAT':
+        # CONCAT mode: concatenate activity sinogram (3ch) + attenuation sinogram (1ch) -> 4ch
+        input_ = torch.cat([batch_tensors['act_sino_scaled'], 
+                   batch_tensors['atten_sino_scaled']], dim=1)
+        target = batch_tensors['act_image_scaled']
+    elif network_type == 'ATTEN':
+        # Attenuation domain: honor train_SI to support both directions
+        if train_SI:
+            input_ = batch_tensors['atten_sino_scaled']
+            target = batch_tensors['atten_image_scaled']
+        else:
+            input_ = batch_tensors['atten_image_scaled']
+            target = batch_tensors['atten_sino_scaled']
     else:
         # Activity domain: use configured train_SI direction
         if train_SI:
-            input_ = batch_tensors['sino_scaled']
-            target = batch_tensors['act_map_scaled']
+            input_ = batch_tensors['act_sino_scaled']
+            target = batch_tensors['act_image_scaled']
         else:
-            input_ = batch_tensors['act_map_scaled']
-            target = batch_tensors['sino_scaled']
+            input_ = batch_tensors['act_image_scaled']
+            target = batch_tensors['act_sino_scaled']
     
     return input_, target
 
@@ -497,7 +507,7 @@ def generate_reconstructions_for_visualization(recon1, recon2, input_, config):
         recon1: Precomputed recon1 or None
         recon2: Precomputed recon2 or None
         input_: Input tensor (sinogram) for FBP/MLEM reconstruction
-        config: Configuration dict with 'image_size', 'SI_normalize', 'SI_fixedScale'
+        config: Configuration dict with 'gen_image_size', 'SI_normalize', 'SI_fixedScale'
     
     Returns:
         Tuple of (recon1_output, recon2_output)
@@ -505,22 +515,22 @@ def generate_reconstructions_for_visualization(recon1, recon2, input_, config):
     if recon1 is not None:
         recon1_output = recon1
     else:
-        recon1_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
+        recon1_output = reconstruct(input_, config['gen_image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
     
     if recon2 is not None:
         recon2_output = recon2
     else:
-        recon2_output = reconstruct(input_, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
+        recon2_output = reconstruct(input_, config['gen_image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
     
     return recon1_output, recon2_output
 
 
-def compute_test_metrics(is_atten, input_, CNN_output, target, act_map_scaled, test_dataframe, config, recon1, recon2):
+def compute_test_metrics(network_type, input_, CNN_output, target, act_image_scaled, test_dataframe, config, recon1, recon2):
     """
     Compute test metrics and update dataframe based on domain.
     
     Args:
-        is_atten: Boolean indicating attenuation domain
+        network_type: String indicating network type (determines attenuation vs activity behavior)
         input_: Input tensor
         CNN_output: Network output tensor
         target: Target tensor
@@ -533,7 +543,8 @@ def compute_test_metrics(is_atten, input_, CNN_output, target, act_map_scaled, t
     Returns:
         Tuple of (test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output)
     """
-    if is_atten:
+
+    if network_type == 'ATTEN':
         # Attenuation: no recon comparisons; compute network metrics only
         mean_CNN_MSE = calculate_metric(target, CNN_output, MSE)
         mean_CNN_SSIM = calculate_metric(target, CNN_output, SSIM)
@@ -546,6 +557,6 @@ def compute_test_metrics(is_atten, input_, CNN_output, target, act_map_scaled, t
     else:
         # Activity: full recon comparisons
         test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
-            reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_map_scaled, test_dataframe, config, compute_MLEM=False, recon1=recon1, recon2=recon2)
+            reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_image_scaled, test_dataframe, config, compute_MLEM=False, recon1=recon1, recon2=recon2)
     
     return test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output

@@ -6,12 +6,16 @@ def construct_config(
     tune_opts,
     test_opts,
     viz_opts,
-    config_SUP_SI=None,
-    config_SUP_IS=None,
+    config_ACT_SI=None,
+    config_ACT_IS=None,
+    config_ATTEN_SI=None,
+    config_ATTEN_IS=None,
+    config_CONCAT=None,
+    config_FROZEN_COFLOW=None,
+    config_FROZEN_COUNTERFLOW=None,
     config_GAN_SI=None,
     config_GAN_IS=None,
     config_CYCLEGAN=None,
-    config_FROZEN=None,
     config_RAY_SI=None,
     config_RAY_SI_learnScale=None,
     config_RAY_SI_fixedScale=None,
@@ -28,11 +32,11 @@ def construct_config(
     
     Args:
         run_mode: 'tune', 'train', 'test', or 'visualize'
-        network_opts: dict with keys: network_type, train_SI, image_size, sino_size, image_channels, sino_channels
+        network_opts: dict with keys: network_type, train_SI, gen_image_size, gen_sino_size, gen_image_channels, gen_sino_channels
         tune_opts: dict with keys: tune_debug, etc.
         test_opts: dict with keys: test_batch_size, etc.
         viz_opts: dict with keys: visualize_batch_size, etc.
-        config_SUP_SI, config_SUP_IS, etc.: Network configuration dictionaries
+        config_ACT_SI, config_ACT_IS, config_ATTEN_SI, config_ATTEN_IS, config_CONCAT, config_FROZEN_COFLOW, config_FROZEN_COUNTERFLOW, etc.: Network configuration dictionaries
     
     Returns:
         config dict with all network hyperparameters and data dimensions
@@ -40,39 +44,43 @@ def construct_config(
     # Extract network options
     network_type = str(network_opts['network_type']).upper()  # Normalize strings
     train_SI = network_opts['train_SI']
-    image_size = network_opts['image_size']
-    sino_size = network_opts['sino_size']
-    image_channels = network_opts['image_channels']
-    sino_channels = network_opts['sino_channels']
+    gen_image_size = network_opts['gen_image_size']
+    gen_sino_size = network_opts['gen_sino_size']
+    gen_image_channels = network_opts['gen_image_channels']
+    gen_sino_channels = network_opts['gen_sino_channels']
     SI_normalize = network_opts['SI_normalize']
     IS_normalize = network_opts['IS_normalize']
 
     # If not tuning (or forcing tuning with a fixed config for debugging), choose config dictionary based on run_mode and network_type
     if run_mode in ['train', 'test', 'visualize', 'none'] or tune_opts.get('tune_force_fixed_config')==True:
-        if network_type == 'SUP_ACT':
-            config = config_SUP_SI if train_SI else config_SUP_IS
-        elif network_type == 'SUP_ATTEN':
-            config = config_SUP_SI # Currently only SI supervisory attention networks are supported
+        if network_type == 'ACT':
+            config = config_ACT_SI if train_SI else config_ACT_IS
+        elif network_type == 'ATTEN':
+            config = config_ATTEN_SI if train_SI else config_ATTEN_IS
+        elif network_type == 'CONCAT':
+            config = config_CONCAT
+        elif network_type == 'FROZEN_COFLOW':
+            config = config_FROZEN_COFLOW
+        elif network_type == 'FROZEN_COUNTERFLOW':
+            config = config_FROZEN_COUNTERFLOW
         elif network_type == 'GAN':
             config = config_GAN_SI if train_SI else config_GAN_IS
         elif network_type == 'CYCLEGAN':
             config = config_CYCLEGAN
-        elif network_type == 'FROZEN':
-            config = config_FROZEN
         else:
             raise ValueError(f"Unknown network_type '{network_type}'.")
         
         # Validate that user-specified dimensions match the loaded config
         # (can't change network architecture for already-trained networks)
         mismatches = []
-        if config.get('image_size') != image_size:
-            mismatches.append(f"image_size: config has {config.get('image_size')}, but network_opts specifies {image_size}")
-        if config.get('sino_size') != sino_size:
-            mismatches.append(f"sino_size: config has {config.get('sino_size')}, but network_opts specifies {sino_size}")
-        if config.get('image_channels') != image_channels:
-            mismatches.append(f"image_channels: config has {config.get('image_channels')}, but network_opts specifies {image_channels}")
-        if config.get('sino_channels') != sino_channels:
-            mismatches.append(f"sino_channels: config has {config.get('sino_channels')}, but network_opts specifies {sino_channels}")
+        if config.get('gen_image_size') != gen_image_size:
+            mismatches.append(f"gen_image_size: config has {config.get('gen_image_size')}, but network_opts specifies {gen_image_size}")
+        if config.get('gen_sino_size') != gen_sino_size:
+            mismatches.append(f"gen_sino_size: config has {config.get('gen_sino_size')}, but network_opts specifies {gen_sino_size}")
+        if config.get('gen_image_channels') != gen_image_channels:
+            mismatches.append(f"gen_image_channels: config has {config.get('gen_image_channels')}, but network_opts specifies {gen_image_channels}")
+        if config.get('gen_sino_channels') != gen_sino_channels:
+            mismatches.append(f"gen_sino_channels: config has {config.get('gen_sino_channels')}, but network_opts specifies {gen_sino_channels}"))
         if config.get('network_type') != network_type:
             mismatches.append(f"network_type: config has {config.get('network_type')}, but network_opts specifies {network_type}")
 
@@ -86,7 +94,7 @@ def construct_config(
     # If tuning, we need to construct the dictionary from smaller pieces
     elif run_mode == 'tune':
         # First, we add user normalization and scaling options. These must be added before combining dicts (below).
-        if network_type == 'SUP_ACT':
+        if network_type == 'ACT':
             if train_SI:
                 if SI_normalize:
                     config = {**config_RAY_SI, **config_RAY_SI_fixedScale ,**config_RAY_SUP}
@@ -97,11 +105,32 @@ def construct_config(
                     config = {**config_RAY_IS, **config_RAY_IS_fixedScale ,**config_RAY_SUP}
                 else:
                     config = {**config_RAY_IS, **config_RAY_IS_learnScale ,**config_RAY_SUP}
-        elif network_type == 'SUP_ATTEN':
-            if SI_normalize: # For SUP_ATTEN, only tune sinogram-->image networks
+        elif network_type == 'ATTEN':
+            if train_SI:
+                if SI_normalize:
+                    config = {**config_RAY_SI, **config_RAY_SI_fixedScale ,**config_RAY_SUP}
+                else:
+                    config = {**config_RAY_SI, **config_RAY_SI_learnScale ,**config_RAY_SUP}
+            else:
+                if IS_normalize:
+                    config = {**config_RAY_IS, **config_RAY_IS_fixedScale ,**config_RAY_SUP}
+                else:
+                    config = {**config_RAY_IS, **config_RAY_IS_learnScale ,**config_RAY_SUP}
+        elif network_type == 'CONCAT':
+            if SI_normalize:
                 config = {**config_RAY_SI, **config_RAY_SI_fixedScale ,**config_RAY_SUP}
             else:
                 config = {**config_RAY_SI, **config_RAY_SI_learnScale ,**config_RAY_SUP}
+        elif network_type == 'FROZEN_COFLOW':
+            if SI_normalize:
+                config = {**config_ATTEN_SI, **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+            else:
+                config = {**config_ATTEN_SI, **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+        elif network_type == 'FROZEN_COUNTERFLOW':
+            if SI_normalize:
+                config = {**config_ATTEN_IS, **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+            else:
+                config = {**config_ATTEN_IS, **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
         elif network_type == 'GAN':
             if train_SI:
                 if SI_normalize:
@@ -113,8 +142,6 @@ def construct_config(
                     config = {**config_RAY_IS, **config_RAY_IS_fixedScale ,**config_RAY_GAN}
                 else:
                     config = {**config_RAY_IS, **config_RAY_IS_learnScale ,**config_RAY_GAN}
-        elif network_type == 'FROZEN':
-            config = {**config_SUP_SI, **config_SUP_IS, **config_RAY_SUP_FROZEN}
         elif network_type == 'CYCLEGAN':
             config = {**config_GAN_SI, **config_GAN_IS, **config_RAY_GAN_CYCLE}
         else:
@@ -123,10 +150,10 @@ def construct_config(
         # Add data dimensions to config. These are set by the user and not tuned.
         config['network_type'] = network_type # If config is being built from smaller configs (CYCLESUP, CYCLEGAN), then this overwrites any existing value.
         config['train_SI'] = train_SI # Only used for SUP and GAN networks but added here for consistency.
-        config['image_size'] = image_size
-        config['sino_size'] = sino_size
-        config['image_channels'] = image_channels
-        config['sino_channels'] = sino_channels
+        config['gen_image_size'] = gen_image_size
+        config['gen_sino_size'] = gen_sino_size
+        config['gen_image_channels'] = gen_image_channels
+        config['gen_sino_channels'] = gen_sino_channels
     else:
         raise ValueError(f"Unknown run_mode '{run_mode}'.")
 
@@ -137,9 +164,6 @@ def construct_config(
         config['batch_size'] = test_opts['test_batch_size']
     elif run_mode == 'visualize':
         config['batch_size'] = viz_opts['visualize_batch_size']
-    # Override train_SI for SUP_ATTEN networks (currently only SI attention is supported)
-    if network_type == 'SUP_ATTEN':
-        config['train_SI'] = True
 
     return config
 
@@ -178,19 +202,19 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['test_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['test_dataframe_dirName'])
     paths['data_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['data_dirName'])
     
-    # Mode-specific data file paths
-    paths['tune_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_sino_file'])
-    paths['tune_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_image_file'])
-    paths['tune_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon1_file']) if data_files['tune_recon1_file'] is not None else None
-    paths['tune_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon2_file']) if data_files['tune_recon2_file'] is not None else None
+    # Mode-specific data file paths (activity domain renamed to act_*)
+    paths['tune_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_sino_file'])
+    paths['tune_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_image_file'])
+    paths['tune_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon1_file']) if data_files['tune_recon1_file'] is not None else None
+    paths['tune_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon2_file']) if data_files['tune_recon2_file'] is not None else None
     paths['tune_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_image_file']) if data_files['tune_atten_image_file'] is not None else None
     paths['tune_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_sino_file']) if data_files['tune_atten_sino_file'] is not None else None
-    paths['tune_val_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_sino_file']) if data_files['tune_val_sino_file'] is not None else None
-    paths['tune_val_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_image_file']) if data_files['tune_val_image_file'] is not None else None
+    paths['tune_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_sino_file']) if data_files['tune_val_sino_file'] is not None else None
+    paths['tune_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_image_file']) if data_files['tune_val_image_file'] is not None else None
     paths['tune_val_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_image_file']) if data_files['tune_val_atten_image_file'] is not None else None
     paths['tune_val_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_sino_file']) if data_files['tune_val_atten_sino_file'] is not None else None
-    paths['tune_qa_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_sino_file']) if data_files['tune_qa_sino_file'] is not None else None
-    paths['tune_qa_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_image_file']) if data_files['tune_qa_image_file'] is not None else None
+    paths['tune_qa_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_sino_file']) if data_files['tune_qa_sino_file'] is not None else None
+    paths['tune_qa_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_image_file']) if data_files['tune_qa_image_file'] is not None else None
     paths['tune_qa_backMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_backMask_file']) if data_files['tune_qa_backMask_file'] is not None else None
     paths['tune_qa_hotMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_hotMask_file']) if data_files['tune_qa_hotMask_file'] is not None else None
     paths['tune_qa_hotBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_hotBackgroundMask_file']) if data_files['tune_qa_hotBackgroundMask_file'] is not None else None
@@ -198,57 +222,57 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['tune_qa_coldBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_coldBackgroundMask_file']) if data_files['tune_qa_coldBackgroundMask_file'] is not None else None
     paths['tune_qa_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_atten_image_file']) if data_files['tune_qa_atten_image_file'] is not None else None
     paths['tune_qa_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_atten_sino_file']) if data_files['tune_qa_atten_sino_file'] is not None else None
-    paths['train_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_sino_file'])
-    paths['train_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_image_file'])
-    paths['train_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['train_recon1_file']) if data_files['train_recon1_file'] is not None else None
-    paths['train_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['train_recon2_file']) if data_files['train_recon2_file'] is not None else None
+    paths['train_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_sino_file'])
+    paths['train_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_image_file'])
+    paths['train_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['train_recon1_file']) if data_files['train_recon1_file'] is not None else None
+    paths['train_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['train_recon2_file']) if data_files['train_recon2_file'] is not None else None
     paths['train_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_image_file']) if data_files['train_atten_image_file'] is not None else None
     paths['train_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_sino_file']) if data_files['train_atten_sino_file'] is not None else None
-    paths['test_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_sino_file'])
-    paths['test_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_image_file'])
-    paths['test_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['test_recon1_file']) if data_files['test_recon1_file'] is not None else None
-    paths['test_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['test_recon2_file']) if data_files['test_recon2_file'] is not None else None
+    paths['test_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_sino_file'])
+    paths['test_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_image_file'])
+    paths['test_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['test_recon1_file']) if data_files['test_recon1_file'] is not None else None
+    paths['test_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['test_recon2_file']) if data_files['test_recon2_file'] is not None else None
     paths['test_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_atten_image_file']) if data_files['test_atten_image_file'] is not None else None
     paths['test_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_atten_sino_file']) if data_files['test_atten_sino_file'] is not None else None
-    paths['visualize_sino_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_sino_file'])
-    paths['visualize_image_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_image_file'])
-    paths['visualize_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_recon1_file']) if data_files['visualize_recon1_file'] is not None else None
-    paths['visualize_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_recon2_file']) if data_files['visualize_recon2_file'] is not None else None
+    paths['visualize_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_sino_file'])
+    paths['visualize_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_image_file'])
+    paths['visualize_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_recon1_file']) if data_files['visualize_recon1_file'] is not None else None
+    paths['visualize_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_recon2_file']) if data_files['visualize_recon2_file'] is not None else None
     paths['visualize_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_atten_image_file']) if data_files['visualize_atten_image_file'] is not None else None
     paths['visualize_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_atten_sino_file']) if data_files['visualize_atten_sino_file'] is not None else None
     
     # Backward-compatible note: attenuation image/sinogram paths already assigned above for each mode
     
-    # Active paths and checkpoint filename selection
+    # Active paths and checkpoint filename selection (act_* only; no legacy fallbacks)
     if run_mode == 'tune':
-        paths['sino_path'] = paths['tune_sino_path']
-        paths['image_path'] = paths['tune_image_path']
-        paths['recon1_path'] = paths['tune_recon1_path']
-        paths['recon2_path'] = paths['tune_recon2_path']
+        paths['act_sino_path'] = paths['tune_act_sino_path']
+        paths['act_image_path'] = paths['tune_act_image_path']
+        paths['act_recon1_path'] = paths['tune_act_recon1_path']
+        paths['act_recon2_path'] = paths['tune_act_recon2_path']
         paths['atten_image_path'] = paths['tune_atten_image_path']
         paths['atten_sino_path'] = paths['tune_atten_sino_path']
         checkpoint_file = ''
     elif run_mode == 'train':
-        paths['sino_path'] = paths['train_sino_path']
-        paths['image_path'] = paths['train_image_path']
-        paths['recon1_path'] = paths['train_recon1_path']
-        paths['recon2_path'] = paths['train_recon2_path']
+        paths['act_sino_path'] = paths['train_act_sino_path']
+        paths['act_image_path'] = paths['train_act_image_path']
+        paths['act_recon1_path'] = paths['train_act_recon1_path']
+        paths['act_recon2_path'] = paths['train_act_recon2_path']
         paths['atten_image_path'] = paths['train_atten_image_path']
         paths['atten_sino_path'] = paths['train_atten_sino_path']
         checkpoint_file = mode_files['train_checkpoint_file']
     elif run_mode == 'test':
-        paths['sino_path'] = paths['test_sino_path']
-        paths['image_path'] = paths['test_image_path']
-        paths['recon1_path'] = paths['test_recon1_path']
-        paths['recon2_path'] = paths['test_recon2_path']
+        paths['act_sino_path'] = paths['test_act_sino_path']
+        paths['act_image_path'] = paths['test_act_image_path']
+        paths['act_recon1_path'] = paths['test_act_recon1_path']
+        paths['act_recon2_path'] = paths['test_act_recon2_path']
         paths['atten_image_path'] = paths['test_atten_image_path']
         paths['atten_sino_path'] = paths['test_atten_sino_path']
         checkpoint_file = mode_files['test_checkpoint_file']
     elif run_mode in ['visualize', 'none']:
-        paths['sino_path'] = paths['visualize_sino_path']
-        paths['image_path'] = paths['visualize_image_path']
-        paths['recon1_path'] = paths['visualize_recon1_path']
-        paths['recon2_path'] = paths['visualize_recon2_path']
+        paths['act_sino_path'] = paths['visualize_act_sino_path']
+        paths['act_image_path'] = paths['visualize_act_image_path']
+        paths['act_recon1_path'] = paths['visualize_act_recon1_path']
+        paths['act_recon2_path'] = paths['visualize_act_recon2_path']
         paths['atten_image_path'] = paths['visualize_atten_image_path']
         paths['atten_sino_path'] = paths['visualize_atten_sino_path']
         checkpoint_file = mode_files['visualize_checkpoint_file']
@@ -289,10 +313,10 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
     settings['run_mode'] = run_mode
     settings['device'] = common_settings['device']
     settings['num_examples'] = common_settings['num_examples']
-    settings['sino_scale'] = common_settings['sino_scale']
-    settings['recon1_scale'] = common_settings['recon1_scale']
-    settings['recon2_scale'] = common_settings['recon2_scale']
-    settings['image_scale'] = common_settings['image_scale']
+    settings['act_sino_scale'] = common_settings['act_sino_scale']
+    settings['act_recon1_scale'] = common_settings['act_recon1_scale']
+    settings['act_recon2_scale'] = common_settings['act_recon2_scale']
+    settings['act_image_scale'] = common_settings['act_image_scale']
     settings['atten_image_scale'] = common_settings['atten_image_scale']
     settings['atten_sino_scale'] = common_settings['atten_sino_scale']
 

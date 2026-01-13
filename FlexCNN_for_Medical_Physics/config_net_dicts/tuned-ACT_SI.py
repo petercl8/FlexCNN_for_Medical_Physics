@@ -15,7 +15,7 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 
 
 ## highCountSino-->actMap, tuned for SSIM, Augugment: SI
-config_SUP_SI = {
+config_ACT_SI = {
   "SI_dropout": False,
   "SI_exp_kernel": 4, #4
   "SI_fixedScale": 1,
@@ -50,7 +50,7 @@ config_SUP_SI = {
 
 '''
 ## highCountSino-->actMap, tuned for SSIM, Augugment: II
-config_SUP_SI = {
+config_ACT_SI = {
    "SI_dropout": False,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
@@ -84,7 +84,7 @@ config_SUP_SI = {
 
 '''
 ## highCountImage-->actMap, tuned for SSIM, Augment: II (defective network)
-config_SUP_SI = {
+config_ACT_SI = {
   "SI_dropout": True,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
@@ -118,7 +118,7 @@ config_SUP_SI = {
 
 '''
 # 3x180x180 --> 1x180x180, Tuned for SSIM on OLDER dataset
-config_SUP_SI = {
+config_ACT_SI = {
   "train_SI": True,
   "SI_dropout": False,
   "SI_exp_kernel": 4, # Options: 3, 4 (default 4)

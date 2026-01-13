@@ -29,7 +29,7 @@ def sort_DataSet(
     ----------
     config : dict
         Must contain: 'train_SI', 'SI_fixedScale', 'SI_fixedScale', 'SI_normalize', 'IS_normalize',
-        'image_size', 'sino_size', 'image_channels', 'sino_channels'.
+        'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels'.
     load_image_path : str
         Path to source image .npy file.
     load_sino_path : str
@@ -108,7 +108,7 @@ def sort_DataSet(
         # FBP reconstruction for metric comparison
         FBP_output = reconstruct(
             sino_ground_scaled,
-            config['image_size'],
+            config['gen_image_size'],
             config['SI_normalize'],
             config['SI_fixedScale'],
             recon_type='FBP'

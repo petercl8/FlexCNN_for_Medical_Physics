@@ -61,7 +61,7 @@ def reconstruct_images_and_update_test_dataframe(sino_tensor, CNN_output, act_ma
     CNN_output:         CNN reconstructions
     act_map_scaled:     ground truth activity map tensor
     test_dataframe:     dataframe to append metric values to
-    config:             configuration dictionary containing image_size, SI_normalize, SI_fixedScale
+    config:             configuration dictionary containing gen_image_size, SI_normalize, SI_fixedScale
     compute_MLEM:       whether to compute ML-EM reconstructions (can be slow)
     recon1:             optional pre-computed reconstruction 1 tensor. If None, FBP is computed on-the-fly.
     recon2:             optional pre-computed reconstruction 2 tensor. If None, MLEM is computed on-the-fly.
@@ -73,14 +73,14 @@ def reconstruct_images_and_update_test_dataframe(sino_tensor, CNN_output, act_ma
     if recon1 is not None:
         recon1_output = recon1
     else:
-        recon1_output = reconstruct(sino_tensor, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
+        recon1_output = reconstruct(sino_tensor, config['gen_image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='FBP')
 
     # Construct or use pre-computed Reconstruction 2 #
     if recon2 is not None:
         recon2_output = recon2
     else:
         if compute_MLEM==True:
-            recon2_output = reconstruct(sino_tensor, config['image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
+            recon2_output = reconstruct(sino_tensor, config['gen_image_size'], config['SI_normalize'], config['SI_fixedScale'], recon_type='MLEM')
         else:
             recon2_output = recon1_output
 

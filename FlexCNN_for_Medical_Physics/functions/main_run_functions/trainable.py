@@ -60,7 +60,6 @@ def run_trainable(config, paths, settings):
     
     # Network configuration
     network_type = config['network_type']
-    is_atten = (network_type == 'SUP_ATTEN')
     train_SI = config['train_SI']
     
     # Data loading configuration
@@ -142,22 +141,48 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     # SECTION 5A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
     # ========================================================================================
-    if network_type == 'SUP_ACT':
+    if network_type == 'ACT':
+        # Activity-only: attenuation paths are not required
         paths['atten_image_path'] = None
         paths['atten_sino_path'] = None
-    elif network_type == 'SUP_ATTEN':
-        paths['image_path'] = None
-        paths['sino_path'] = None
-        paths['recon1_path'] = None
-        paths['recon2_path'] = None
+    elif network_type == 'ATTEN':
+        # Attenuation-only: activity paths are not required
+        paths['act_image_path'] = None
+        paths['act_sino_path'] = None
+        paths['act_recon1_path'] = None
+        paths['act_recon2_path'] = None
 
     # ========================================================================================
-    # SECTION 6: BUILD DATA LOADER
+    # SECTION 6: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
     # ========================================================================================
+    # Enforce proper act_* and atten_* keys without legacy fallbacks
+    # Determine required domains based on network type
+    def require_path(key: str):
+        if key not in paths or paths[key] is None:
+            raise ValueError(f"Missing required path: '{key}'. Provide proper act_*/atten_* paths; legacy keys are not supported.")
+
+    if network_type in ('ACT', 'GAN', 'CYCLEGAN'):
+        # Require activity domain
+        require_path('act_image_path')
+        require_path('act_sino_path')
+    if network_type in ('ATTEN', 'CONCAT'):
+        # Require attenuation domain
+        require_path('atten_image_path')
+        require_path('atten_sino_path')
+    if network_type == 'CONCAT':
+        # CONCAT needs activity target and both sinograms
+        require_path('act_image_path')
+
+    # Extract paths strictly (no legacy fallbacks)
+    act_image_path = paths.get('act_image_path')
+    act_sino_path = paths.get('act_sino_path')
+    act_recon1_path = paths.get('act_recon1_path')
+    act_recon2_path = paths.get('act_recon2_path')
+
     dataloader = DataLoader(
         NpArrayDataSet(
-            image_path=paths['image_path'],
-            sino_path=paths['sino_path'],
+            act_sino_path=act_sino_path,
+            act_image_path=act_image_path,
             config=config,
             settings=settings,
             augment=augment,
@@ -165,8 +190,8 @@ def run_trainable(config, paths, settings):
             num_examples=num_examples,
             sample_division=sample_division,
             device=device,
-            recon1_path=paths['recon1_path'],
-            recon2_path=paths['recon2_path'],
+            act_recon1_path=act_recon1_path,
+            act_recon2_path=act_recon2_path,
             atten_image_path=paths['atten_image_path'],
             atten_sino_path=paths['atten_sino_path'],
         ),
@@ -217,23 +242,23 @@ def run_trainable(config, paths, settings):
         
         for act_data, atten_data, recon_data in iter(dataloader):
             # _____ SUBSECTION 10A: UNPACK BATCH DATA _____
-            sino_scaled, act_map_scaled = act_data
+            act_sino_scaled, act_image_scaled = act_data
             atten_sino_scaled, atten_image_scaled = atten_data
-            recon1, recon2 = recon_data
-            recon1_output = recon1
-            recon2_output = recon2
+            act_recon1, act_recon2 = recon_data
+            recon1_output = act_recon1
+            recon2_output = act_recon2
             
             # _____ SUBSECTION 10B: TIMING AND INPUT ROUTING _____
             _ = display_times('loader time', time_init_loader, show_times)
             time_init_full = display_times('FULL STEP TIME', time_init_full, show_times)
             
             batch_tensors = {
-                'sino_scaled': sino_scaled,
-                'act_map_scaled': act_map_scaled,
+                'act_sino_scaled': act_sino_scaled,
+                'act_image_scaled': act_image_scaled,
                 'atten_sino_scaled': atten_sino_scaled,
                 'atten_image_scaled': atten_image_scaled
             }
-            input_, target = route_batch_inputs(is_atten, train_SI, batch_tensors)
+            input_, target = route_batch_inputs(train_SI, batch_tensors, network_type)
 
             # _____ SUBSECTION 10C: FORWARD PASS & TRAINING STEP (tune/train only) _____
             if run_mode in ('tune', 'train'):
@@ -278,11 +303,11 @@ def run_trainable(config, paths, settings):
             # Test: Calculate individual image metrics and store in dataframe
             if run_mode == 'test':
                 test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
-                    compute_test_metrics(is_atten, input_, CNN_output, target, act_map_scaled, test_dataframe, config, recon1, recon2)
+                    compute_test_metrics(network_type, input_, CNN_output, target, act_image_scaled, test_dataframe, config, act_recon1, act_recon2)
 
             # Visualize: Generate reconstructions for display if necessary
             if run_mode == 'visualize':
-                if not is_atten:
+                if network_type != 'ATTEN':
                     # Activity domain: generate recon comparisons
                     recon1_output, recon2_output = generate_reconstructions_for_visualization(recon1, recon2, input_, config)
 

@@ -124,7 +124,7 @@ def visualize_sinogram_alignment(
     atten_images = np.load(paths['train_atten_image_path'], mmap_mode='r')
 
     # Load Scales
-    sino_scale = settings['sino_scale']
+    act_sino_scale = settings['act_sino_scale']
     atten_image_scale = settings['atten_image_scale']
 
     
@@ -207,7 +207,7 @@ def visualize_sinogram_alignment(
         print(f"Example {idx} (after resize): activity_sino shape: {activity_sino.shape}, atten_sino shape: {atten_sino.shape}")
 
         # Scale activity sinogram
-        activity_sino = activity_sino * sino_scale
+        activity_sino = activity_sino * act_sino_scale
 
         # Store Sinograms
         activity_sino_list.append(torch.from_numpy(activity_sino).unsqueeze(0).unsqueeze(0).float())
