@@ -80,7 +80,7 @@ def construct_config(
         if config.get('gen_image_channels') != gen_image_channels:
             mismatches.append(f"gen_image_channels: config has {config.get('gen_image_channels')}, but network_opts specifies {gen_image_channels}")
         if config.get('gen_sino_channels') != gen_sino_channels:
-            mismatches.append(f"gen_sino_channels: config has {config.get('gen_sino_channels')}, but network_opts specifies {gen_sino_channels}"))
+            mismatches.append(f"gen_sino_channels: config has {config.get('gen_sino_channels')}, but network_opts specifies {gen_sino_channels}")
         if config.get('network_type') != network_type:
             mismatches.append(f"network_type: config has {config.get('network_type')}, but network_opts specifies {network_type}")
 

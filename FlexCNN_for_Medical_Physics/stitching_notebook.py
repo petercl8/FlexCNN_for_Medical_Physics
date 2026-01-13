@@ -970,8 +970,8 @@ visualize_sinogram_alignment(
 # --- Refresh Repository ---
 #refresh_repo(IN_COLAB, local_repo_path=local_repo_dirPath)
 
-## Anthropomorphic phantoms ##
-##############################
+## Anthropomorphic phantoms ###
+###############################
 fig_size_XCAT=2.5
 indexes_XCAT = [100, 200, 300, 400, 500, 600, 700]
 
