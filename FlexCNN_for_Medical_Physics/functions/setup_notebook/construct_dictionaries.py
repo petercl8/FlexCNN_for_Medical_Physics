@@ -203,18 +203,18 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['data_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['data_dirName'])
     
     # Mode-specific data file paths (activity domain renamed to act_*)
-    paths['tune_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_sino_file'])
-    paths['tune_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_image_file'])
+    paths['tune_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_sino_file'])
+    paths['tune_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_image_file'])
     paths['tune_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon1_file']) if data_files['tune_recon1_file'] is not None else None
     paths['tune_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['tune_recon2_file']) if data_files['tune_recon2_file'] is not None else None
     paths['tune_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_image_file']) if data_files['tune_atten_image_file'] is not None else None
     paths['tune_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_sino_file']) if data_files['tune_atten_sino_file'] is not None else None
-    paths['tune_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_sino_file']) if data_files['tune_val_sino_file'] is not None else None
-    paths['tune_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_image_file']) if data_files['tune_val_image_file'] is not None else None
+    paths['tune_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_act_sino_file']) if data_files['tune_val_act_sino_file'] is not None else None
+    paths['tune_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_act_image_file']) if data_files['tune_val_act_image_file'] is not None else None
     paths['tune_val_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_image_file']) if data_files['tune_val_atten_image_file'] is not None else None
     paths['tune_val_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_sino_file']) if data_files['tune_val_atten_sino_file'] is not None else None
-    paths['tune_qa_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_sino_file']) if data_files['tune_qa_sino_file'] is not None else None
-    paths['tune_qa_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_image_file']) if data_files['tune_qa_image_file'] is not None else None
+    paths['tune_qa_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_act_sino_file']) if data_files['tune_qa_act_sino_file'] is not None else None
+    paths['tune_qa_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_act_image_file']) if data_files['tune_qa_act_image_file'] is not None else None
     paths['tune_qa_backMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_backMask_file']) if data_files['tune_qa_backMask_file'] is not None else None
     paths['tune_qa_hotMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_hotMask_file']) if data_files['tune_qa_hotMask_file'] is not None else None
     paths['tune_qa_hotBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_hotBackgroundMask_file']) if data_files['tune_qa_hotBackgroundMask_file'] is not None else None
