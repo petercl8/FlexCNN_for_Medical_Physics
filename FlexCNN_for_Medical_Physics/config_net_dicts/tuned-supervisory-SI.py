@@ -38,7 +38,7 @@ config_SUP_SI = {
   "image_size": 180,
   "network_type": "SUP",
   "sino_channels": 3, #3
-  "sino_size": 288, # 180
+  "sino_size": 180, # 180
   "sup_base_criterion": nn.MSELoss(),
   "SI_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
   "SI_alpha_min": 0.2, # -1
