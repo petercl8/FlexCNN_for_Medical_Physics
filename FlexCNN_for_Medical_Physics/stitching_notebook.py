@@ -1154,7 +1154,7 @@ test_csv_file2 = 'combined-tunedLowSSIM-trainedLowSSIM-onTestSet-wMLEM'
 dataframe_path1 = os.path.join(test_dataframe_dirPath1, test_csv_file1+'.csv')
 dataframe1 = pd.read_csv(dataframe_path1)
 dataframe_path2 = os.path.join(test_dataframe_dirPath2, test_csv_file2+'.csv')
-dataframe2 = pd.read_csv(dataframe_path2)v
+dataframe2 = pd.read_csv(dataframe_path2)
 
 ## Describe Dataframes ##
 
