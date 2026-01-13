@@ -41,7 +41,7 @@ config_SUP_SI = {
   "sino_size": 180, # 180
   "sup_base_criterion": nn.MSELoss(),
   "SI_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
-  "SI_alpha_min": 0.2, # -1
+  "SI_alpha_min": -1, # -1
   "SI_half_life_examples": 2000,
   "SI_output_scale_lr_mult": 1.0,  # No learnable output scale
   "network_type": "SUP_ACT",
