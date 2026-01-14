@@ -114,7 +114,7 @@ class Generator_288(nn.Module):
                 expand_block(dim_6, dim_5, 4, stride=2, padding=2, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 3->5
                 expand_block(dim_5, dim_4, 3, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 5->9: (5-1)*2+3-2+0=9
             )
-        # neck='medium': 5x5 bottleneck
+        # neck='medium':  5x5 bottleneck
         if neck == 'medium':
             return nn.Sequential(
                 contract_block(dim_4, dim_5, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 9->5: floor((9+2-3)/2)+1=5
