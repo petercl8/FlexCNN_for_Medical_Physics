@@ -72,15 +72,13 @@ def BuildImageSinoTensors(image_array_names, sino_array_name, config, paths_dict
 
     return image_tensors, sino_tensor
 
-def CNN_reconstruct(sino_tensor, config, checkpoint_name, paths, device, sino_size=None):
+def CNN_reconstruct(sino_tensor, config, checkpoint_name, paths, device, gen_sino_size=288):
     checkpoint_path = os.path.join(paths['checkpoint_dirPath'], checkpoint_name)
-    sino_size = sino_size or config['gen_sino_size']
-
-    if sino_size == 180:
+    if gen_sino_size == 180:
         gen = Generator_180(config=config, gen_SI=True).to(device)
-    elif sino_size == 288:
+    elif gen_sino_size == 288:
         gen = Generator_288(config=config, gen_SI=True).to(device)
-    elif sino_size == 320:
+    elif gen_sino_size == 320:
         gen = Generator_320(config=config, gen_SI=True).to(device)
     else:
         raise ValueError(f"No Generator class available for gen_sino_size={sino_size}. Supported sizes: 180, 288, 320")
@@ -98,5 +96,18 @@ def PlotPhantomRecons(image_array_names, sino_array_name, config, paths_dict, in
     return image_tensors, sino_tensor
 
 '''
-OLDER VERSION BELOW - TO BE DEPRECATED (kept for reference only; expects legacy keys). Prefer the functions above using gen_* config keys.
+OLDER VERSION BELOW - TO BE DEPRECATED
+
+## CNN Outputs ##
+def CNN_reconstruct(sino_tensor, config, checkpoint_dirPath, checkpoint_fileName):
+
+    #Construct CNN reconstructions of images of a sinogram tensor.
+    #Config must contain: sino_size, sino_channels, image_channels.
+
+    gen = Generator(config=config, gen_SI=True).to(device)
+    checkpoint_path = os.path.join(checkpoint_dirPath, checkpoint_fileName)
+    checkpoint = torch.load(checkpoint_path)
+    gen.load_state_dict(checkpoint['gen_state_dict'])
+    gen.eval()
+    return gen(sino_tensor).detach()
 '''
