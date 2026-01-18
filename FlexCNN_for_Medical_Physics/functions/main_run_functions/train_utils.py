@@ -64,13 +64,14 @@ def collate_nested(batch):
     return act_data, atten_data, recon_data
 
 
-def create_generator(config: dict, device: str):
+def create_generator(config: dict, device: str, **kwargs):
     """
     Instantiate the appropriate Generator class based on config input size.
     
     Args:
         config: Configuration dictionary containing 'gen_image_size', 'gen_sino_size', 'train_SI'.
         device: Device to place generator on (e.g., 'cuda:0' or 'cpu').
+        **kwargs: Additional keyword arguments passed to Generator constructor (e.g., gen_skip_handling, enc_inject_channels).
     
     Returns:
         Generator instance (Generator_180, Generator_288, or Generator_320) on specified device.
@@ -96,7 +97,7 @@ def create_generator(config: dict, device: str):
         raise ValueError(f"No Generator class available for input_size={input_size}. Supported sizes: 180, 288, 320")
     
     # Instantiate and move to device
-    gen = GeneratorClass(config=config, gen_SI=train_SI).to(device)
+    gen = GeneratorClass(config=config, gen_SI=train_SI, **kwargs).to(device)
     return gen
 
 
@@ -497,6 +498,99 @@ def route_batch_inputs(train_SI, batch_tensors, network_type=None):
             target = batch_tensors['act_sino_scaled']
     
     return input_, target
+
+
+def apply_feature_injection(
+    gen_act,
+    input_tensor,
+    frozen_encoder_feats,
+    frozen_decoder_feats,
+    feat_scales,
+    flow_mode: str,
+    enable_inject_to_encoder: bool = True,
+    enable_inject_to_decoder: bool = True,
+):
+    """
+    Forward pass through the activity generator with optional frozen feature injection.
+
+    Injection routing is determined by flow_mode:
+    - coflow: frozen encoder -> activity encoder; frozen decoder -> activity decoder (like scales)
+    - counterflow: frozen encoder -> activity decoder; frozen decoder -> activity encoder (cross scales)
+
+    Toggles enable/disable destination streams (into activity encoder/decoder). Feature shapes are matched
+    by spatial size; scaled features are added to preserve channel dimensions.
+    """
+
+    if flow_mode not in ('coflow', 'counterflow'):
+        raise ValueError("flow_mode must be one of {'coflow', 'counterflow'}")
+
+    # Build lookup for injection sources and their scales based on routing
+    if flow_mode == 'coflow':
+        inject_to_encoder = list(zip(frozen_encoder_feats, feat_scales['encoder'])) if enable_inject_to_encoder else []
+        inject_to_decoder = list(zip(frozen_decoder_feats, feat_scales['decoder'])) if enable_inject_to_decoder else []
+    else:  # counterflow: cross-map sources
+        inject_to_encoder = list(zip(frozen_decoder_feats, feat_scales['decoder'])) if enable_inject_to_encoder else []
+        inject_to_decoder = list(zip(frozen_encoder_feats, feat_scales['encoder'])) if enable_inject_to_decoder else []
+
+    def _maybe_inject(current, inject_pairs):
+        if not inject_pairs:
+            return current
+        for feat, scale in inject_pairs:
+            if feat.shape[-1] == current.shape[-1]:
+                current = current + scale * feat
+        return current
+
+    # Encoder path
+    skips = []
+    a = input_tensor
+    for block in gen_act.contract_blocks:
+        a = block(a)
+        skips.append(a)
+    # Inject into encoder skips by spatial size
+    if inject_to_encoder:
+        for idx, skip in enumerate(skips):
+            skips[idx] = _maybe_inject(skip, inject_to_encoder)
+
+    # Neck
+    a = gen_act.neck(a)
+
+    # Decoder path with injection at matching spatial sizes
+    a = gen_act._merge(skips[4], a)
+    a = _maybe_inject(a, inject_to_decoder)
+    a = gen_act.expand_blocks[0](a)
+
+    a = gen_act._merge(skips[3], a)
+    a = gen_act.expand_blocks[1](a)
+
+    a = gen_act._merge(skips[2], a)
+    a = gen_act.expand_blocks[2](a)
+    a = _maybe_inject(a, inject_to_decoder)
+
+    a = gen_act._merge(skips[1], a)
+    a = gen_act.expand_blocks[3](a)
+    a = _maybe_inject(a, inject_to_decoder)
+
+    a = gen_act._merge(skips[0], a)
+    a = gen_act.expand_blocks[4](a)
+
+    # Post-processing mirrors Generator forward
+    if a.shape[-1] > gen_act.output_size:
+        crop_size = gen_act.output_size
+        margin = (a.shape[-1] - crop_size) // 2
+        a = a[:, :, margin:margin+crop_size, margin:margin+crop_size]
+
+    if gen_act.final_activation:
+        a = gen_act.final_activation(a)
+    if gen_act.normalize:
+        batch_size = len(a)
+        a = torch.reshape(a, (batch_size, gen_act.output_channels, gen_act.output_size**2))
+        a = torch.nn.functional.normalize(a, p=1, dim=2)
+        a = torch.reshape(a, (batch_size, gen_act.output_channels, gen_act.output_size, gen_act.output_size))
+
+    scale = torch.exp(gen_act.log_output_scale) if gen_act.output_scale_learnable else gen_act.fixed_output_scale
+    a = a * scale
+
+    return a
 
 
 def generate_reconstructions_for_visualization(recon1, recon2, input_, config):

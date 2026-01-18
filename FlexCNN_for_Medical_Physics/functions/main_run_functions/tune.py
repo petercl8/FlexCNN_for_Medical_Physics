@@ -7,6 +7,7 @@ from ray.tune.search.hyperopt import HyperOptSearch
 from ray.tune.result_grid import ResultGrid
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_frozen_flow import run_trainable_frozen_flow
 
 def tune_exp():
     print("placeholder")
@@ -155,7 +156,14 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
                                                                     # But then the search space needs to be defined in terms of the specific search algorithm methods, rather than letting RayTune translate.
 
     ## Unified trainable ##
-    trainable_param = tune.with_parameters(run_trainable, paths=paths, settings=settings)
+    # Select appropriate trainable function based on network_type
+    network_type = config.get('network_type')
+    if network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
+        trainable_func = run_trainable_frozen_flow
+    else:
+        trainable_func = run_trainable
+    
+    trainable_param = tune.with_parameters(trainable_func, paths=paths, settings=settings)
     trainable_with_resources = tune.with_resources(trainable_param, {"CPU": cpus_per_trial, "GPU": gpus_per_trial})
 
     ## If starting from scratch ##

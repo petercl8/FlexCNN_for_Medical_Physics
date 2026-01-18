@@ -120,7 +120,46 @@ D) Do the stages I propose make sense to you? If not, please propose new ones. I
 
 
 =============
-tune_dataframe for qa -X
-get rid of random batches -X
-refactor trainable.py -X
-update for attenuation data -
+A) The encoder feature list shouls be 144, 72, 9 (encoder side) and 9, 72, 144 (decoder side). I'd like the neck to be left alone to simplify things.
+B) For checkpointing, we need two load paths (for two networks) and two save path. To keep things simple, I say we just append a suffix to our already established checkpoint file, which would be used for activity. So if, for example, paths['checkpoint_path']='path_to_dir/sample_checkpoint_file', checkpoint_act='path_to_dir/sample_checkpoint_file-act'.
+
+For tuning, you'd only need to load the first checkpoint file. For training, you'd load the first (if starting from scratch) or both if picking up training partway through. You'd save to only the 2nd (since the first is frozen). Do you understand?
+
+Alternatively, I suppose we could pipe a 2nd checkpoint path all the way through, which might be clearer. What do you think? Do you have any other ideas?
+
+For feature concatenation, you'll need to be more specific. Do we send features to gen_act: CNN_output = gen_act(act_sino_scaled, extracted_features) ?
+================
+1) Your loading logic requires some correction:
+
+# Tuning: load only attenuation network (regardless of load_state because trials are started from scratch)
+gen_act.load_state_dict(torch.load(checkpoint_path + '-atten'))
+
+# Training: load both if they exist
+if load_state and run_mode == 'train':
+    if os.path.exists(checkpoint_path + '-atten'):
+        gen_atten.load_state_dict(torch.load(checkpoint_path + '-atten'))
+    if os.path.exists(checkpoint_path + '-act'):
+        gen_act.load_state_dict(torch.load(checkpoint_path + '-act'))
+
+# Saving: only activity (frozen network never changes)
+if save_state:
+    torch.save(gen_act.state_dict(), checkpoint_path + '-act')
+
+2) Option 2 (wrapper/helper function) sounds good. I would add an argument, however, which indicates coflow vs. counterflow. Then we can use this wrapper for both.
+
+
+==================
+REGARDING GROUP NORMALIZATION BEFORE CONCATENATION
+
+ Ideally, before concatenation, the extracted attenuation features should be normalized using the same normalization type as that employed in the activity network (which is tunable). That way, both features have the same normalization before concatenation. I propose using GroupNorm for this. Therefore, the outputs from like-sized blocks (for both networks) can be normlized using GroupNorm, concatenated, then reduced the the proper number of channels (to be fed into the next block) by 1x1 conv. The scheme would go something like this:
+
+A ∈ ℝ[B, C_A, H, W]  # attenuation features
+X ∈ ℝ[B, C_X, H, W]  # activity features
+
+Â = GN_A(A)  # GroupNorm(num_channels=C_A, groups=G_A)
+X̂ = GN_X(X)  # GroupNorm(num_channels=C_X, groups=G_X)
+
+Z = concat([X̂, Â], dim=channel)
+Y = Conv1×1(Z) → ℝ[B, C_X, H, W]
+
+Please do not do any formal planning. We are just talking here and I want to know if you understand what I'm driving at?

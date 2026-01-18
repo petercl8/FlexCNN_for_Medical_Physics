@@ -7,10 +7,14 @@ from torch import nn
 #############################
 
 class Generator_288(nn.Module):
-    def __init__(self, config, gen_SI=True):
+    def __init__(self, config, gen_SI=True, gen_skip_handling: str = 'classic', gen_flow_mode: str = 'coflow', enc_inject_channels=None, dec_inject_channels=None):
         '''
         Encoder-decoder generator with optional skip connections, producing 288x288 output.
         Contracting path: 288->144->72->36->18->9, neck: 1x1, 5x5, or 9x9, expanding path: 9->18->36->72->144->288.
+        Skip handling modes:
+            - classic: standard U-Net add/concat/none skips (no injection).
+            - 1x1Conv: skip + optional frozen features are concatenated then reduced via 1x1 conv at decoder stages.
+        Injection channel tuples (enc/dec) are passed explicitly (order: 144, 36, 9); use None or zeros to disable.
         '''
         super(Generator_288, self).__init__()
 
@@ -63,6 +67,29 @@ class Generator_288(nn.Module):
 
         self.skip_mode = config.get(skip_key, 'none')
 
+        # Skip handling and injection configuration (architecture-level)
+        self.skip_handling = gen_skip_handling
+        if self.skip_handling not in ('classic', '1x1Conv'):
+            raise ValueError('gen_skip_handling must be one of {classic, 1x1Conv}')
+
+        self.flow_mode = gen_flow_mode
+        if self.flow_mode not in ('coflow', 'counterflow'):
+            raise ValueError('gen_flow_mode must be one of {coflow, counterflow}')
+
+        def _normalize_tuple(cfg):
+            if cfg is None:
+                return (0, 0, 0)
+            if len(cfg) != 3:
+                raise ValueError('Injection tuples must have three entries (144,36,9 scales).')
+            return tuple(int(x) for x in cfg)
+
+        self.enc_inject_channels = _normalize_tuple(enc_inject_channels)
+        self.dec_inject_channels = _normalize_tuple(dec_inject_channels)
+        if self.skip_handling == 'classic' and (any(self.enc_inject_channels) or any(self.dec_inject_channels)):
+            raise ValueError('Injection requires gen_skip_handling="1x1Conv"')
+        self.enable_encoder_inject = self.skip_handling == '1x1Conv' and any(self.enc_inject_channels)
+        self.enable_decoder_inject = self.skip_handling == '1x1Conv'
+
         self.output_scale_learnable = not bool(config.get(normalize_key, False))
         if self.output_scale_learnable:
             init_scale = float(config.get(init_key, config.get(fixed_key, 1.0)))
@@ -101,7 +128,16 @@ class Generator_288(nn.Module):
         ])
 
         self.neck = self._build_neck(neck, dim_4, dim_5, dim_6, z_dim, pad, fill, norm, drop)
-        self.expand_blocks = self._build_expand(exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop)
+        self.expand_blocks = self._build_expand(exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop, self.skip_handling)
+
+        # Channel references for injection (144,36,9 scales)
+        self.enc_stage_channels = (dim_0, dim_2, dim_4)
+        # Decoder stages at resolutions 9 (pre first upsample), 36 (pre 36->144 upsample), 144 (pre final upsample)
+        self.dec_stage_channels = (dim_0, dim_2, dim_4)
+        self.dec_skip_channels = (dim_0, dim_2, dim_4)
+
+        if self.skip_handling == '1x1Conv':
+            self._build_injectors(pad, norm, drop)
 
     def _build_neck(self, neck, dim_4, dim_5, dim_6, z_dim, pad, fill, norm, drop):
         # neck='narrow': 1x1 bottleneck
@@ -114,7 +150,7 @@ class Generator_288(nn.Module):
                 expand_block(dim_6, dim_5, 4, stride=2, padding=2, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 3->5
                 expand_block(dim_5, dim_4, 3, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 5->9: (5-1)*2+3-2+0=9
             )
-        # neck='medium':  5x5 bottleneck
+        # neck='medium': 5x5 bottleneck
         if neck == 'medium':
             return nn.Sequential(
                 contract_block(dim_4, dim_5, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 9->5: floor((9+2-3)/2)+1=5
@@ -135,7 +171,7 @@ class Generator_288(nn.Module):
             )
         raise ValueError('neck must be one of {narrow, medium, wide} for Generator_288')
 
-    def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop):
+    def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop, skip_handling):
         # Expanding Path: 9 -> 18 -> 36 -> 72 -> 144 -> 288
         if exp_kernel == 3:
             stage_params = [
@@ -157,6 +193,8 @@ class Generator_288(nn.Module):
             raise ValueError('exp_kernel must be 3 or 4')
 
         def in_ch(base):
+            if skip_handling == '1x1Conv':
+                return base
             return base * 2 if self.skip_mode == 'concat' else base
 
         blocks = nn.ModuleList()
@@ -167,6 +205,30 @@ class Generator_288(nn.Module):
         blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[4][0], stage_params[4][1], stage_params[4][2], stage_params[4][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop, final_layer=True))
         return blocks
 
+    def _build_injectors(self, pad, norm, drop):
+        def _make_proj(in_ch, out_ch):
+            return nn.Conv2d(in_ch, out_ch, kernel_size=1, stride=1, padding=0)
+
+        # Encoder injectors (only if requested)
+        enc_keys = ['enc_144', 'enc_36', 'enc_9']
+        enc_chs = self.enc_stage_channels
+        self.enc_injectors = nn.ModuleDict()
+        for key, base_ch, inj_ch in zip(enc_keys, enc_chs, self.enc_inject_channels):
+            if inj_ch > 0:
+                self.enc_injectors[key] = _make_proj(base_ch + inj_ch, base_ch)
+
+        # Decoder injectors (always in 1x1Conv mode)
+        dec_keys = ['dec_144', 'dec_36', 'dec_9']
+        dec_chs = self.dec_stage_channels
+        skip_chs = self.dec_skip_channels
+        self.dec_injectors = nn.ModuleDict()
+        for key, base_ch, skip_ch, inj_ch in zip(dec_keys, dec_chs, skip_chs, self.dec_inject_channels):
+            total_in = base_ch
+            if self.skip_mode != 'none':
+                total_in += skip_ch
+            total_in += inj_ch
+            self.dec_injectors[key] = _make_proj(total_in, base_ch)
+
     def _merge(self, skip, x):
         if self.skip_mode == 'none' or skip is None:
             return x
@@ -176,33 +238,141 @@ class Generator_288(nn.Module):
             return torch.cat([x, skip], dim=1)
         raise ValueError('skip_mode must be one of {none, add, concat}')
 
-    def forward(self, input):
+    def forward(self, input, frozen_encoder_features=None, frozen_decoder_features=None, return_features: bool = False):
         batch_size = len(input)
 
+        # ============================================================================
+        # SETUP AND VALIDATION
+        # ============================================================================
+        if self.skip_handling == 'classic' and (frozen_encoder_features is not None or frozen_decoder_features is not None):
+            raise ValueError('Frozen features provided but gen_skip_handling is classic.')
+
+        # Route frozen features based on flow mode (coflow: unchanged, counterflow: swap)
+        enc_feats_in = frozen_encoder_features
+        dec_feats_in = frozen_decoder_features
+        if self.flow_mode == 'counterflow':
+            enc_feats_in, dec_feats_in = dec_feats_in, enc_feats_in
+
+        enc_feats_in = tuple(enc_feats_in) if enc_feats_in is not None else None
+        dec_feats_in = tuple(dec_feats_in) if dec_feats_in is not None else None
+
+        if self.skip_handling == '1x1Conv':
+            if any(self.enc_inject_channels) and enc_feats_in is None:
+                raise ValueError('Encoder injection requested but frozen_encoder_features not provided.')
+            if self.enable_decoder_inject and dec_feats_in is None and any(self.dec_inject_channels):
+                raise ValueError('Decoder injection requested but frozen_decoder_features not provided.')
+
+        def _assert_match(tensor, target_h, target_w, expected_c, label):
+            if tensor is None:
+                raise ValueError(f'Missing tensor for {label}')
+            h, w = tensor.shape[-2:]
+            if h != target_h or w != target_w:
+                raise ValueError(f'Shape mismatch for {label}: expected {target_h}x{target_w}, got {h}x{w}')
+            if tensor.shape[1] != expected_c:
+                raise ValueError(f'Channel mismatch for {label}: expected {expected_c}, got {tensor.shape[1]}')
+
+        # ============================================================================
+        # ENCODER: Contraction 288 -> 144 -> 72 -> 36 -> 18 -> 9 with injection
+        # ============================================================================
         skips = []
         a = input
-        for block in self.contract_blocks:
+        for idx, block in enumerate(self.contract_blocks):
             a = block(a)
+            # Inject frozen features at scales 144 (idx=0), 36 (idx=2), 9 (idx=4)
+            if self.skip_handling == '1x1Conv' and idx in (0, 2, 4):
+                inj_idx = {0: 0, 2: 1, 4: 2}[idx]
+                inj_ch = self.enc_inject_channels[inj_idx]
+                inj_feat = enc_feats_in[inj_idx]
+                _assert_match(inj_feat, a.shape[-2], a.shape[-1], inj_ch, f'encoder_inject_{inj_idx}')
+                key = ('enc_144', 'enc_36', 'enc_9')[inj_idx]
+                a = torch.cat([a, inj_feat], dim=1) # Concatenate along channel dimension
+                a = self.enc_injectors[key](a)      # Project back to base channels
             skips.append(a)
 
+        if return_features:
+            encoder_feats = [skips[0], skips[2], skips[4]]  # 144, 36, 9
+
+        # ============================================================================
+        # BOTTLENECK
+        # ============================================================================
         a = self.neck(a)
 
-        a = self._merge(skips[4], a)
-        a = self.expand_blocks[0](a)
+        # ============================================================================
+        # DECODER: Expansion with injection at three stages
+        # ============================================================================
 
-        a = self._merge(skips[3], a)
-        a = self.expand_blocks[1](a)
+        # --- DECODER STAGE 1: 9x9 -> 18x18 ---
+        if self.skip_handling == '1x1Conv':
+            inj_feat = dec_feats_in[2] if dec_feats_in is not None else None
+            inj_ch = self.dec_inject_channels[2]
+            _assert_match(inj_feat, skips[4].shape[-2], skips[4].shape[-1], inj_ch, 'decoder_inject_9')
+            parts = [a] # Current decoder features
+            if self.skip_mode != 'none':
+                parts.append(skips[4])         # If you are using skips, add the skip connection channels
+            parts.append(inj_feat)             # Add the injection features
+            a = torch.cat(parts, dim=1)        # Concatenate along channel dimension
+            a = self.dec_injectors['dec_9'](a) # Project back to base channels
+            if return_features:
+                decoder_feat_9 = a             # Store features before upsample
+        else:
+            a = self._merge(skips[4], a)
+            if return_features:
+                decoder_feat_9 = a
 
-        a = self._merge(skips[2], a)
-        a = self.expand_blocks[2](a)
+        a = self.expand_blocks[0](a)  # 9 -> 18
 
-        a = self._merge(skips[1], a)
-        a = self.expand_blocks[3](a)
+        # --- INTERMEDIATE STAGES: 18/36 (classic mode only) ---
+        if self.skip_handling == 'classic':
+            a = self._merge(skips[3], a)
+        a = self.expand_blocks[1](a)  # 18 -> 36
 
-        a = self._merge(skips[0], a)
-        a = self.expand_blocks[4](a)
+        if self.skip_handling == 'classic':
+            a = self._merge(skips[2], a)
+        a = self.expand_blocks[2](a)  # 36 -> 72
 
-        # Center crop to output_size if internal processing was larger
+        # --- DECODER STAGE 2: 36x36 -> 144x144 ---
+        if self.skip_handling == '1x1Conv':
+            inj_feat = dec_feats_in[1] if dec_feats_in is not None else None
+            inj_ch = self.dec_inject_channels[1]
+            _assert_match(inj_feat, skips[2].shape[-2], skips[2].shape[-1], inj_ch, 'decoder_inject_36')
+            parts = [a]
+            if self.skip_mode != 'none':
+                parts.append(skips[2])
+            parts.append(inj_feat)
+            a = torch.cat(parts, dim=1)
+            a = self.dec_injectors['dec_36'](a)
+            if return_features:
+                decoder_feat_36 = a
+        else:
+            if return_features:
+                decoder_feat_36 = a
+            a = self._merge(skips[2], a)
+
+        a = self.expand_blocks[3](a)  # 72 -> 144
+
+        # --- DECODER STAGE 3: 144x144 (before final upsample) ---
+        if self.skip_handling == '1x1Conv':
+            inj_feat = dec_feats_in[0] if dec_feats_in is not None else None
+            inj_ch = self.dec_inject_channels[0]
+            _assert_match(inj_feat, skips[0].shape[-2], skips[0].shape[-1], inj_ch, 'decoder_inject_144')
+            parts = [a]
+            if self.skip_mode != 'none':
+                parts.append(skips[0])
+            parts.append(inj_feat)
+            a = torch.cat(parts, dim=1)
+            a = self.dec_injectors['dec_144'](a)
+            if return_features:
+                decoder_feat_144 = a
+        else:
+            if return_features:
+                decoder_feat_144 = a
+            a = self._merge(skips[0], a)
+
+        a = self.expand_blocks[4](a)  # 144 -> 288
+
+        # ============================================================================
+        # POST-PROCESSING: Cropping, activation, normalization, scaling
+        # ============================================================================
         if a.shape[-1] > self.output_size:
             crop_size = self.output_size
             margin = (a.shape[-1] - crop_size) // 2
@@ -210,6 +380,7 @@ class Generator_288(nn.Module):
 
         if self.final_activation:
             a = self.final_activation(a)
+
         if self.normalize:
             a = torch.reshape(a, (batch_size, self.output_channels, self.output_size**2))
             a = nn.functional.normalize(a, p=1, dim=2)
@@ -217,6 +388,16 @@ class Generator_288(nn.Module):
 
         scale = torch.exp(self.log_output_scale) if self.output_scale_learnable else self.fixed_output_scale
         a = a * scale
+
+        # ============================================================================
+        # RETURN
+        # ============================================================================
+        if return_features:
+            return {
+                'output': a,
+                'encoder': [encoder_feats[0], encoder_feats[1], encoder_feats[2]],
+                'decoder': [decoder_feat_144, decoder_feat_36, decoder_feat_9],
+            }
         return a
 
 
@@ -730,10 +911,7 @@ def contract_block(in_channels, out_channels, kernel_size, stride, padding=0, pa
     dropout = nn.Dropout() if drop else nn.Sequential()
 
     block1 = nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, padding_mode=padding_mode),
-        norm_layer,
-        dropout,
-        nn.ReLU(),
+        nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, padding_mode=padding_mode), norm_layer, dropout, nn.ReLU(),
     )
     if fill == 0:
         block2 = nn.Sequential()
@@ -775,7 +953,9 @@ def expand_block(in_channels, out_channels, kernel_size=3, stride=2, padding=0, 
     if fill == 0:
         block2 = nn.Sequential()
     elif fill == 1:
-        block2 = nn.Sequential(norm_layer, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode))
+        block2 = nn.Sequential(
+            norm_layer, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode)
+            )
     elif fill == 2:
         block2 = nn.Sequential(
             norm_layer, dropout, nn.ReLU(), nn.Conv2d(out_channels, out_channels, 3, 1, 1, padding_mode=padding_mode),

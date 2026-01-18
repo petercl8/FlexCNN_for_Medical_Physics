@@ -1,6 +1,7 @@
 import time
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_frozen_flow import run_trainable_frozen_flow
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.tune import tune_networks
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.test_by_chunks import test_by_chunks
 
@@ -39,7 +40,11 @@ def run_pipeline(
         )
 
     elif run_mode in ('train', 'visualize'):
-        run_trainable(config, paths, settings)
+        # Route frozen flow network types to specialized function
+        if network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
+            run_trainable_frozen_flow(config, paths, settings)
+        else:
+            run_trainable(config, paths, settings)
 
     elif run_mode == 'test':
         test_by_chunks(

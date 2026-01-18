@@ -2,6 +2,7 @@ import os
 import pandas as pd
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_frozen_flow import run_trainable_frozen_flow
 
 def test_by_chunks(
     config,
@@ -50,7 +51,11 @@ def test_by_chunks(
             'sample_division': sample_division,
         })
 
-        chunk_dataframe = run_trainable(config, paths, chunk_settings)
+        # Route to appropriate trainable function based on network type
+        if config['network_type'] in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
+            chunk_dataframe = run_trainable_frozen_flow(config, paths, chunk_settings)
+        else:
+            chunk_dataframe = run_trainable(config, paths, chunk_settings)
         chunk_dataframe_path = os.path.join(test_dataframe_dirPath, save_filename)
         chunk_dataframe.to_csv(chunk_dataframe_path, index=False)
         label_num += 1
