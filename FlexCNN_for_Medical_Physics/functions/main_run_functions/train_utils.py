@@ -173,7 +173,7 @@ def save_checkpoint(checkpoint_dict: dict, checkpoint_path: str) -> None:
     torch.save(checkpoint_dict, checkpoint_path)
 
 
-def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs):
+def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs, device):
     """
     Load checkpoint if needed and initialize epoch/batch state based on run_mode.
     
@@ -182,6 +182,7 @@ def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs):
         run_mode: String indicating run mode ('train', 'tune', 'test', 'visualize')
         checkpoint_path: Path to checkpoint file
         num_epochs: Number of epochs to run
+        device: Device string for torch.load map_location
     
     Returns:
         Tuple of (start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict)
@@ -193,19 +194,16 @@ def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs):
     if load_state:
         if not os.path.exists(checkpoint_path):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
-        
-        checkpoint = torch.load(checkpoint_path)
-        
+        checkpoint = torch.load(checkpoint_path, map_location=device)
         epoch_loaded = checkpoint['epoch']
         batch_step_loaded = checkpoint['batch_step']
         gen_state_dict = checkpoint['gen_state_dict']
         gen_opt_state_dict = checkpoint['gen_opt_state_dict']
-        
         if run_mode in ('test', 'visualize'):
             start_epoch = 0
             end_epoch = 1
             batch_step = 0
-        else:  # train/tune mode
+        else:  # train (for tune mode, load_state = False)
             start_epoch = epoch_loaded
             end_epoch = num_epochs
             batch_step = batch_step_loaded
@@ -215,8 +213,9 @@ def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs):
         end_epoch = num_epochs
         gen_state_dict = None
         gen_opt_state_dict = None
-    
     return start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict
+
+
 
 
 def log_tune_debug(gen, epoch: int, batch_step: int, gen_loss, device: str) -> None:

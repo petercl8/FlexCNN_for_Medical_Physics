@@ -126,7 +126,7 @@ def run_trainable(config, paths, settings):
     gen_opt = create_optimizer(gen, config)
 
     # ========================================================================================
-    # SECTION 4A: INSTANTIATE LOSS FUNCTION
+    # SECTION 5: INSTANTIATE LOSS FUNCTION
     # ========================================================================================
     base_criterion = config['sup_base_criterion']
     # Use SI or IS prefixed stats params based on training direction
@@ -142,7 +142,7 @@ def run_trainable(config, paths, settings):
     )
 
     # ========================================================================================
-    # SECTION 5: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
+    # SECTION 5A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
     # ========================================================================================
     if network_type == 'ACT':
         # Activity-only: attenuation paths are not required
@@ -176,16 +176,10 @@ def run_trainable(config, paths, settings):
         # CONCAT needs activity target and both sinograms
         require_path('act_image_path')
 
-    # Extract paths strictly (no legacy fallbacks)
-    act_image_path = paths.get('act_image_path')
-    act_sino_path = paths.get('act_sino_path')
-    act_recon1_path = paths.get('act_recon1_path')
-    act_recon2_path = paths.get('act_recon2_path')
-
     dataloader = DataLoader(
         NpArrayDataSet(
-            act_sino_path=act_sino_path,
-            act_image_path=act_image_path,
+            act_sino_path=paths['act_sino_path'],
+            act_image_path=paths['act_image_path'],
             config=config,
             settings=settings,
             augment=augment,
@@ -193,8 +187,8 @@ def run_trainable(config, paths, settings):
             num_examples=num_examples,
             sample_division=sample_division,
             device=device,
-            act_recon1_path=act_recon1_path,
-            act_recon2_path=act_recon2_path,
+            act_recon1_path=paths['act_recon1_path'],
+            act_recon2_path=paths['act_recon2_path'],
             atten_image_path=paths['atten_image_path'],
             atten_sino_path=paths['atten_sino_path'],
         ),
@@ -208,7 +202,7 @@ def run_trainable(config, paths, settings):
     # SECTION 7: LOAD OR INITIALIZE CHECKPOINT AND WEIGHTS
     # ========================================================================================
     start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict = init_checkpoint_state(
-        load_state, run_mode, checkpoint_path, num_epochs
+        load_state, run_mode, checkpoint_path, num_epochs, device
     )
     if load_state:
         gen.load_state_dict(gen_state_dict)
@@ -294,11 +288,9 @@ def run_trainable(config, paths, settings):
             # ========================================================================================
             # SECTION 11: RUN-TYPE SPECIFIC OPERATIONS
             # ========================================================================================
-
             time_init_metrics = time.time()
 
             # Tuning or Training: we only calculate the mean value of the metrics, but not dataframes or reconstructions. Mean values are used to calculate the optimization metrics #
-
             if run_mode in ('tune', 'train'):
                 mean_CNN_SSIM += calculate_metric(target, CNN_output, SSIM) / display_step # The SSIM function can only take single images as inputs, not batches, so we use a wrapper function and pass batches to it.
                 mean_CNN_MSE += calculate_metric(target, CNN_output, MSE) / display_step # The MSE function can take either single images or batches. We use the wrapper for consistency.

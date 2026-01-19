@@ -31,17 +31,10 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     generate_reconstructions_for_visualization,
     compute_test_metrics,
     init_checkpoint_state,
-    apply_feature_injection,
 )
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-
-def _load_frozen_state_dict(checkpoint_path: str, device: str):
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    return checkpoint.get('gen_state_dict', checkpoint)
-
 
 def run_trainable_frozen_flow(config, paths, settings):
     """
@@ -130,12 +123,12 @@ def run_trainable_frozen_flow(config, paths, settings):
     # Create trainable activity generator with injection parameters
     act_config = dict(config)
     act_config['train_SI'] = True  # Activity network is always sino->image
+    
     gen_act = create_generator(act_config, device, gen_skip_handling='1x1Conv', gen_flow_mode=flow_mode, enc_inject_channels=enc_inject_ch, dec_inject_channels=dec_inject_ch)
-
-    gen_opt = create_optimizer(gen_act, config)
+    gen_act_opt = create_optimizer(gen_act, config)
     
     # ========================================================================================
-    # SECTION 5: DEFINE LOSS FUNCTION FOR ACTIVITY NETWORK
+    # SECTION 5: INSTANTIATE LOSS FUNCTION FOR ACTIVITY NETWORK
     # ========================================================================================
     base_criterion = config['sup_base_criterion']
     stats_criterion = config['SI_stats_criterion']
@@ -159,17 +152,11 @@ def run_trainable_frozen_flow(config, paths, settings):
     require_path('atten_image_path')
     require_path('atten_sino_path')
 
-    # Extract paths for activity and attenuation domains
-    act_image_path = paths.get('act_image_path')
-    act_sino_path = paths.get('act_sino_path')
-    act_recon1_path = paths.get('act_recon1_path')
-    act_recon2_path = paths.get('act_recon2_path')
-
     # Build dataloader for joint activity/attenuation batches
     dataloader = DataLoader(
         NpArrayDataSet(
-            act_sino_path=act_sino_path,
-            act_image_path=act_image_path,
+            act_sino_path=paths['act_sino_path'],
+            act_image_path=paths['act_image_path'],
             config=config,
             settings=settings,
             augment=augment,
@@ -177,8 +164,8 @@ def run_trainable_frozen_flow(config, paths, settings):
             num_examples=num_examples,
             sample_division=sample_division,
             device=device,
-            act_recon1_path=act_recon1_path,
-            act_recon2_path=act_recon2_path,
+            act_recon1_path=paths['act_recon1_path'],
+            act_recon2_path=paths['act_recon2_path'],
             atten_image_path=paths['atten_image_path'],
             atten_sino_path=paths['atten_sino_path'],
         ),
@@ -191,30 +178,30 @@ def run_trainable_frozen_flow(config, paths, settings):
     # ========================================================================================
     # SECTION 7: LOAD OR INITIALIZE CHECKPOINTS AND WEIGHTS
     # ========================================================================================
-    batch_step = 0
-    gen_opt_state_dict = None
-    if run_mode == 'tune':
-        # Tuning: only load frozen attenuation weights
-        start_epoch, end_epoch, _, _, _ = init_checkpoint_state(False, run_mode, checkpoint_path + '-act', num_epochs)
-        atten_ckpt = checkpoint_path + '-atten'
-        if os.path.exists(atten_ckpt):
-            gen_atten.load_state_dict(_load_frozen_state_dict(atten_ckpt, device))
-        gen_atten.eval()
+
+    act_ckpt = checkpoint_path + '-act'
+    atten_ckpt = checkpoint_path + '-atten'
+
+    # Use settings['load_state'] directly, as it is set appropriately for each run_mode
+    start_epoch, end_epoch, batch_step, gen_state_dict, gen_act_opt_state_dict = init_checkpoint_state(
+        load_state, run_mode, act_ckpt, num_epochs, device
+    )
+    if gen_state_dict:
+        gen_act.load_state_dict(gen_state_dict)
     else:
-        # Training/testing: load both attenuation and activity weights if present
-        start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict = init_checkpoint_state(
-            load_state, run_mode, checkpoint_path + '-act', num_epochs
-        )
-        atten_ckpt = checkpoint_path + '-atten'
-        if os.path.exists(atten_ckpt):
-            gen_atten.load_state_dict(_load_frozen_state_dict(atten_ckpt, device))
-        gen_atten.eval()
-        if gen_state_dict:
-            gen_act.load_state_dict(gen_state_dict)
-        else:
-            gen_act = gen_act.apply(weights_init_he)
-    # Optimizer (activity only) will be created after feature scales are initialized
-    gen_opt = None
+        gen_act = gen_act.apply(weights_init_he)
+    if gen_act_opt_state_dict:
+        gen_act_opt.load_state_dict(gen_act_opt_state_dict)
+
+    # Always load attenuation checkpoint
+    if os.path.exists(atten_ckpt):
+        atten_checkpoint = torch.load(atten_ckpt, map_location=device)
+        gen_atten.load_state_dict(atten_checkpoint['gen_state_dict'])
+    else:
+        raise FileNotFoundError(f"Attenuation checkpoint not found at '{atten_ckpt}' for {run_mode}.")
+    gen_atten.eval()
+
+    # Optimizer (activity only) is ready after checkpoint loading; feature scales are no longer used
 
     # Set eval mode for test/visualize
     if run_mode in ('test', 'visualize'):
@@ -235,7 +222,7 @@ def run_trainable_frozen_flow(config, paths, settings):
     # SECTION 9: EPOCH LOOP
     # ========================================================================================
     # For test/visualize, run a single epoch; for train/tune, use full epoch range
-    for epoch in range(0 if run_mode in ('test', 'visualize') else start_epoch, 1 if run_mode in ('test', 'visualize') else end_epoch):
+    for epoch in range(start_epoch, end_epoch):
         # ========================================================================================
         # SECTION 10: BATCH LOOP - FORWARD/BACKWARD PASS
         # ========================================================================================
@@ -259,6 +246,8 @@ def run_trainable_frozen_flow(config, paths, settings):
                 frozen_enc_feats = result['encoder']
                 frozen_dec_feats = result['decoder']
 
+            # ----- SUBSECTION 10D: ACTIVITY NETWORK FORWARD/BACKWARD PASS -----
+
             # Prepare batch tensors for routing
             batch_tensors = {
                 'act_sino_scaled': act_sino_scaled,
@@ -269,25 +258,19 @@ def run_trainable_frozen_flow(config, paths, settings):
             # Route input/target for activity network
             input_, target = route_batch_inputs(train_SI_act, batch_tensors, network_type='ACT')
 
-            # ----- SUBSECTION 10D: ACTIVITY NETWORK FORWARD/BACKWARD PASS -----
             if run_mode in ('tune', 'train'):
                 time_init_train = time.time()
 
-                gen_opt.zero_grad()
-                CNN_output = apply_feature_injection(
-                    gen_act,
+                gen_act_opt.zero_grad()
+                CNN_output = gen_act(
                     input_,
-                    frozen_enc_feats,
-                    frozen_dec_feats,
-                    None,
-                    flow_mode=flow_mode,
-                    enable_inject_to_encoder=settings.get('enable_inject_to_encoder', True),
-                    enable_inject_to_decoder=settings.get('enable_inject_to_decoder', True),
+                    frozen_encoder_features=frozen_enc_feats,
+                    frozen_decoder_features=frozen_dec_feats,
                 )
 
                 gen_loss = hybrid_loss(CNN_output, target)
                 gen_loss.backward()
-                gen_opt.step()
+                gen_act_opt.step()
 
                 if tune_debug:
                     log_tune_debug(gen_act, epoch, batch_step, gen_loss, device)
@@ -296,18 +279,21 @@ def run_trainable_frozen_flow(config, paths, settings):
                 _ = display_times('training time', time_init_train, show_times)
             else:
                 # Test/visualize: forward only
-                CNN_output = apply_feature_injection(
-                    gen_act,
+                CNN_output = gen_act(
                     input_,
-                    frozen_enc_feats,
-                    frozen_dec_feats,
-                    None,
-                    flow_mode=flow_mode,
-                    enable_inject_to_encoder=settings.get('enable_inject_to_encoder', True),
-                    enable_inject_to_decoder=settings.get('enable_inject_to_decoder', True),
+                    frozen_encoder_features=frozen_enc_feats,
+                    frozen_decoder_features=frozen_dec_feats,
                 ).detach()
 
-            # ----- SUBSECTION 10E: METRIC TRACKING AND RECONSTRUCTION -----
+            # _____ SUBSECTION 10E: INCREMENT BATCH COUNTER _____
+            batch_step += 1
+
+            # ========================================================================================
+            # SECTION 11: RUN-TYPE SPECIFIC OPERATIONS
+            # ========================================================================================
+            time_init_metrics = time.time()
+
+            # Tuning or Training: we only calculate the mean value of the metrics, but not dataframes or reconstructions. Mean values are used to calculate the optimization metrics #
             if run_mode in ('tune', 'train'):
                 mean_CNN_SSIM += calculate_metric(target, CNN_output, SSIM) / display_step
                 mean_CNN_MSE += calculate_metric(target, CNN_output, MSE) / display_step
@@ -321,7 +307,7 @@ def run_trainable_frozen_flow(config, paths, settings):
             if run_mode == 'visualize':
                 recon1_output, recon2_output = generate_reconstructions_for_visualization(recon1_output, recon2_output, input_, config)
 
-            _ = display_times('metrics time', time.time(), show_times)
+            _ = display_times('metrics time', time_init_metrics, show_times)
 
             # ========================================================================================
             # SECTION 11: REPORTING AND VISUALIZATION (runs at display_step intervals)
@@ -374,14 +360,12 @@ def run_trainable_frozen_flow(config, paths, settings):
 
             # End of batch: reset loader timer
             time_init_loader = time.time()
-            if run_mode not in ('test', 'visualize'):
-                batch_step += 1
 
     # ========================================================================================
     # SECTION 12: FINAL STATE SAVING (after all epochs complete)
     # ========================================================================================
     if save_state and run_mode in ('train', 'tune'):
-        checkpoint_dict = build_checkpoint_dict(gen_act, gen_opt, config, epoch + 1, batch_step)
+        checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch + 1, batch_step)
         save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
 
     # ========================================================================================

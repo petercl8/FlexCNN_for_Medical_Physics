@@ -165,5 +165,5 @@ Y = Conv1×1(Z) → ℝ[B, C_X, H, W]
 Please do not do any formal planning. We are just talking here and I want to know if you understand what I'm driving at?
 
 =================
-Not used:
-    create_optimizer
+How do we guarantee we use 1x1 convolutions for attenuation network (for frozen)?
+    Is it important?
