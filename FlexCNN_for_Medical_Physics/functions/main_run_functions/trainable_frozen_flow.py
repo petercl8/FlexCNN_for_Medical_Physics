@@ -310,7 +310,7 @@ def run_trainable_frozen_flow(config, paths, settings):
             _ = display_times('metrics time', time_init_metrics, show_times)
 
             # ========================================================================================
-            # SECTION 11: REPORTING AND VISUALIZATION (runs at display_step intervals)
+            # SECTION 12: REPORTING AND VISUALIZATION (runs at display_step intervals)
             # ========================================================================================
             if batch_step % display_step == 0:
                 time_init_visualization = time.time()
@@ -336,10 +336,7 @@ def run_trainable_frozen_flow(config, paths, settings):
 
                 # Training visualization
                 if run_mode == 'train':
-                    print('-----------------------------------------------')
                     print('Flow mode: ', flow_mode)
-                    print(f"Epoch {epoch+1}/{end_epoch}, Batch {batch_step}, Examples {example_num}: "
-                          f"Mean Gen Loss: {mean_gen_loss:.6f}, ")
                     visualize_train(batch_data, mean_gen_loss, mean_CNN_MSE, mean_CNN_SSIM, epoch, batch_step, example_num)
 
                 # Test visualization
@@ -350,6 +347,12 @@ def run_trainable_frozen_flow(config, paths, settings):
                 if run_mode == 'visualize':
                     batch_data['batch_step'] = batch_step
                     visualize_visualize(batch_data, batch_size, offset)
+
+                # _____ STATE SAVING _____
+                if save_state:
+                    print('Saving model!')
+                    checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch, batch_step)
+                    save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
 
                 # Reset running metrics after each display interval
                 mean_gen_loss = 0
@@ -362,14 +365,15 @@ def run_trainable_frozen_flow(config, paths, settings):
             time_init_loader = time.time()
 
     # ========================================================================================
-    # SECTION 12: FINAL STATE SAVING (after all epochs complete)
+    # SECTION 13: FINAL STATE SAVING (after all epochs complete)
     # ========================================================================================
-    if save_state and run_mode in ('train', 'tune'):
+    if save_state:
+        print('Saving model!')
         checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch + 1, batch_step)
         save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
 
     # ========================================================================================
-    # SECTION 13: RETURN TEST DATAFRAME (if applicable)
+    # SECTION 14: RETURN TEST DATAFRAME (if applicable)
     # ========================================================================================
 
     if run_mode == 'test':
