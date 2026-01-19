@@ -31,11 +31,12 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     report_tune_metrics,
     visualize_train,
     visualize_test,
-    visualize_mode,
+    visualize_visualize,
+    visualize_visualize,
     route_batch_inputs,
     generate_reconstructions_for_visualization,
     compute_test_metrics,
-    init_checkpoint_state
+    init_checkpoint_state,
 )
 
 # Module logger for optional Tune debug output
@@ -100,6 +101,7 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     if run_mode == 'tune':
         if tune_restore == False:
+            # Create new tuning dataframe
             tune_dataframe = pd.DataFrame({
                 'SI_dropout': [], 'SI_exp_kernel': [], 'SI_gen_fill': [], 'SI_gen_hidden_dim': [],
                 'SI_gen_neck': [], 'SI_layer_norm': [], 'SI_normalize': [], 'SI_pad_mode': [],
@@ -107,19 +109,25 @@ def run_trainable(config, paths, settings):
             })
             tune_dataframe.to_csv(tune_dataframe_path, index=False)
         else:
+            # Load existing tuning dataframe
             tune_dataframe = pd.read_csv(tune_dataframe_path)
 
     if run_mode == 'test':
+        # Create test results dataframe
         test_dataframe = pd.DataFrame({
             'MSE (Network)': [], 'MSE (Recon1)': [], 'MSE (Recon2)': [],
             'SSIM (Network)': [], 'SSIM (Recon1)': [], 'SSIM (Recon2)': []
         })
 
     # ========================================================================================
-    # SECTION 4: INSTANTIATE MODEL AND LOSS FUNCTION
+    # SECTION 4: INSTANTIATE MODEL AND OPTIMIZER
     # ========================================================================================
     gen = create_generator(config, device)
+    gen_opt = create_optimizer(gen, config)
 
+    # ========================================================================================
+    # SECTION 4A: INSTANTIATE LOSS FUNCTION
+    # ========================================================================================
     base_criterion = config['sup_base_criterion']
     # Use SI or IS prefixed stats params based on training direction
     prefix = 'SI' if train_SI else 'IS'
@@ -134,12 +142,7 @@ def run_trainable(config, paths, settings):
     )
 
     # ========================================================================================
-    # SECTION 5: CREATE OPTIMIZER
-    # ========================================================================================
-    gen_opt = create_optimizer(gen, config)
-
-    # ========================================================================================
-    # SECTION 5A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
+    # SECTION 5: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
     # ========================================================================================
     if network_type == 'ACT':
         # Activity-only: attenuation paths are not required
@@ -352,7 +355,7 @@ def run_trainable(config, paths, settings):
                 # _____ VISUALIZATION: Visualization Mode _____
                 if run_mode == 'visualize':
                     batch_data['batch_step'] = batch_step
-                    visualize_mode(batch_data, batch_size, offset)
+                    visualize_visualize(batch_data, batch_size, offset)
 
                 # _____ STATE SAVING _____
                 if save_state:

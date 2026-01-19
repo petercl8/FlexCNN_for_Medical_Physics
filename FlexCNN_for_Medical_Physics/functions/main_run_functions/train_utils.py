@@ -425,7 +425,7 @@ def visualize_test(batch_data, mean_CNN_MSE, mean_CNN_SSIM,
         show_multiple_matched_tensors(target[0:9], CNN_output[0:9])
 
 
-def visualize_mode(batch_data, visualize_batch_size, visualize_offset):
+def visualize_visualize(batch_data, visualize_batch_size, visualize_offset):
     """
     Display visualization mode outputs: input, target, reconstructions, network output.
     
@@ -524,39 +524,20 @@ def apply_feature_injection(
     if flow_mode not in ('coflow', 'counterflow'):
         raise ValueError("flow_mode must be one of {'coflow', 'counterflow'}")
 
-    # Build lookup for injection sources and their scales based on routing
-    if flow_mode == 'coflow':
-        inject_to_encoder = list(zip(frozen_encoder_feats, feat_scales['encoder'])) if enable_inject_to_encoder else []
-        inject_to_decoder = list(zip(frozen_decoder_feats, feat_scales['decoder'])) if enable_inject_to_decoder else []
-    else:  # counterflow: cross-map sources
-        inject_to_encoder = list(zip(frozen_decoder_feats, feat_scales['decoder'])) if enable_inject_to_encoder else []
-        inject_to_decoder = list(zip(frozen_encoder_feats, feat_scales['encoder'])) if enable_inject_to_decoder else []
-
-    def _maybe_inject(current, inject_pairs):
-        if not inject_pairs:
-            return current
-        for feat, scale in inject_pairs:
-            if feat.shape[-1] == current.shape[-1]:
-                current = current + scale * feat
-        return current
-
+    # No feature scaling: 1x1 conv handles mixing
     # Encoder path
     skips = []
     a = input_tensor
     for block in gen_act.contract_blocks:
         a = block(a)
         skips.append(a)
-    # Inject into encoder skips by spatial size
-    if inject_to_encoder:
-        for idx, skip in enumerate(skips):
-            skips[idx] = _maybe_inject(skip, inject_to_encoder)
+    # No explicit injection/scaling here; handled by generator's 1x1 conv
 
     # Neck
     a = gen_act.neck(a)
 
-    # Decoder path with injection at matching spatial sizes
+    # Decoder path (injection handled by generator)
     a = gen_act._merge(skips[4], a)
-    a = _maybe_inject(a, inject_to_decoder)
     a = gen_act.expand_blocks[0](a)
 
     a = gen_act._merge(skips[3], a)
@@ -564,11 +545,9 @@ def apply_feature_injection(
 
     a = gen_act._merge(skips[2], a)
     a = gen_act.expand_blocks[2](a)
-    a = _maybe_inject(a, inject_to_decoder)
 
     a = gen_act._merge(skips[1], a)
     a = gen_act.expand_blocks[3](a)
-    a = _maybe_inject(a, inject_to_decoder)
 
     a = gen_act._merge(skips[0], a)
     a = gen_act.expand_blocks[4](a)
