@@ -216,8 +216,6 @@ def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs, dev
     return start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict
 
 
-
-
 def log_tune_debug(gen, epoch: int, batch_step: int, gen_loss, device: str) -> None:
     """
     Log per-step debug information for Tune runs.
@@ -504,7 +502,6 @@ def apply_feature_injection(
     input_tensor,
     frozen_encoder_feats,
     frozen_decoder_feats,
-    feat_scales,
     flow_mode: str,
     enable_inject_to_encoder: bool = True,
     enable_inject_to_decoder: bool = True,
