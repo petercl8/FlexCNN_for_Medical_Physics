@@ -311,7 +311,6 @@ def run_trainable(config, paths, settings):
             # ========================================================================================
             # SECTION 12: REPORTING AND VISUALIZATION (runs at display_step intervals)
             # ========================================================================================
-
             if batch_step % display_step == 0:
                 time_init_visualization = time.time()
                 example_num = batch_step * batch_size
