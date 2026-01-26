@@ -74,6 +74,8 @@ def run_trainable_frozen_flow(config, paths, settings):
         tune_max_t = settings['tune_max_t']
         tune_restore = settings['tune_restore']
         tune_dataframe_path = paths['tune_dataframe_path']
+
+    # Checkpoint path
     checkpoint_path = paths['checkpoint_path']
 
     # ========================================================================================
@@ -81,7 +83,7 @@ def run_trainable_frozen_flow(config, paths, settings):
     # ========================================================================================
     if 'batch_base2_exponent' in config and run_mode in ('tune', 'train'):
         config['batch_size'] = 2 ** config['batch_base2_exponent']
-    batch_size = config['batch_size']
+    batch_size = config['batch_size'] # Batch size for in train/test/visualize remains unchanged
     display_step = compute_display_step(config, settings)
     session = get_tune_session()
 
@@ -113,8 +115,8 @@ def run_trainable_frozen_flow(config, paths, settings):
     # ========================================================================================
     # Create frozen attenuation generator (no injection, only feature extraction)
     atten_config = dict(config) # Copy config to modify
-    atten_config['train_SI'] = True if flow_mode == 'coflow' else False # Guarantee network direction regardless of value set it notebook
-    gen_atten = create_generator(atten_config, device, gen_skip_handling='1x1Conv', enc_inject_channels=None, dec_inject_channels=None)
+    atten_config['train_SI'] = True if flow_mode == 'coflow' else False # Guarantee network direction regardless of value set in notebook
+    gen_atten = create_generator(atten_config, device, gen_skip_handling='1x1Conv', enc_inject_channels=None, dec_inject_channels=None)  # Default flow moade is 'coflow', but it doesn't matter since no features are injected
 
     # Extract encoder/decoder channel tuples for injection into activity network
     enc_inject_ch = gen_atten.enc_stage_channels
@@ -128,7 +130,38 @@ def run_trainable_frozen_flow(config, paths, settings):
     gen_act_opt = create_optimizer(gen_act, config)
     
     # ========================================================================================
-    # SECTION 5: INSTANTIATE LOSS FUNCTION FOR ACTIVITY NETWORK
+    # SECTION 5: LOAD OR INITIALIZE CHECKPOINTS AND WEIGHTS
+    # ========================================================================================
+    act_ckpt = checkpoint_path + '-act'
+    atten_ckpt = checkpoint_path + '-atten'
+
+    # Use settings['load_state'] directly, as it is set appropriately for each run_mode
+    start_epoch, end_epoch, batch_step, gen_state_dict, gen_act_opt_state_dict = init_checkpoint_state(
+        load_state, run_mode, act_ckpt, num_epochs, device
+    )
+    if gen_state_dict:
+        gen_act.load_state_dict(gen_state_dict)
+    else:
+        gen_act = gen_act.apply(weights_init_he)
+    if gen_act_opt_state_dict:
+        gen_act_opt.load_state_dict(gen_act_opt_state_dict)
+
+    # Always load attenuation checkpoint
+    if os.path.exists(atten_ckpt):
+        atten_checkpoint = torch.load(atten_ckpt, map_location=device)
+        gen_atten.load_state_dict(atten_checkpoint['gen_state_dict'])
+    else:
+        raise FileNotFoundError(f"Attenuation checkpoint not found at '{atten_ckpt}' for {run_mode}.")
+    gen_atten.eval()
+
+    # Optimizer (activity only) is ready after checkpoint loading; feature scales are no longer used
+
+    # Set eval mode for test/visualize
+    if run_mode in ('test', 'visualize'):
+        gen_act.eval()
+
+    # ========================================================================================
+    # SECTION 6: INSTANTIATE LOSS FUNCTION FOR ACTIVITY NETWORK
     # ========================================================================================
     base_criterion = config['sup_base_criterion']
     stats_criterion = config['SI_stats_criterion']
@@ -142,7 +175,7 @@ def run_trainable_frozen_flow(config, paths, settings):
     )
 
     # ========================================================================================
-    # SECTION 6: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
+    # SECTION 7: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
     # ========================================================================================
     def require_path(key: str):
         if key not in paths or paths[key] is None:
@@ -175,37 +208,6 @@ def run_trainable_frozen_flow(config, paths, settings):
         collate_fn=collate_nested,
     )
 
-    # ========================================================================================
-    # SECTION 7: LOAD OR INITIALIZE CHECKPOINTS AND WEIGHTS
-    # ========================================================================================
-
-    act_ckpt = checkpoint_path + '-act'
-    atten_ckpt = checkpoint_path + '-atten'
-
-    # Use settings['load_state'] directly, as it is set appropriately for each run_mode
-    start_epoch, end_epoch, batch_step, gen_state_dict, gen_act_opt_state_dict = init_checkpoint_state(
-        load_state, run_mode, act_ckpt, num_epochs, device
-    )
-    if gen_state_dict:
-        gen_act.load_state_dict(gen_state_dict)
-    else:
-        gen_act = gen_act.apply(weights_init_he)
-    if gen_act_opt_state_dict:
-        gen_act_opt.load_state_dict(gen_act_opt_state_dict)
-
-    # Always load attenuation checkpoint
-    if os.path.exists(atten_ckpt):
-        atten_checkpoint = torch.load(atten_ckpt, map_location=device)
-        gen_atten.load_state_dict(atten_checkpoint['gen_state_dict'])
-    else:
-        raise FileNotFoundError(f"Attenuation checkpoint not found at '{atten_ckpt}' for {run_mode}.")
-    gen_atten.eval()
-
-    # Optimizer (activity only) is ready after checkpoint loading; feature scales are no longer used
-
-    # Set eval mode for test/visualize
-    if run_mode in ('test', 'visualize'):
-        gen_act.eval()
 
     # ========================================================================================
     # SECTION 8: INITIALIZE RUNNING METRICS AND TIMERS
@@ -256,7 +258,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 'atten_image_scaled': atten_image_scaled,
             }
             # Route input/target for activity network
-            input_, target = route_batch_inputs(train_SI_act, batch_tensors, network_type='ACT')
+            input_, target = route_batch_inputs(train_SI_act, batch_tensors, network_type='ACT') # input_ is sino, target is image
 
             if run_mode in ('tune', 'train'):
                 time_init_train = time.time()

@@ -126,7 +126,23 @@ def run_trainable(config, paths, settings):
     gen_opt = create_optimizer(gen, config)
 
     # ========================================================================================
-    # SECTION 5: INSTANTIATE LOSS FUNCTION
+    # SECTION 5: LOAD OR INITIALIZE CHECKPOINT AND WEIGHTS
+    # ========================================================================================
+    start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict = init_checkpoint_state(
+        load_state, run_mode, checkpoint_path, num_epochs, device
+    )
+    if load_state:
+        gen.load_state_dict(gen_state_dict)
+        gen_opt.load_state_dict(gen_opt_state_dict)
+    else:
+        gen = gen.apply(weights_init_he)
+
+    # Set to eval mode for test/visualize
+    if run_mode in ('test', 'visualize'):
+        gen.eval()
+
+    # ========================================================================================
+    # SECTION 6: INSTANTIATE LOSS FUNCTION
     # ========================================================================================
     base_criterion = config['sup_base_criterion']
     # Use SI or IS prefixed stats params based on training direction
@@ -142,7 +158,7 @@ def run_trainable(config, paths, settings):
     )
 
     # ========================================================================================
-    # SECTION 5A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
+    # SECTION 7A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
     # ========================================================================================
     if network_type == 'ACT':
         # Activity-only: attenuation paths are not required
@@ -156,7 +172,7 @@ def run_trainable(config, paths, settings):
         paths['act_recon2_path'] = None
 
     # ========================================================================================
-    # SECTION 6: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
+    # SECTION 7B: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
     # ========================================================================================
     # Enforce proper act_* and atten_* keys without legacy fallbacks
     # Determine required domains based on network type
@@ -197,22 +213,6 @@ def run_trainable(config, paths, settings):
         pin_memory=False,
         collate_fn=collate_nested,
     )
-
-    # ========================================================================================
-    # SECTION 7: LOAD OR INITIALIZE CHECKPOINT AND WEIGHTS
-    # ========================================================================================
-    start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict = init_checkpoint_state(
-        load_state, run_mode, checkpoint_path, num_epochs, device
-    )
-    if load_state:
-        gen.load_state_dict(gen_state_dict)
-        gen_opt.load_state_dict(gen_opt_state_dict)
-    else:
-        gen = gen.apply(weights_init_he)
-
-    # Set to eval mode for test/visualize
-    if run_mode in ('test', 'visualize'):
-        gen.eval()
 
     # ========================================================================================
     # SECTION 8: INITIALIZE RUNNING METRICS AND TIMERS
