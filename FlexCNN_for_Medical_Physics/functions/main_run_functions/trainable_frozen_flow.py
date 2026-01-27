@@ -32,6 +32,7 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     compute_test_metrics,
     init_checkpoint_state,
 )
+from FlexCNN_for_Medical_Physics.functions.helper.dual_generators_setup import instantiate_dual_generators, load_dual_generator_checkpoints
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -113,52 +114,33 @@ def run_trainable_frozen_flow(config, paths, settings):
     # ========================================================================================
     # SECTION 4: INSTANTIATE MODELS (FROZEN ATTENUATION + TRAINABLE ACTIVITY)
     # ========================================================================================
-    # Create frozen attenuation generator (no injection, only feature extraction)
-    atten_config = dict(config) # Copy config to modify
-    atten_config['train_SI'] = True if flow_mode == 'coflow' else False # Guarantee network direction regardless of value set in notebook
-    gen_atten = create_generator(atten_config, device, gen_skip_handling='1x1Conv', enc_inject_channels=None, dec_inject_channels=None)  # Default flow moade is 'coflow', but it doesn't matter since no features are injected
-
-    # Extract encoder/decoder channel tuples for injection into activity network
-    enc_inject_ch = gen_atten.enc_stage_channels
-    dec_inject_ch = gen_atten.dec_stage_channels
-
-    # Create trainable activity generator with injection parameters
-    act_config = dict(config)
-    act_config['train_SI'] = True  # Activity network is always sino->image
-    
-    gen_act = create_generator(act_config, device, gen_skip_handling='1x1Conv', gen_flow_mode=flow_mode, enc_inject_channels=enc_inject_ch, dec_inject_channels=dec_inject_ch)
+    # Instantiate both generators using helper function
+    gen_atten, gen_act = instantiate_dual_generators(config, device, flow_mode)
     gen_act_opt = create_optimizer(gen_act, config)
     
     # ========================================================================================
     # SECTION 5: LOAD OR INITIALIZE CHECKPOINTS AND WEIGHTS
     # ========================================================================================
-    act_ckpt = checkpoint_path + '-act'
-    atten_ckpt = checkpoint_path + '-atten'
+    act_ckpt = checkpoint_path + '-act' if checkpoint_path is not None else None
+    atten_ckpt = checkpoint_path + '-atten' if checkpoint_path is not None else None
 
+    gen_act, gen_atten = load_dual_generator_checkpoints(
+        gen_act,
+        gen_atten,
+        act_ckpt,
+        atten_ckpt,
+        load_state,
+        run_mode,
+        device,
+    )
+    # Optimizer (activity only) is ready after checkpoint loading; feature scales are no longer used
     # Use settings['load_state'] directly, as it is set appropriately for each run_mode
+
     start_epoch, end_epoch, batch_step, gen_state_dict, gen_act_opt_state_dict = init_checkpoint_state(
         load_state, run_mode, act_ckpt, num_epochs, device
     )
-    if gen_state_dict:
-        gen_act.load_state_dict(gen_state_dict)
-    else:
-        gen_act = gen_act.apply(weights_init_he)
     if gen_act_opt_state_dict:
         gen_act_opt.load_state_dict(gen_act_opt_state_dict)
-
-    # Always load attenuation checkpoint
-    if os.path.exists(atten_ckpt):
-        atten_checkpoint = torch.load(atten_ckpt, map_location=device)
-        gen_atten.load_state_dict(atten_checkpoint['gen_state_dict'])
-    else:
-        raise FileNotFoundError(f"Attenuation checkpoint not found at '{atten_ckpt}' for {run_mode}.")
-    gen_atten.eval()
-
-    # Optimizer (activity only) is ready after checkpoint loading; feature scales are no longer used
-
-    # Set eval mode for test/visualize
-    if run_mode in ('test', 'visualize'):
-        gen_act.eval()
 
     # ========================================================================================
     # SECTION 6: INSTANTIATE LOSS FUNCTION FOR ACTIVITY NETWORK

@@ -4,6 +4,7 @@ import numpy as np
 
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataLoader
 from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
+from FlexCNN_for_Medical_Physics.functions.helper.dual_generator_setup import instantiate_dual_generators, load_dual_generator_checkpoints
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_unmatched_tensors
 
 
@@ -47,12 +48,12 @@ def BuildActivityTensors(act_image_array_name, act_sino_array_name, atten_image_
         recon2_tensors.append(act_recon2)
 
     return {
-        'act_image_tensors': torch.stack(act_image_tensors) if act_image_tensors else None,
-        'act_sino_tensors': torch.stack(act_sino_tensors) if act_sino_tensors else None,
-        'atten_image_tensors': torch.stack(atten_image_tensors) if atten_image_tensors else None,
-        'atten_sino_tensors': torch.stack(atten_sino_tensors) if atten_sino_tensors else None,
-        'recon1_tensors': torch.stack(recon1_tensors) if recon1_tensors else None,
-        'recon2_tensors': torch.stack(recon2_tensors) if recon2_tensors else None,
+        'act_image_tensor': torch.stack(act_image_tensors) if act_image_tensors else None,
+        'act_sino_tensor': torch.stack(act_sino_tensors) if act_sino_tensors else None,
+        'atten_image_tensor': torch.stack(atten_image_tensors) if atten_image_tensors else None,
+        'atten_sino_tensor': torch.stack(atten_sino_tensors) if atten_sino_tensors else None,
+        'recon1_tensor': torch.stack(recon1_tensors) if recon1_tensors else None,
+        'recon2_tensor': torch.stack(recon2_tensors) if recon2_tensors else None,
     }
 
 
@@ -75,40 +76,58 @@ def cnn_reconstruct_single(input_tensor, config, checkpoint_name, paths, device,
         return gen(input_tensor).detach()
 
 # Dual-network reconstruction (FROZEN_COFLOW, FROZEN_COUNTERFLOW)
-def cnn_reconstruct_dual(input_tensor, config, paths, device, checkpoint_name_act, checkpoint_name_atten, feature_inject_to_encoder=True, feature_inject_to_decoder=True):
-    # Load attenuation (frozen) network
-    net_size = config['gen_sino_size']
-    if net_size == 180:
-        GenClass = Generator_180
-    elif net_size == 288:
-        GenClass = Generator_288
-    elif net_size == 320:
-        GenClass = Generator_320
+def cnn_reconstruct_dual(
+    attenuation_input,
+    activity_input,
+    config,
+    paths,
+    device,
+    checkpoint_name_act,
+    checkpoint_name_atten,
+):
+    """
+    Dual-network reconstruction using frozen attenuation and trainable activity generators.
+    attenuation_input: input for the attenuation network (atten_sino for coflow, atten_image for counterflow)
+    activity_input: input for the activity network (always act_sino)
+    """
+    if config['network_type'] == 'FROZEN_COFLOW':
+        flow_mode = 'coflow'
+    elif config['network_type'] == 'FROZEN_COUNTERFLOW':
+        flow_mode = 'counterflow'
     else:
-        raise ValueError(f"No Generator class available for gen_sino_size={net_size}. Supported sizes: 180, 288, 320")
-    # Instantiate generators with configs
-    gen_act = GenClass(**gen_config_act).to(device)
-    gen_atten = GenClass(**gen_config_atten).to(device)
+        raise ValueError(f"Invalid network_type '{config['network_type']}' for dual-generator reconstruction.")
 
-    # Load checkpoints with device mapping
-    checkpoint_act = torch.load(checkpoint_path_act, map_location=device)
-    checkpoint_atten = torch.load(checkpoint_path_atten, map_location=device)
-    gen_act.load_state_dict(checkpoint_act['gen_state_dict'])
-    gen_atten.load_state_dict(checkpoint_atten['gen_state_dict'])
-    gen_act.eval()
-    gen_atten.eval()
+    # Instantiate both generators
+    gen_atten, gen_act = instantiate_dual_generators(config, device, flow_mode)
 
-    # Extract injection channels if present in config
-    inj_channels = injection_channels
-    if 'injection_channels' in gen_config_act:
-        inj_channels = gen_config_act['injection_channels']
+    # Build checkpoint paths
+    checkpoint_path_act = os.path.join(paths['checkpoint_dirPath'], checkpoint_name_act)
+    checkpoint_path_atten = os.path.join(paths['checkpoint_dirPath'], checkpoint_name_atten)
 
-    # Forward pass
+    # Load checkpoints
+    gen_act, gen_atten = load_dual_generator_checkpoints(
+        gen_act,
+        gen_atten,
+        checkpoint_path_act,
+        checkpoint_path_atten,
+        load_state=True,
+        run_mode='test', # Puts activity network in eval mode
+        device=device,
+    )
+
+    # Forward pass: get features from frozen attenuation network
     with torch.no_grad():
-        # Attenuation pass (frozen backbone)
-        atten_features = gen_atten.forward_features(atten_tensor)
-        # Activity pass (inject features)
-        recon = gen_act.forward_with_injection(act_tensor, atten_features, inj_channels)
+        atten_result = gen_atten(attenuation_input, return_features=True)
+        frozen_enc_feats = atten_result['encoder']
+        frozen_dec_feats = atten_result['decoder']
+
+        # Activity network forward pass with injected features
+        recon = gen_act(
+            activity_input,
+            frozen_encoder_features=frozen_enc_feats,
+            frozen_decoder_features=frozen_dec_feats,
+        ).detach()
+
     return recon
 
 
@@ -127,21 +146,22 @@ def PlotPhantomRecons(act_image_array_name, act_sino_array_name, atten_image_arr
     tensors = BuildActivityTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths_dict, indexes, device, settings)
 
     # Choose input for reconstruction based on network_type
-    if network_type in ('SUP', 'ACT'):
-        input_tensor = tensors['act_sino_tensors'] if tensors['act_sino_tensors'] is not None else None
+    if network_type == 'ACT':
+        input_tensor = tensors['act_sino_tensor']
     elif network_type == 'ATTEN':
-        input_tensor = tensors['atten_sino_tensors'] if tensors['atten_sino_tensors'] is not None else None
+        input_tensor = tensors['atten_sino_tensor']
     elif network_type == 'CONCAT':
         # Concatenate activity and attenuation sinograms along channel dim
-        if tensors['act_sino_tensors'] is not None and tensors['atten_sino_tensors'] is not None:
-            input_tensor = torch.cat([tensors['act_sino_tensors'], tensors['atten_sino_tensors']], dim=1)
-        else:
-            input_tensor = None
+        input_tensor = torch.cat([tensors['act_sino_tensor'], tensors['atten_sino_tensor']], dim=1)
+    elif network_type == 'FROZEN_COFLOW':
+        input_tensor = (tensors['atten_sino_tensor'], tensors['act_sino_tensor'])
+    elif network_type == 'FROZEN_COUNTERFLOW':
+        input_tensor = (tensors['atten_image_tensor'], tensors['act_sino_tensor'])
     else:
-        input_tensor = tensors['act_sino_tensors'] if tensors['act_sino_tensors'] is not None else None
+        raise ValueError(f"Unknown network_type: {network_type}")
 
     cnn_output = None
-    if network_type in ('SUP', 'ACT', 'ATTEN', 'CONCAT'):
+    if network_type == 'ACT' or network_type == 'ATTEN' or network_type == 'CONCAT':
         cnn_output = cnn_reconstruct_single(input_tensor, config, checkpointName, paths_dict, device)
     elif network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
         cnn_output = cnn_reconstruct_dual(input_tensor, config, paths_dict, device, checkpointName, checkpointName_atten, feature_inject_to_encoder, feature_inject_to_decoder)
@@ -150,12 +170,12 @@ def PlotPhantomRecons(act_image_array_name, act_sino_array_name, atten_image_arr
 
     # Build list of tensors to plot based on outputs_to_plot
     plot_map = {
-        'act_image': [tensors['act_image_tensors']] if tensors['act_image_tensors'] is not None else [],
-        'act_sino': [tensors['act_sino_tensors']] if tensors['act_sino_tensors'] is not None else [],
-        'atten_image': [tensors['atten_image_tensors']] if tensors['atten_image_tensors'] is not None else [],
-        'atten_sino': [tensors['atten_sino_tensors']] if tensors['atten_sino_tensors'] is not None else [],
-        'recon1': [tensors['recon1_tensors']] if tensors['recon1_tensors'] is not None else [],
-        'recon2': [tensors['recon2_tensors']] if tensors['recon2_tensors'] is not None else [],
+        'act_image': [tensors['act_image_tensor']] if tensors['act_image_tensor'] is not None else [],
+        'act_sino': [tensors['act_sino_tensor']] if tensors['act_sino_tensor'] is not None else [],
+        'atten_image': [tensors['atten_image_tensor']] if tensors['atten_image_tensor'] is not None else [],
+        'atten_sino': [tensors['atten_sino_tensor']] if tensors['atten_sino_tensor'] is not None else [],
+        'recon1': [tensors['recon1_tensor']] if tensors['recon1_tensor'] is not None else [],
+        'recon2': [tensors['recon2_tensor']] if tensors['recon2_tensor'] is not None else [],
         'cnn_output': [cnn_output] if cnn_output is not None else [],
     }
     tensors_to_plot = []
