@@ -18,8 +18,6 @@ from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
 )
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import (
     collate_nested,
-    create_generator,
-    create_optimizer,
     build_checkpoint_dict,
     save_checkpoint,
     log_tune_debug,
@@ -32,7 +30,12 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     compute_test_metrics,
     init_checkpoint_state,
 )
-from FlexCNN_for_Medical_Physics.functions.helper.dual_generators_setup import instantiate_dual_generators, load_dual_generator_checkpoints
+
+from FlexCNN_for_Medical_Physics.functions.helper.generators_discriminator_setup import (
+    instantiate_dual_generators,
+    load_dual_generator_checkpoints,
+    create_optimizer,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

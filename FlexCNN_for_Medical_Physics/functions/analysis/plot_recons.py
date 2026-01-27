@@ -11,7 +11,11 @@ from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_mul
 
 # Updated: BuildImageSinoTensors returns lists of all images and sinograms (activity, attenuation), and reconstructions if present
 
-def BuildActivityTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths_dict, indexes, device, settings):
+def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths_dict, indexes, device, settings):
+    '''
+    Return a dictionary of tensors for activity images/sinograms, attenuation images/sinograms, and reconstructions.
+    Each tensor has shape (N, C, H, W), where N is the number of indexes provided (len(indexes)).
+    '''
     def load_array(name):
         if name is None:
             return None
@@ -57,8 +61,13 @@ def BuildActivityTensors(act_image_array_name, act_sino_array_name, atten_image_
     }
 
 
-# Single-network reconstruction (SUP, ATTEN, CONCAT)
-def cnn_reconstruct_single(input_tensor, config, checkpoint_name, paths, device, gen_type='SUP'):
+# Single-network reconstruction (ACT, ATTEN, CONCAT)
+def cnn_reconstruct_single(input_tensor, config, paths, device, checkpoint_name):
+    '''
+    Single-network reconstruction using specified generator type.
+    input_tensor: input for the network (act_sino for ACT, atten_sino for ATTEN, concatenated for CONCAT)
+    '''
+
     checkpoint_path = os.path.join(paths['checkpoint_dirPath'], checkpoint_name)
     net_size = config['gen_sino_size']
     if net_size == 180:
@@ -82,8 +91,7 @@ def cnn_reconstruct_dual(
     config,
     paths,
     device,
-    checkpoint_name_act,
-    checkpoint_name_atten,
+    checkpoint_name
 ):
     """
     Dual-network reconstruction using frozen attenuation and trainable activity generators.
@@ -101,8 +109,8 @@ def cnn_reconstruct_dual(
     gen_atten, gen_act = instantiate_dual_generators(config, device, flow_mode)
 
     # Build checkpoint paths
-    checkpoint_path_act = os.path.join(paths['checkpoint_dirPath'], checkpoint_name_act)
-    checkpoint_path_atten = os.path.join(paths['checkpoint_dirPath'], checkpoint_name_atten)
+    checkpoint_path_act = os.path.join(paths['checkpoint_dirPath'], checkpoint_name + '-act')
+    checkpoint_path_atten = os.path.join(paths['checkpoint_dirPath'], checkpoint_name + '-atten')
 
     # Load checkpoints
     gen_act, gen_atten = load_dual_generator_checkpoints(
@@ -110,7 +118,7 @@ def cnn_reconstruct_dual(
         gen_atten,
         checkpoint_path_act,
         checkpoint_path_atten,
-        load_state=True,
+        load_state=True, # Loads both activity & attenuation states as long as checkpoints exist
         run_mode='test', # Puts activity network in eval mode
         device=device,
     )
@@ -135,36 +143,38 @@ def cnn_reconstruct_dual(
 # Option B: User-selectable outputs to plot
 
 def PlotPhantomRecons(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name,
-                      config, paths_dict, indexes, checkpointName, fig_size, device, settings, network_type=None, outputs_to_plot=None,
-                      checkpointName_atten=None, feature_inject_to_encoder=True, feature_inject_to_decoder=True):
+                      indexes, checkpoint_name, network_type, 
+                      config, paths_dict, fig_size, device, settings, outputs_to_plot=None):
     """
     outputs_to_plot: list of strings, e.g. ['act_image', 'act_sino', 'atten_image', 'atten_sino', 'recon1', 'recon2', 'cnn_output']
     network_type: if None, will use config['network_type']
     """
     if network_type is None:
         network_type = config['network_type']
-    tensors = BuildActivityTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths_dict, indexes, device, settings)
+
+    tensors = BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name,
+                            recon1_array_name, recon2_array_name, config, paths_dict, indexes, device, settings)
 
     # Choose input for reconstruction based on network_type
     if network_type == 'ACT':
-        input_tensor = tensors['act_sino_tensor']
+        input = tensors['act_sino_tensor']
     elif network_type == 'ATTEN':
-        input_tensor = tensors['atten_sino_tensor']
+        input = tensors['atten_sino_tensor']
     elif network_type == 'CONCAT':
         # Concatenate activity and attenuation sinograms along channel dim
-        input_tensor = torch.cat([tensors['act_sino_tensor'], tensors['atten_sino_tensor']], dim=1)
+        input = torch.cat([tensors['act_sino_tensor'], tensors['atten_sino_tensor']], dim=1)
     elif network_type == 'FROZEN_COFLOW':
-        input_tensor = (tensors['atten_sino_tensor'], tensors['act_sino_tensor'])
+        input = (tensors['atten_sino_tensor'], tensors['act_sino_tensor'])
     elif network_type == 'FROZEN_COUNTERFLOW':
-        input_tensor = (tensors['atten_image_tensor'], tensors['act_sino_tensor'])
+        input = (tensors['atten_image_tensor'], tensors['act_sino_tensor'])
     else:
         raise ValueError(f"Unknown network_type: {network_type}")
 
     cnn_output = None
     if network_type == 'ACT' or network_type == 'ATTEN' or network_type == 'CONCAT':
-        cnn_output = cnn_reconstruct_single(input_tensor, config, checkpointName, paths_dict, device)
+        cnn_output = cnn_reconstruct_single(input, config, paths_dict, device, checkpoint_name)
     elif network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
-        cnn_output = cnn_reconstruct_dual(input_tensor, config, paths_dict, device, checkpointName, checkpointName_atten, feature_inject_to_encoder, feature_inject_to_decoder)
+        cnn_output = cnn_reconstruct_dual(input[0], input[1], config, paths_dict, device, checkpoint_name)
     else:
         raise ValueError(f"Unknown network_type: {network_type}")
 
@@ -186,20 +196,3 @@ def PlotPhantomRecons(act_image_array_name, act_sino_array_name, atten_image_arr
 
     show_multiple_unmatched_tensors(*tensors_to_plot, fig_size=fig_size)
     return tensors, cnn_output
-
-'''
-OLDER VERSION BELOW - TO BE DEPRECATED
-
-## CNN Outputs ##
-def CNN_reconstruct(sino_tensor, config, checkpoint_dirPath, checkpoint_fileName):
-
-    #Construct CNN reconstructions of images of a sinogram tensor.
-    #Config must contain: sino_size, sino_channels, image_channels.
-
-    gen = Generator(config=config, gen_SI=True).to(device)
-    checkpoint_path = os.path.join(checkpoint_dirPath, checkpoint_fileName)
-    checkpoint = torch.load(checkpoint_path)
-    gen.load_state_dict(checkpoint['gen_state_dict'])
-    gen.eval()
-    return gen(sino_tensor).detach()
-'''
