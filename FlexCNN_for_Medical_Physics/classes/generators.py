@@ -452,9 +452,9 @@ class Generator_288(nn.Module):
 
         # Validate: if injection is enabled, features must be provided
         if self.skip_handling == '1x1Conv':
-            if any(self.enc_inject_channels) and routed_enc_features is None:
+            if self.enable_encoder_inject and routed_enc_features is None:
                 raise ValueError('Encoder injection requested but frozen_encoder_features not provided.')
-            if self.enable_decoder_inject and routed_dec_features is None and any(self.dec_inject_channels):
+            if self.enable_decoder_inject and routed_dec_features is None:
                 raise ValueError('Decoder injection requested but frozen_decoder_features not provided.')
 
         return routed_enc_features, routed_dec_features
@@ -502,22 +502,22 @@ class Generator_288(nn.Module):
         captured_feature = None
         
         if self.skip_handling == '1x1Conv':
-            # 1x1Conv mode: concatenate skip + frozen feature, then project
-            inject_channels_expected = self.dec_inject_channels[inject_idx]
-            self._validate_feature_shape(frozen_feature, skip_tensor.shape[-2], 
-                                        skip_tensor.shape[-1], inject_channels_expected,
-                                        f'decoder_inject_{injector_key}')
-            
-            # Build concatenation list: decoder output + optional skip + frozen feature
+            # 1x1Conv mode: concatenate decoder output + optional skip + optional frozen feature
             parts = [hidden]
             if self.skip_mode != 'none':
                 parts.append(skip_tensor)
-            parts.append(frozen_feature)
-            
+
+            if self.dec_inject_channels[inject_idx] > 0:
+                inject_channels_expected = self.dec_inject_channels[inject_idx]
+                self._validate_feature_shape(frozen_feature, skip_tensor.shape[-2],
+                                            skip_tensor.shape[-1], inject_channels_expected,
+                                            f'decoder_inject_{injector_key}')
+                parts.append(frozen_feature)
+
             # Concatenate and project back to base channels
             hidden = torch.cat(parts, dim=1)
             hidden = self.dec_injectors[injector_key](hidden)
-            
+
             # Capture features AFTER injection
             if return_features:
                 captured_feature = hidden
@@ -525,11 +525,11 @@ class Generator_288(nn.Module):
             # Classic mode: simple skip connection merge
             if return_features:
                 captured_feature = hidden
-            hidden = self._merge(skip_tensor, hidden)
+            hidden = self._merge_classic(skip_tensor, hidden)
         
         return hidden, captured_feature
     
-    def _merge(self, skip, x):
+    def _merge_classic(self, skip, x):
         """
         Merge skip connection with decoder output using configured skip_mode.
         Used in classic mode only; 1x1Conv mode uses _inject_and_merge_at_decoder_stage.
@@ -610,12 +610,12 @@ class Generator_288(nn.Module):
 
         # --- Stage 2: Upsample 18 → 36 (skip handled by classic mode only) ---
         if self.skip_handling == 'classic':
-            hidden = self._merge(skips[3], hidden)
+            hidden = self._merge_classic(skips[3], hidden)
         hidden = self.expand_blocks[1](hidden)  # 18 → 36
 
         # --- Stage 3: Upsample 36 → 72 (skip handled by classic mode only) ---
         if self.skip_handling == 'classic':
-            hidden = self._merge(skips[2], hidden)
+            hidden = self._merge_classic(skips[2], hidden)
         hidden = self.expand_blocks[2](hidden)  # 36 → 72
 
         # --- Stage 4: Injection/merge at scale 72, then upsample to 144 ---
@@ -905,7 +905,7 @@ class Generator_320(nn.Module):
         blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[4][0], stage_params[4][1], stage_params[4][2], stage_params[4][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop, final_layer=True))
         return blocks
 
-    def _merge(self, skip, x):
+    def _merge_classic(self, skip, x):
         """
         Merge skip connection with decoder output based on configured skip_mode.
         
@@ -940,19 +940,19 @@ class Generator_320(nn.Module):
 
         a = self.neck(a)
 
-        a = self._merge(skips[4], a)
+        a = self._merge_classic(skips[4], a)
         a = self.expand_blocks[0](a)
 
-        a = self._merge(skips[3], a)
+        a = self._merge_classic(skips[3], a)
         a = self.expand_blocks[1](a)
 
-        a = self._merge(skips[2], a)
+        a = self._merge_classic(skips[2], a)
         a = self.expand_blocks[2](a)
 
-        a = self._merge(skips[1], a)
+        a = self._merge_classic(skips[1], a)
         a = self.expand_blocks[3](a)
 
-        a = self._merge(skips[0], a)
+        a = self._merge_classic(skips[0], a)
         a = self.expand_blocks[4](a)
 
         # Center crop to output_size if internal processing was larger
@@ -1203,7 +1203,7 @@ class Generator_180(nn.Module):
         blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[3][0], stage_params[3][1], stage_params[3][2], stage_params[3][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop, final_layer=True))
         return blocks
 
-    def _merge(self, skip, x):
+    def _merge_classic(self, skip, x):
         """
         Merge skip connection with decoder output based on configured skip_mode.
         
@@ -1238,16 +1238,16 @@ class Generator_180(nn.Module):
 
         a = self.neck(a)
 
-        a = self._merge(skips[3], a)
+        a = self._merge_classic(skips[3], a)
         a = self.expand_blocks[0](a)
 
-        a = self._merge(skips[2], a)
+        a = self._merge_classic(skips[2], a)
         a = self.expand_blocks[1](a)
 
-        a = self._merge(skips[1], a)
+        a = self._merge_classic(skips[1], a)
         a = self.expand_blocks[2](a)
 
-        a = self._merge(skips[0], a)
+        a = self._merge_classic(skips[0], a)
         a = self.expand_blocks[3](a)
 
         # Center crop to output_size if internal processing was larger
