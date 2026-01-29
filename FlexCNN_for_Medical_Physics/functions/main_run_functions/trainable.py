@@ -37,7 +37,7 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     init_checkpoint_state,
 )
 
-from FlexCNN_for_Medical_Physics.functions.helper.generators_discriminator_setup import (
+from FlexCNN_for_Medical_Physics.functions.helper.setup_generators_optimizer import (
     create_generator,
     create_optimizer,
 )

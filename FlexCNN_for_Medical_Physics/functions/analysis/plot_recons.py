@@ -4,7 +4,7 @@ import numpy as np
 
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataLoader
 from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
-from FlexCNN_for_Medical_Physics.functions.helper.dual_generator_setup import instantiate_dual_generators, load_dual_generator_checkpoints
+from FlexCNN_for_Medical_Physics.functions.helper.setup_generators_optimizer import instantiate_dual_generators, load_dual_generator_checkpoints
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_unmatched_tensors
 
 

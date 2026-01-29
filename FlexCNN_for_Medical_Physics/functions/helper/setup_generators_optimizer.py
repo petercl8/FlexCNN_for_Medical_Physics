@@ -1,6 +1,5 @@
 import os
 import torch
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import init_checkpoint_state
 from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
 
 def create_generator(config: dict, device: str, **kwargs):
