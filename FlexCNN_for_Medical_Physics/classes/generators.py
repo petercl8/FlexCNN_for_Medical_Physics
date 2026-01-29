@@ -346,7 +346,7 @@ class Generator_288(nn.Module):
         else:
             if return_features:
                 decoder_feat_36 = a
-            a = self._merge(skips[2], a)
+            a = self._merge(skips[1], a)
 
         a = self.expand_blocks[3](a)  # 72 -> 144
 
