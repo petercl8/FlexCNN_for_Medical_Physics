@@ -28,7 +28,7 @@ config_ACT_SI = {
   "SI_layer_norm": "instance",
   "SI_learnedScale_init": 4.2047521440377285,
   "SI_normalize": False,
-  "SI_pad_mode": "zeros", # "zeros"
+  "SI_pad_mode": "replicate", # "zeros", "replicate"
   "SI_skip_mode": "add", # 'add', 'concat', 'none'
   "batch_base2_exponent": 5,
   "gen_b1": 0.22046050861804858,
