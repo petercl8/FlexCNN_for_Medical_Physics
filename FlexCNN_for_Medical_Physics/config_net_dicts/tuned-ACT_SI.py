@@ -29,7 +29,7 @@ config_ACT_SI = {
   "SI_learnedScale_init": 4.2047521440377285,
   "SI_normalize": False,
   "SI_pad_mode": "zeros", # "zeros"
-  "SI_skip_mode": "add", # 'add', 'concat', 'none'
+  "SI_skip_mode": "concat", # 'add', 'concat', 'none'
   "batch_base2_exponent": 5,
   "gen_b1": 0.22046050861804858,
   "gen_b2": 0.152643657443423,
