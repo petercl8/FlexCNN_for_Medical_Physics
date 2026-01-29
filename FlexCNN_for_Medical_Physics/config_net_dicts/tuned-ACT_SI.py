@@ -17,7 +17,7 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 ## highCountSino-->actMap, tuned for SSIM, Augugment: SI
 config_ACT_SI = {
   "SI_dropout": False,
-  "SI_exp_kernel": 4, #4, 3
+  "SI_exp_kernel": 3, #4, 3
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
   "SI_gen_final_activ": nn.Sigmoid(),
@@ -29,7 +29,7 @@ config_ACT_SI = {
   "SI_learnedScale_init": 4.2047521440377285,
   "SI_normalize": False,
   "SI_pad_mode": "zeros", # "zeros"
-  "SI_skip_mode": "none", # 'add', 'concat', 'none'
+  "SI_skip_mode": "add", # 'add', 'concat', 'none'
   "batch_base2_exponent": 5,
   "gen_b1": 0.22046050861804858,
   "gen_b2": 0.152643657443423,
