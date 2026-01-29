@@ -572,7 +572,7 @@ class Generator_288(nn.Module):
             hidden = block(hidden)
             
             # Inject frozen encoder features at scales 144, 36, 9
-            if self.skip_handling == '1x1Conv' and idx in (0, 2, 4):
+            if self.enable_encoder_inject and idx in (0, 2, 4):
                 inj_idx = {0: 0, 2: 1, 4: 2}[idx]
                 inject_channels_expected = self.enc_inject_channels[inj_idx]
                 frozen_feature = routed_enc_features[inj_idx]
