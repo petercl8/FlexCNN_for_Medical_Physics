@@ -180,13 +180,6 @@ class Generator_288(nn.Module):
 
         if self.skip_handling == '1x1Conv':
             self._build_injectors(pad, norm, drop)
-            print(f"[DEBUG] Generator_288 initialized with:")
-            print(f"  skip_handling: {self.skip_handling}")
-            print(f"  skip_mode: {self.skip_mode}")
-            print(f"  enc_inject_channels: {self.enc_inject_channels}")
-            print(f"  dec_inject_channels: {self.dec_inject_channels}")
-            print(f"  enable_encoder_inject: {self.enable_encoder_inject}")
-            print(f"  enable_decoder_inject: {self.enable_decoder_inject}")
 
     # ============================================================================
     # CONFIGURATION HELPERS
@@ -615,22 +608,20 @@ class Generator_288(nn.Module):
         )
         hidden = self.expand_blocks[0](hidden)  # 9 → 18
 
-        # --- Stage 2: Upsample 18 → 36 (skip handled by classic mode only) ---
-        if self.skip_handling == 'classic':
-            hidden = self._merge_classic(skips[3], hidden)
+        # --- Stage 2: Upsample 18 → 36 ---
         hidden = self.expand_blocks[1](hidden)  # 18 → 36
 
-        # --- Stage 3: Upsample 36 → 72 (skip handled by classic mode only) ---
-        if self.skip_handling == 'classic':
-            hidden = self._merge_classic(skips[2], hidden)
-        hidden = self.expand_blocks[2](hidden)  # 36 → 72
-
-        # --- Stage 4: Injection/merge at scale 72, then upsample to 144 ---
+        # --- Stage 3: Injection/merge at scale 36, then upsample to 72 ---
         frozen_dec_feat = routed_dec_features[1] if routed_dec_features is not None else None
         hidden, decoder_feat_scale36 = self._inject_and_merge_at_decoder_stage(
-            hidden, skips[1], frozen_dec_feat, inject_idx=1, injector_key='dec_36',
+            hidden, skips[2], frozen_dec_feat, inject_idx=1, injector_key='dec_36',
             return_features=return_features
         )
+        hidden = self.expand_blocks[2](hidden)  # 36 → 72
+
+        # --- Stage 4: Upsample 72 → 144 (skip handled by classic mode only) ---
+        if self.skip_handling == 'classic':
+            hidden = self._merge_classic(skips[1], hidden)
         hidden = self.expand_blocks[3](hidden)  # 72 → 144
 
         # --- Stage 5: Injection/merge at scale 144, then upsample to 288 ---
