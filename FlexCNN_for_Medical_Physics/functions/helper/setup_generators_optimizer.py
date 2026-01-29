@@ -21,7 +21,7 @@ def create_generator(config: dict, device: str, **kwargs):
     train_SI = config['train_SI']
     gen_image_size = config['gen_image_size']
     gen_sino_size = config['gen_sino_size']
-    
+
     # Determine input size based on train_SI direction
     input_size = gen_sino_size if train_SI else gen_image_size
     
