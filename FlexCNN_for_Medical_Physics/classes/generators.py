@@ -7,7 +7,7 @@ from torch import nn
 #############################
 
 class Generator_288(nn.Module):
-    def __init__(self, config, gen_SI=True, gen_skip_handling: str = '1x1Conv', gen_flow_mode: str = 'coflow', enc_inject_channels=None, dec_inject_channels=None, scaling_exp=0.7):
+    def __init__(self, config, gen_SI=True, gen_skip_handling: str = 'classic', gen_flow_mode: str = 'coflow', enc_inject_channels=None, dec_inject_channels=None, scaling_exp=0.7):
         '''
         Encoder-decoder generator with optional skip connections, producing 288x288 output.
         
