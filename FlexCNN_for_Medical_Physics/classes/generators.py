@@ -608,15 +608,23 @@ class Generator_288(nn.Module):
         )
         hidden = self.expand_blocks[0](hidden)  # 9 → 18
 
-        # --- Stage 2: Upsample 18 → 36 ---
+        # --- Stage 2: Merge skip at 18x18 (classic only), then upsample to 36 ---
+        if self.skip_handling == 'classic':
+            hidden = self._merge_classic(skips[3], hidden)
         hidden = self.expand_blocks[1](hidden)  # 18 → 36
 
         # --- Stage 3: Injection/merge at scale 36, then upsample to 72 ---
-        frozen_dec_feat = routed_dec_features[1] if routed_dec_features is not None else None
-        hidden, decoder_feat_scale36 = self._inject_and_merge_at_decoder_stage(
-            hidden, skips[2], frozen_dec_feat, inject_idx=1, injector_key='dec_36',
-            return_features=return_features
-        )
+        if self.skip_handling == '1x1Conv':
+            frozen_dec_feat = routed_dec_features[1] if routed_dec_features is not None else None
+            hidden, decoder_feat_scale36 = self._inject_and_merge_at_decoder_stage(
+                hidden, skips[2], frozen_dec_feat, inject_idx=1, injector_key='dec_36',
+                return_features=return_features
+            )
+        else:
+            # Classic: merge skip before expand
+            hidden = self._merge_classic(skips[2], hidden)
+            if return_features:
+                decoder_feat_scale36 = hidden
         hidden = self.expand_blocks[2](hidden)  # 36 → 72
 
         # --- Stage 4: Upsample 72 → 144 (skip handled by classic mode only) ---
