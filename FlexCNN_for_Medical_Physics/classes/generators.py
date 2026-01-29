@@ -180,6 +180,13 @@ class Generator_288(nn.Module):
 
         if self.skip_handling == '1x1Conv':
             self._build_injectors(pad, norm, drop)
+            print(f"[DEBUG] Generator_288 initialized with:")
+            print(f"  skip_handling: {self.skip_handling}")
+            print(f"  skip_mode: {self.skip_mode}")
+            print(f"  enc_inject_channels: {self.enc_inject_channels}")
+            print(f"  dec_inject_channels: {self.dec_inject_channels}")
+            print(f"  enable_encoder_inject: {self.enable_encoder_inject}")
+            print(f"  enable_decoder_inject: {self.enable_decoder_inject}")
 
     # ============================================================================
     # CONFIGURATION HELPERS
