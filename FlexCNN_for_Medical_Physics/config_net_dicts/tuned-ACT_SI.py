@@ -23,13 +23,13 @@ config_ACT_SI = {
   "SI_gen_final_activ": nn.Sigmoid(),
   "SI_gen_hidden_dim": 19,
   "SI_gen_mult": 2.065329728174869,
-  "SI_gen_neck": "wide", #medium", "narrow", "wide"
+  "SI_gen_neck": "medium", #medium", "narrow", "wide"
   "SI_gen_z_dim": 1181,
   "SI_layer_norm": "instance", # "instance", "group", "batch", "none"
   "SI_learnedScale_init": 4.2047521440377285,
   "SI_normalize": False,
-  "SI_pad_mode": "zeros", # "zeros", "replicate"
-  "SI_skip_mode": "concat", # 'add', 'concat', 'none', 'conv'
+  "SI_pad_mode": "replicate", # "zeros", "replicate"
+  "SI_skip_mode": "add", # 'add', 'concat', 'none', 'conv'
   "batch_base2_exponent": 5,
   "gen_b1": 0.22046050861804858,
   "gen_b2": 0.152643657443423,
