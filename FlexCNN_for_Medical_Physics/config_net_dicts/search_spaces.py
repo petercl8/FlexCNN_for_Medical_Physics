@@ -39,7 +39,8 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
     'SI_gen_hidden_dim': tune.lograndint(2, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
-    'SI_skip_mode': tune.choice(['none','add','concat']),       # Skip-connection mode. 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation, 'conv' = learned 1x1 convolutional skip (must initialize the generator properly)
+    #'SI_skip_mode': tune.choice(['none','add','concat']),       # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
+    'SI_skip_mode': tune.choice(['none','conv']),               # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
     # Statistical Regularization (SI-specific)
     'SI_stats_criterion': -1, # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
