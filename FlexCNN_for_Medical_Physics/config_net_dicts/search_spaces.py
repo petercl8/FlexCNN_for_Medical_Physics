@@ -39,7 +39,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
     'SI_gen_hidden_dim': tune.lograndint(2, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
-    'SI_skip_mode': tune.choice(['none','add','concat']),       # Skip-connection mode
+    'SI_skip_mode': tune.choice(['none','add','concat']),       # Skip-connection mode. 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation, 'conv' = learned 1x1 convolutional skip (must initialize the generator properly)
 
     # Statistical Regularization (SI-specific)
     'SI_stats_criterion': -1, # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
@@ -62,7 +62,7 @@ config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     'SI_fixedScale': 1,                                          # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
     'SI_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'SI_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
-    'SI_layer_norm': tune.choice(['none', 'instance', 'group']),            # Could also add "group" normalization if you make it go into num_channels evenly.
+    'SI_layer_norm': tune.choice(['none', 'instance', 'group']),
     'SI_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
 }
 
