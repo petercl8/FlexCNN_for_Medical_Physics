@@ -39,8 +39,8 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
     'SI_gen_hidden_dim': tune.lograndint(2, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
-    #'SI_skip_mode': tune.choice(['none','add','concat']),       # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
-    'SI_skip_mode': tune.choice(['none','conv']),               # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
+    'SI_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
+                                                                # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
     # Statistical Regularization (SI-specific)
     'SI_stats_criterion': -1, # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
@@ -72,7 +72,7 @@ config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
     'SI_fixedScale': 1,
     'SI_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'SI_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
-    'SI_gen_final_activ': tune.choice([nn.Tanh(), nn.Sigmoid(), nn.ReLU(), None]),
+    'SI_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
 }
 
 config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
@@ -85,7 +85,8 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_dropout': tune.choice([True,False]),
     'IS_exp_kernel': tune.choice([3,4]),
     'IS_gen_hidden_dim': tune.lograndint(2, 30),
-    'IS_skip_mode': tune.choice(['none','add','concat']),
+    'IS_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
+                                                                # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
     # Statistical Regularization (IS-specific)
     'IS_stats_criterion': -1, # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
@@ -141,10 +142,7 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'IS_disc_adv_criterion': 1,
     }
 
-config_RAY_SUP_FROZEN = { # Frozen-specific hyperparameters merged with config_RAY_SUP for frozen backbone networks
-    'injection_scale_init': tune.uniform(0.5, 2.0),      # Initial value for feature injection scaling (narrow range centered at 1.0)
-    'injection_scale_lr_mult': tune.uniform(0.5, 2.0),   # Learning rate multiplier for injection scale parameters
-    }
+config_RAY_SUP_FROZEN = {} # Frozen-specific hyperparameters merged with config_RAY_SUP for frozen backbone networks. Currently empty.
 
 ####################
 # Currently Unused #

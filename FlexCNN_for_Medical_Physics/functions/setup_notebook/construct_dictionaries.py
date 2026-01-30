@@ -1,5 +1,18 @@
 import os
 
+def _prefix_config_keys(config, prefix):
+    """
+    Rename all keys in config by adding prefix.
+    
+    Args:
+        config: Dictionary to prefix
+        prefix: String prefix to add (e.g., 'FROZEN')
+    
+    Returns:
+        New dictionary with all keys prefixed as 'prefix_originalkey'
+    """
+    return {f"{prefix}_{k}": v for k, v in config.items()}
+
 def construct_config(
     run_mode,
     network_opts,
@@ -123,14 +136,14 @@ def construct_config(
                 config = {**config_RAY_SI, **config_RAY_SI_learnScale ,**config_RAY_SUP}
         elif network_type == 'FROZEN_COFLOW':
             if SI_normalize:
-                config = {**config_ATTEN_SI, **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+                config = {**_prefix_config_keys(config_ATTEN_SI, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
             else:
-                config = {**config_ATTEN_SI, **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+                config = {**_prefix_config_keys(config_ATTEN_SI, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
         elif network_type == 'FROZEN_COUNTERFLOW':
             if SI_normalize:
-                config = {**config_ATTEN_IS, **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+                config = {**_prefix_config_keys(config_ATTEN_IS, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
             else:
-                config = {**config_ATTEN_IS, **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+                config = {**_prefix_config_keys(config_ATTEN_IS, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
         elif network_type == 'GAN':
             if train_SI:
                 if SI_normalize:

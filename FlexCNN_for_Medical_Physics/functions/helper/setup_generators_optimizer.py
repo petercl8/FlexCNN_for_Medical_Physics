@@ -77,12 +77,33 @@ def create_optimizer(model, config: dict) -> torch.optim.Adam:
     
     return optimizer
 
+def _extract_frozen_config(config):
+    """
+    Strip FROZEN_ prefix from all keys that have it to prepare config for frozen generator.
+    
+    Args:
+        config: Full merged configuration dictionary with FROZEN_* keys for frozen network
+                and unprefixed keys for trainable network.
+    
+    Returns:
+        New dictionary with FROZEN_ prefix stripped from all matching keys.
+    
+    Example:
+        {'FROZEN_SI_gen_neck': 'narrow', 'SI_gen_neck': 'medium', 'FROZEN_gen_sino_size': 288}
+        -> {'SI_gen_neck': 'narrow', 'gen_sino_size': 288}
+    """
+    frozen_config = {}
+    for k, v in config.items():
+        if k.startswith('FROZEN_'):
+            frozen_config[k.replace('FROZEN_', '', 1)] = v
+    return frozen_config
+
 def instantiate_dual_generators(config, device, flow_mode):
     """
     Instantiate frozen attenuation and trainable activity generators for dual-network setup.
 
     Args:
-        config (dict): Model configuration dictionary.
+        config (dict): Model configuration dictionary with FROZEN_* prefixed keys for frozen network.
         device (torch.device): Device to place models on.
         flow_mode (str): 'coflow' or 'counterflow'.
 
@@ -92,8 +113,8 @@ def instantiate_dual_generators(config, device, flow_mode):
     Example:
         gen_atten, gen_act = instantiate_dual_generators(config, device, flow_mode)
     """
-    # Create frozen attenuation generator (no injection, only feature extraction)
-    atten_config = dict(config)
+    # Extract frozen network config by stripping FROZEN_ prefix
+    atten_config = _extract_frozen_config(config)
     atten_config['train_SI'] = True if flow_mode == 'coflow' else False  # Guarantee network direction regardless of value set in notebook
     gen_atten = create_generator(atten_config, device, gen_skip_handling='1x1Conv', enc_inject_channels=None, dec_inject_channels=None) # Default flow moade is 'coflow', but it doesn't matter since no features are injected
 
@@ -101,7 +122,7 @@ def instantiate_dual_generators(config, device, flow_mode):
     enc_inject_ch = gen_atten.enc_stage_channels
     dec_inject_ch = gen_atten.dec_stage_channels
 
-    # Create trainable activity generator with injection parameters
+    # Create trainable activity generator with unprefixed SI_* keys from original config
     act_config = dict(config)
     act_config['train_SI'] = True
     

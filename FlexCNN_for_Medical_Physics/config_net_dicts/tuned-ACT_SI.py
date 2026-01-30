@@ -36,7 +36,6 @@ config_ACT_SI = {
   "gen_lr": 0.00099063275528607,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "network_type": "SUP",
   "gen_sino_channels": 3, #3
   "gen_sino_size": 288, # default: 180 (288, 320)
   "sup_base_criterion": nn.MSELoss(),

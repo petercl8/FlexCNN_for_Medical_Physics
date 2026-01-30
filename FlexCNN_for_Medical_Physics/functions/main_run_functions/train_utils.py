@@ -410,7 +410,7 @@ def route_batch_inputs(train_SI, batch_tensors, network_type=None):
         else:
             input_ = batch_tensors['atten_image_scaled']
             target = batch_tensors['atten_sino_scaled']
-    else:
+    elif network_type == 'ACT':
         # Activity domain: use configured train_SI direction
         if train_SI:
             input_ = batch_tensors['act_sino_scaled']
@@ -418,6 +418,8 @@ def route_batch_inputs(train_SI, batch_tensors, network_type=None):
         else:
             input_ = batch_tensors['act_image_scaled']
             target = batch_tensors['act_sino_scaled']
+    else:
+        raise ValueError(f"Invalid network_type='{network_type}' for routing batch inputs")
     
     return input_, target
 
