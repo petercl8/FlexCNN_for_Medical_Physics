@@ -172,8 +172,6 @@ def run_trainable(config, paths, settings):
         # Attenuation-only: activity paths are not required
         paths['act_image_path'] = None
         paths['act_sino_path'] = None
-        paths['act_recon1_path'] = None
-        paths['act_recon2_path'] = None
 
     # ========================================================================================
     # SECTION 7B: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER

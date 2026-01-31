@@ -42,13 +42,13 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 #   augment:             augmentation type: 'SI', 'II', None, or False
 #   sino_resize_type:    'crop_pad' (default) or 'bilinear'
 #   sino_pad_type:       'sinogram' (default) or 'zeros'
-#   image_pad_type:      'none' (default) or 'zeros'
+#   image_pad_type:      'zeros' (default--padds original-sized image with surrounding zeros) or 'none' (bilinear resize)
 #   index:               data sample index to extract
 #   device:              'cuda' or 'cpu'
 
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
                       config, settings, augment=False,
-                      sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda',
+                      sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='zeros', index=0, device='cuda',
                       ):
 
     global resize_warned
