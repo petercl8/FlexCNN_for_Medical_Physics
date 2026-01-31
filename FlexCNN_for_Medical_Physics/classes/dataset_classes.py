@@ -1,44 +1,60 @@
+# ========================================================================================
+# DATASET CLASSES - Data Loading and Augmentation for Training/Testing
+# ========================================================================================
+# This module provides two core components:
+# 1. NpArrayDataLoader: Function to load and preprocess individual data samples with optional augmentation
+# 2. NpArrayDataSet: PyTorch Dataset class for loading data from .np files with transformations
+
 import torch
 from torch import nn
 from torch.utils.data import Dataset
 import numpy as np
 from .dataset_augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
-from .dataset_resizing import resize_image_data, crop_pad_sino, bilinear_resize_sino
+from .dataset_resizing import resize_image_data, resize_sino_data
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
 
-def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array, 
-                      config, settings, augment=False, 
+# ========================================================================================
+# FUNCTION: NpArrayDataLoader
+# ========================================================================================
+# Load and preprocess a single data sample. Returns (act_data, atten_data, recon_data) where:
+#   act_data = (act_sino_scaled, act_image_scaled)
+#   atten_data = (atten_sino_scaled, atten_image_scaled)
+#   recon_data = (act_recon1, act_recon2)
+# Any entry may be None depending on network type.
+#
+# NETWORK TYPE REQUIREMENTS:
+#   ACT, FROZEN_COFLOW, FROZEN_COUNTERFLOW: Require activity data; atten_* can be None
+#   ATTEN: Requires attenuation data; act_sino/act_image can be None
+#   CONCAT: Requires both activity and attenuation data
+#   (Path validation in trainable.py enforces requirements before calling this loader)
+#
+# PARAMETERS:
+#   act_sino_array:      activity sinogram array (None for ATTEN networks)
+#   act_image_array:     activity image array (None for ATTEN networks)
+#   atten_image_array:   attenuation image array (None for ACT networks)
+#   atten_sino_array:    attenuation sinogram array (None for ACT networks)
+#   act_recon1_array:    (optional) reconstruction 1 array
+#   act_recon2_array:    (optional) reconstruction 2 array
+#   config:              configuration dictionary with network_type, train_SI, gen_image_size, gen_sino_size,
+#                        gen_image_channels, gen_sino_channels, SI_normalize, SI_fixedScale, IS_normalize, IS_fixedScale
+#   augment:             augmentation type: 'SI', 'II', None, or False
+#   sino_resize_type:    'crop_pad' (default) or 'bilinear'
+#   sino_pad_type:       'sinogram' (default) or 'zeros'
+#   image_pad_type:      'none' (default) or 'zeros'
+#   index:               data sample index to extract
+#   device:              'cuda' or 'cpu'
+
+def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
+                      config, settings, augment=False,
                       sino_resize_type='crop_pad', sino_pad_type='sinogram', image_pad_type='none', index=0, device='cuda',
                       ):
-    
-    global resize_warned
-    '''
-    Function to load a sinogram, activity map, optionally reconstructions, and optionally attenuation data. 
-        Returns nested tuple: (act_data, atten_data, recon_data) where:
-            act_data = (act_sino_scaled, act_image_scaled)
-            atten_data = (atten_sino_scaled, atten_image_scaled)
-            recon_data = (act_recon1, act_recon2)
-    Any entry may be None.
 
-    act_sino_array:      activity sinogram numpy array
-    act_image_array:     activity map numpy array (ground truth)
-    atten_image_array:   (optional) attenuation image numpy array
-    atten_sino_array:    (optional) precomputed attenuation sinogram numpy array
-    act_recon1_array:    (optional) reconstruction 1 numpy array
-    act_recon2_array:    (optional) reconstruction 2 numpy array
-    config:              configuration dictionary with hyperparameters. Must contain: network_type, train_SI, gen_image_size,
-                         gen_sino_size, gen_image_channels, gen_sino_channels, SI_normalize, SI_fixedScale, and (for non-SUP/GAN networks) 
-                         IS_normalize, SI_fixedScale.
-    augment:             perform data augmentation?
-    sino_resize_type:    'crop_pad' to crop/pad to target size, 'bilinear' to use bilinear interpolation
-    sino_pad_type:       'sinogram' (default) to pad sinograms with sinogram-like padding, 'zeros' to pad with zeros
-    image_pad_type:      'none' (default) to resize w/ bilinear interpolation to correct size, 'zeros' to pad with zeros without resizing     
-    index:               index of the sinogram/activity map pair to grab
-    device:              device to place tensors on ('cuda' or 'cpu')
-    '''
-    ## Extract parameters from config ##
+    global resize_warned
+    # ========================================================================================
+    # SECTION 1: Extract Parameters from Configuration
+    # ========================================================================================
     network_type = config['network_type']
     train_SI = config['train_SI']
     gen_image_size = config['gen_image_size']
@@ -46,7 +62,10 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     gen_image_channels = config['gen_image_channels']
     gen_sino_channels = config['gen_sino_channels']
 
-    ## Set Normalization Variables ##
+    # ========================================================================================
+    # SECTION 2: Set Normalization Variables
+    # ========================================================================================
+    # Normalization direction (SI vs IS) depends on network and training mode
     if network_type in ('GAN', 'ATTEN', 'ACT', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'): # supervisory network
         if train_SI==True:
             SI_normalize=config['SI_normalize']
@@ -72,17 +91,22 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     atten_image_scale = settings['atten_image_scale']
     atten_sino_scale = settings['atten_sino_scale']
 
-    ## Select Data, Convert to Tensors ##
+    # ========================================================================================
+    # SECTION 3: Select Data and Convert to Tensors
+    # ========================================================================================
+    # Activity data (required for ACT/CONCAT/FROZEN; None for ATTEN)
     act_image_multChannel = torch.from_numpy(np.ascontiguousarray(act_image_array[index,:])).float() if act_image_array is not None else None
     act_sino_multChannel = torch.from_numpy(np.ascontiguousarray(act_sino_array[index,:])).float() if act_sino_array is not None else None
     act_recon1_multChannel = torch.from_numpy(np.ascontiguousarray(act_recon1_array[index,:])).float() if act_recon1_array is not None else None
     act_recon2_multChannel = torch.from_numpy(np.ascontiguousarray(act_recon2_array[index,:])).float() if act_recon2_array is not None else None
 
-    # Use act_* variables directly for activity domain
+    # Attenuation data (required for ATTEN/CONCAT/FROZEN; None for ACT)
     atten_image_multChannel = torch.from_numpy(np.ascontiguousarray(atten_image_array[index,:])).float() if atten_image_array is not None else None
     atten_sino_multChannel = torch.from_numpy(np.ascontiguousarray(atten_sino_array[index,:])).float() if atten_sino_array is not None else None
 
-    ## Resize Warning ##
+    # ========================================================================================
+    # SECTION 4: Resize Warning
+    # ========================================================================================
     # Check if sinograms need resizing
     resize_sino = ((act_sino_multChannel is not None and act_sino_multChannel.shape[1:] != (gen_sino_size, gen_sino_size)) or
                    (atten_sino_multChannel is not None and atten_sino_multChannel.shape[1:] != (gen_sino_size, gen_sino_size)))
@@ -113,42 +137,41 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
         resize_warned = True
 
 
-    #### AUGMENT AND RESIZE DATA ####
+    # ========================================================================================
+    # SECTION 5: Augment and Resize Data
+    # ========================================================================================
 
     # Initialize resized sinograms to originals to avoid unbound variables when no augmentation path runs
     act_sino_multChannel_resize = act_sino_multChannel
     atten_sino_multChannel_resize = atten_sino_multChannel
-
-    ## Augment Sinograms ##
+    
     if augment[0]=='SI':
         # We augment first so that the sinogram columns, which contain the full span of angles, are not truncated before sinogram-like augmentation.
         act_sino_multChannel, act_image_multChannel, atten_sino_multChannel, atten_image_multChannel, act_recon1_multChannel, act_recon2_multChannel = AugmentSinoImageDataRecons(
             act_sino_multChannel, act_image_multChannel, atten_sino_multChannel, atten_image_multChannel, act_recon1_multChannel, act_recon2_multChannel, flip_channels=augment[1]
         )
         # Resize sinogram (like a Sinogram)
-        if resize_sino:
-            if sino_resize_type=='bilinear':
-                act_sino_multChannel_resize, atten_sino_multChannel_resize = bilinear_resize_sino(act_sino_multChannel, atten_sino_multChannel, gen_sino_size)
-            else:
-                act_sino_multChannel_resize, atten_sino_multChannel_resize = crop_pad_sino(act_sino_multChannel, atten_sino_multChannel, vert_size=gen_sino_size, target_width=gen_sino_size, pool_size=2, pad_type=sino_pad_type)
-        else:
-            act_sino_multChannel_resize = act_sino_multChannel
-            atten_sino_multChannel_resize = atten_sino_multChannel
+        act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
+            act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, pool_size=2
+        )
 
     if augment[0]=='II':
         # If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.
-        if resize_sino:
-            if sino_resize_type=='bilinear':
-                act_sino_multChannel_resize, atten_sino_multChannel_resize = bilinear_resize_sino(act_sino_multChannel, atten_sino_multChannel, gen_sino_size)
-            else: # For image inputs, pad_type and pool_size are hardcoded to 1 and 'zeros' (the only sensible options for image-like sinograms)
-                act_sino_multChannel_resize, atten_sino_multChannel_resize = crop_pad_sino(act_sino_multChannel, atten_sino_multChannel, vert_size=gen_sino_size, target_width=gen_sino_size, pool_size=2, pad_type='zeros')
-        else:
-            act_sino_multChannel_resize = act_sino_multChannel
-            atten_sino_multChannel_resize = atten_sino_multChannel
+        act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
+            act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type='zeros', pool_size=2
+        )
 
         # Augment data (with image-like augmentations)
         act_sino_multChannel_resize, act_image_multChannel, atten_sino_multChannel_resize, atten_image_multChannel, act_recon1_multChannel, act_recon2_multChannel = AugmentImageImageDataRecons(
             act_sino_multChannel_resize, act_image_multChannel, atten_sino_multChannel_resize, atten_image_multChannel, act_recon1_multChannel, act_recon2_multChannel, flip_channels=augment[1]
+        )
+
+    if augment[0] is None:
+        act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
+            act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, pool_size=2
         )
 
     # Resize image data (only if needed)
@@ -156,7 +179,10 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
         act_image_multChannel, atten_image_multChannel, act_recon1_multChannel, act_recon2_multChannel, gen_image_size, resize_image=resize_image, image_pad_type=image_pad_type
     )
 
-    #### (Optional) Normalize Resized Outputs ####
+    # ========================================================================================
+    # SECTION 6: Normalize Resized Outputs (Optional)
+    # ========================================================================================
+    # Activity image/sino normalized when SI_normalize=True (typically ACT/FROZEN networks)
     if SI_normalize:
         if act_image_multChannel_resize is not None:
             a = torch.reshape(act_image_multChannel_resize, (act_image_channels_det,-1))
@@ -185,7 +211,9 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
             atten_sino_multChannel_resize = torch.reshape(b, (atten_sino_channels_det, gen_sino_size, gen_sino_size))
 
 
-    #### Scale and Move to Device ####
+    # ========================================================================================
+    # SECTION 7: Scale and Move to Device
+    # ========================================================================================
 
     # If SI_normalize==True: multiply activity and reconstructions by SI_fixedScale (recon scales already set to 1.0)
     # If SI_normalize==False: leave activity unchanged; multiply reconstructions by their respective recon scales
@@ -200,7 +228,7 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
         act_recon2_scaled = (act_recon2_scale * act_recon2_multChannel_resize).to(device) if act_recon2_multChannel_resize is not None else None
         atten_image_scaled = (atten_image_scale * atten_image_multChannel_resize).to(device) if atten_image_multChannel_resize is not None else None
 
-    ## Apply Fixed Scales per desired behavior and move to device ##
+    # Apply fixed scales per desired behavior and move to device
     # Sinogram: multiply by IS_fixedScale only if IS_normalize==True; otherwise multiply by sino_scale if not normalized
     if IS_normalize:
         act_sino_scaled = (IS_fixedScale * act_sino_multChannel_resize).to(device) if act_sino_multChannel_resize is not None else None
@@ -217,31 +245,45 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     return act_data, atten_data, recon_data
 
 
-class NpArrayDataSet(Dataset):
-    '''
-    Class for loading data from .np files, given file directory strings and set of optional transformations.
-    In the dataset used in our first two conference papers, the data repeat every 17500 steps but with different augmentations.
-    For the dataset with FORE rebinning, the dataset contains no augmented examples; all augmentation is performed on the fly.
-    '''
-    def __init__(self, act_sino_path, act_image_path, atten_image_path, atten_sino_path, act_recon1_path, act_recon2_path, config, settings, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda'):
-        '''
-        act_sino_path:      path to activity sinograms in data set
-        act_image_path:     path to activity images (ground truth) in data set
-        atten_image_path:   (optional) path to attenuation image. If None, no attenuation image is loaded.
-        atten_sino_path:    (optional) path to precomputed attenuation sinogram. If None, no attenuation sinogram is loaded.
-        act_recon1_path:    (optional) path to pre-computed reconstruction 1. If None, reconstructions will be computed on-the-fly.
-        act_recon2_path:    (optional) path to pre-computed reconstruction 2. If None, reconstructions will be computed on-the-fly.
-        config:             configuration dictionary with hyperparameters. Must contain: gen_image_size, gen_sino_size,
-                    gen_image_channels, gen_sino_channels, network_type, train_SI, SI_normalize, SI_fixedScale,
-                    and (for non-SUP/GAN networks) IS_normalize, SI_fixedScale.
-        settings:           dictionary containing recon1_scale, recon2_scale, sino_scale, etc.
-        augment:            Set True to perform on-the-fly augmentation of data set. Set False to not perform augmentation.
-        offset:             To begin dataset at beginning of the datafile, set offset=0. To begin on the second image, offset = 1, etc.
-        num_examples:       Max number of examples to load into dataset. Set to -1 to load the maximum number from the numpy array.
-        sample_division:    set to 1 to use every example, 2 to use every other example, etc. (Ex: if sample_division=2, the dataset will be half the size.)
-        '''
+# ========================================================================================
+# CLASS: NpArrayDataSet
+# ========================================================================================
+# PyTorch Dataset class for loading data from .np files with optional transformations.
+# In the dataset used in our first two conference papers, the data repeat every 17500 steps but with different augmentations.
+# For the dataset with FORE rebinning, the dataset contains no augmented examples; all augmentation is performed on the fly.
 
-        ## Load Data to Arrays ##
+class NpArrayDataSet(Dataset):
+
+    # ========================================================================================
+    # METHOD: __init__
+    # ========================================================================================
+    # Initialize dataset. Pass None for paths not required by your network type.
+    #
+    # PARAMETERS:
+    #   act_sino_path:      path to activity sinograms (None for ATTEN networks)
+    #   act_image_path:     path to activity images (None for ATTEN networks)
+    #   atten_image_path:   path to attenuation images (None for ACT networks)
+    #   atten_sino_path:    path to attenuation sinograms (None for ACT networks)
+    #   act_recon1_path:    (optional) reconstruction 1 path
+    #   act_recon2_path:    (optional) reconstruction 2 path
+    #   config:             configuration dict with network_type, gen_image_size, gen_sino_size, normalization settings, etc.
+    #   settings:           dict with scale factors (act_recon1_scale, act_sino_scale, etc.)
+    #   augment:            augmentation type ('SI', 'II', False)
+    #   offset:             start index in dataset
+    #   num_examples:       max examples to load (-1 for all)
+    #   sample_division:    step size for sampling (1=all, 2=every other, etc.)
+    #   device:             'cuda' or 'cpu'
+    #
+    # Examples:
+    #   ACT network:     act_sino_path, act_image_path, atten_image_path=None, atten_sino_path=None
+    #   ATTEN network:   act_sino_path=None, act_image_path=None, atten_image_path, atten_sino_path
+    #   CONCAT network:  act_sino_path, act_image_path, atten_image_path, atten_sino_path
+
+    def __init__(self, act_sino_path, act_image_path, atten_image_path, atten_sino_path, act_recon1_path, act_recon2_path, config, settings, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda'):
+
+        # ========================================================================================
+        # SUBSECTION: Load Data to Arrays
+        # ========================================================================================
         image_array = np.load(act_image_path, mmap_mode='r') if act_image_path is not None else None
         sino_array = np.load(act_sino_path, mmap_mode='r') if act_sino_path is not None else None
         recon1_array = np.load(act_recon1_path, mmap_mode='r') if act_recon1_path is not None else None
@@ -249,7 +291,9 @@ class NpArrayDataSet(Dataset):
         atten_image_array = np.load(atten_image_path, mmap_mode='r') if atten_image_path is not None else None
         atten_sino_array = np.load(atten_sino_path, mmap_mode='r') if atten_sino_path is not None else None
 
-        ## Set Instance Variables ##
+        # ========================================================================================
+        # SUBSECTION: Set Instance Variables
+        # ========================================================================================
         if num_examples==-1:
             self.image_array = image_array[offset:,:] if image_array is not None else None
             self.sino_array = sino_array[offset:,:] if sino_array is not None else None

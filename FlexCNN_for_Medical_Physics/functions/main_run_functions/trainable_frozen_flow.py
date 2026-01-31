@@ -234,16 +234,9 @@ def run_trainable_frozen_flow(config, paths, settings):
                 frozen_dec_feats = result['decoder']
 
             # ----- SUBSECTION 10D: ACTIVITY NETWORK FORWARD/BACKWARD PASS -----
-
-            # Prepare batch tensors for routing
-            batch_tensors = {
-                'act_sino_scaled': act_sino_scaled,
-                'act_image_scaled': act_image_scaled,
-                'atten_sino_scaled': atten_sino_scaled,
-                'atten_image_scaled': atten_image_scaled,
-            }
-            # Route input/target for activity network
-            input_, target = route_batch_inputs(train_SI_act, batch_tensors, network_type='ACT') # input_ is sino, target is image
+            
+            input_ = act_sino_scaled
+            target = act_image_scaled
 
             if run_mode in ('tune', 'train'):
                 time_init_train = time.time()

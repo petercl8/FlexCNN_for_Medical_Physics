@@ -260,16 +260,16 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     if run_mode == 'tune':
         paths['act_sino_path'] = paths['tune_act_sino_path']
         paths['act_image_path'] = paths['tune_act_image_path']
-        paths['act_recon1_path'] = paths['tune_act_recon1_path']
-        paths['act_recon2_path'] = paths['tune_act_recon2_path']
+        paths['act_recon1_path'] = None # We do not use recon paths during tuning
+        paths['act_recon2_path'] = None
         paths['atten_image_path'] = paths['tune_atten_image_path']
         paths['atten_sino_path'] = paths['tune_atten_sino_path']
         checkpoint_file = ''
     elif run_mode == 'train':
         paths['act_sino_path'] = paths['train_act_sino_path']
         paths['act_image_path'] = paths['train_act_image_path']
-        paths['act_recon1_path'] = paths['train_act_recon1_path']
-        paths['act_recon2_path'] = paths['train_act_recon2_path']
+        paths['act_recon1_path'] = None # We do not use recon paths during training
+        paths['act_recon2_path'] = None
         paths['atten_image_path'] = paths['train_atten_image_path']
         paths['atten_sino_path'] = paths['train_atten_sino_path']
         checkpoint_file = mode_files['train_checkpoint_file']

@@ -86,7 +86,6 @@ def generate_attenuation_sinogram(
 
     return atten_sino
 
-
 def visualize_sinogram_alignment(
     paths,
     settings,
@@ -235,8 +234,6 @@ def visualize_sinogram_alignment(
 
     show_multiple_matched_tensors(activity_sino_batch[view_indices_batch], atten_sino_batch[view_indices_batch], cmap=cmap, fig_size=fig_size)
     show_multiple_matched_tensors(overlay_batch[view_indices_batch], cmap=cmap, fig_size=fig_size)
-
-
 
 def precompute_atten_sinos(
     project_dirPath,

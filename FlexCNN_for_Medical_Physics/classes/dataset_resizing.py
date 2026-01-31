@@ -20,57 +20,6 @@ def bilinear_resize_sino(sino_multChannel, atten_sino_multChannel, sino_size):
     atten_sino_resized = resize_op(atten_sino_multChannel) if atten_sino_multChannel is not None else None
     return sino_resized, atten_sino_resized
 
-
-def resize_image_data(image_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=True, image_pad_type='none'):
-    """
-    Resize or pad image data (activity map, attenuation image, and reconstructions) to target image_size.
-
-    Args:
-        act_map_multChannel: Activity map tensor of shape (C, H, W) or None
-        atten_image_multChannel: Attenuation image tensor of shape (C, H, W) or None
-        recon1_multChannel: Reconstruction 1 tensor of shape (C, H, W) or None
-        recon2_multChannel: Reconstruction 2 tensor of shape (C, H, W) or None
-        image_size: Target image size (int for square)
-        resize_image: Boolean flag to enable resizing when image_pad_type='none'
-        image_pad_type: 'none' (default) to resize w/ bilinear interpolation to correct size, 'zeros' to pad with zeros without resizing
-
-    Returns:
-        Tuple of (image_processed, atten_image_processed, recon1_processed, recon2_processed)
-    """
-
-    def _pad_to_size(tensor):
-        if tensor is None:
-            return None
-        C, H, W = tensor.shape
-        pad_h = max(0, image_size - H)
-        pad_w = max(0, image_size - W)
-        pad_top = pad_h // 2
-        pad_bottom = pad_h - pad_top
-        pad_left = pad_w // 2
-        pad_right = pad_w - pad_left
-        if pad_h > 0 or pad_w > 0:
-            tensor = F.pad(tensor, (pad_left, pad_right, pad_top, pad_bottom))
-        return tensor
-
-    if resize_image==False:
-        return image_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel
-
-    else:
-        if image_pad_type == 'zeros':
-            image_out = _pad_to_size(image_multChannel)
-            atten_image_out = _pad_to_size(atten_image_multChannel)
-            recon1_out = _pad_to_size(recon1_multChannel)
-            recon2_out = _pad_to_size(recon2_multChannel)
-        else:
-            resize_op = transforms.Resize(size=(image_size, image_size), antialias=True)
-            image_out = resize_op(image_multChannel) if image_multChannel is not None else None
-            atten_image_out = resize_op(atten_image_multChannel) if atten_image_multChannel is not None else None
-            recon1_out = resize_op(recon1_multChannel) if recon1_multChannel is not None else None
-            recon2_out = resize_op(recon2_multChannel) if recon2_multChannel is not None else None
-
-    return image_out, atten_image_out, recon1_out, recon2_out
-
-
 def crop_pad_sino(
     sino_multChannel,
     atten_sino_multChannel,
@@ -174,3 +123,95 @@ def crop_pad_sino(
         atten_sino_multChannel = _process_single_sino(atten_sino_multChannel)
 
     return sino_multChannel, atten_sino_multChannel
+
+
+def resize_sino_data(
+    sino_multChannel,
+    atten_sino_multChannel,
+    sino_size,
+    resize_sino=True,
+    sino_resize_type='crop_pad',
+    sino_pad_type='sinogram',
+    pool_size=2
+):
+    """
+    Resize or pad sinogram data (activity and attenuation) to target sino_size.
+
+    Args:
+        sino_multChannel: Activity sinogram tensor of shape (C, H, W) or None
+        atten_sino_multChannel: Attenuation sinogram tensor of shape (C, H, W) or None
+        sino_size: Target sinogram size (int for square)
+        resize_sino: Boolean flag to enable resizing
+        sino_resize_type: 'crop_pad' (default) or 'bilinear'
+        sino_pad_type: 'sinogram' (default) or 'zeros'
+        pool_size: Pool size for crop_pad_sino
+
+    Returns:
+        Tuple (sino_resized, atten_sino_resized)
+    """
+    if resize_sino==False:
+        return sino_multChannel, atten_sino_multChannel
+
+    if sino_resize_type=='bilinear':
+        return bilinear_resize_sino(sino_multChannel, atten_sino_multChannel, sino_size)
+
+    return crop_pad_sino(
+        sino_multChannel,
+        atten_sino_multChannel,
+        vert_size=sino_size,
+        target_width=sino_size,
+        pool_size=pool_size,
+        pad_type=sino_pad_type
+    )
+
+
+
+
+def resize_image_data(image_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel, image_size, resize_image=True, image_pad_type='none'):
+    """
+    Resize or pad image data (activity map, attenuation image, and reconstructions) to target image_size.
+
+    Args:
+        act_map_multChannel: Activity map tensor of shape (C, H, W) or None
+        atten_image_multChannel: Attenuation image tensor of shape (C, H, W) or None
+        recon1_multChannel: Reconstruction 1 tensor of shape (C, H, W) or None
+        recon2_multChannel: Reconstruction 2 tensor of shape (C, H, W) or None
+        image_size: Target image size (int for square)
+        resize_image: Boolean flag to enable resizing when image_pad_type='none'
+        image_pad_type: 'none' (default) to resize w/ bilinear interpolation to correct size, 'zeros' to pad with zeros without resizing
+
+    Returns:
+        Tuple of (image_processed, atten_image_processed, recon1_processed, recon2_processed)
+    """
+
+    def _pad_to_size(tensor):
+        if tensor is None:
+            return None
+        C, H, W = tensor.shape
+        pad_h = max(0, image_size - H)
+        pad_w = max(0, image_size - W)
+        pad_top = pad_h // 2
+        pad_bottom = pad_h - pad_top
+        pad_left = pad_w // 2
+        pad_right = pad_w - pad_left
+        if pad_h > 0 or pad_w > 0:
+            tensor = F.pad(tensor, (pad_left, pad_right, pad_top, pad_bottom))
+        return tensor
+
+    if resize_image==False:
+        return image_multChannel, atten_image_multChannel, recon1_multChannel, recon2_multChannel
+
+    else:
+        if image_pad_type == 'zeros':
+            image_out = _pad_to_size(image_multChannel)
+            atten_image_out = _pad_to_size(atten_image_multChannel)
+            recon1_out = _pad_to_size(recon1_multChannel)
+            recon2_out = _pad_to_size(recon2_multChannel)
+        else:
+            resize_op = transforms.Resize(size=(image_size, image_size), antialias=True)
+            image_out = resize_op(image_multChannel) if image_multChannel is not None else None
+            atten_image_out = resize_op(atten_image_multChannel) if atten_image_multChannel is not None else None
+            recon1_out = resize_op(recon1_multChannel) if recon1_multChannel is not None else None
+            recon2_out = resize_op(recon2_multChannel) if recon2_multChannel is not None else None
+
+    return image_out, atten_image_out, recon1_out, recon2_out
