@@ -10,7 +10,7 @@ def create_generator(config: dict, device: str, **kwargs):
     Args:
         config: Configuration dictionary containing 'gen_image_size', 'gen_sino_size', 'train_SI'.
         device: Device to place generator on (e.g., 'cuda:0' or 'cpu').
-        **kwargs: Additional keyword arguments passed to Generator constructor (e.g., gen_skip_handling, enc_inject_channels).
+        **kwargs: Additional keyword arguments passed to Generator constructor (e.g., gen_skip_handling, frozen_enc_channels).
     
     Returns:
         Generator instance (Generator_180, Generator_288, or Generator_320) on specified device.
@@ -116,7 +116,7 @@ def instantiate_dual_generators(config, device, flow_mode):
     # Extract frozen network config by stripping FROZEN_ prefix
     atten_config = _extract_frozen_config(config)
     atten_config['train_SI'] = True if flow_mode == 'coflow' else False  # Guarantee network direction regardless of value set in notebook
-    gen_atten = create_generator(atten_config, device, gen_skip_handling='1x1Conv', enc_inject_channels=None, dec_inject_channels=None) # Default flow moade is 'coflow', but it doesn't matter since no features are injected
+    gen_atten = create_generator(atten_config, device, gen_skip_handling='1x1Conv', frozen_enc_channels=None, frozen_dec_channels=None) # Default flow moade is 'coflow', but it doesn't matter since no features are injected
 
     # Extract encoder/decoder channel tuples for injection into activity network
     enc_inject_ch = gen_atten.enc_stage_channels
@@ -126,7 +126,7 @@ def instantiate_dual_generators(config, device, flow_mode):
     act_config = dict(config)
     act_config['train_SI'] = True
     
-    gen_act = create_generator(act_config, device, gen_skip_handling='1x1Conv', gen_flow_mode=flow_mode, enc_inject_channels=enc_inject_ch, dec_inject_channels=dec_inject_ch)
+    gen_act = create_generator(act_config, device, gen_skip_handling='1x1Conv', gen_flow_mode=flow_mode, frozen_enc_channels=enc_inject_ch, frozen_dec_channels=dec_inject_ch)
     return gen_atten, gen_act
 
 
