@@ -559,7 +559,7 @@ class Generator_288(nn.Module):
         # ================================================================================
         routed_enc_features, routed_dec_features = self._setup_and_validate_frozen_features(
             frozen_encoder_features, frozen_decoder_features
-        )
+        ) # routed_enc_features: tuple or None; routed_dec_features: tuple or None
 
         # ================================================================================
         # SECTION 2: ENCODER (Contracting Path: 288 → 144 → 72 → 36 → 18 → 9)
@@ -576,22 +576,20 @@ class Generator_288(nn.Module):
             # Mix frozen encoder features at scales 144, 36, 9
             if self.enable_encoder_mixer and idx in (0, 2, 4):
                 inj_idx = {0: 0, 2: 1, 4: 2}[idx]
-                frozen_feature = routed_enc_features[inj_idx] if routed_enc_features is not None else None
+                key = ('enc_144', 'enc_36', 'enc_9')[inj_idx]
                 
-                if frozen_feature is not None and self.frozen_enc_channels[inj_idx] > 0:
+                # If frozen channels are configured for this scale, validate and concatenate
+                if self.frozen_enc_channels[inj_idx] > 0:
+                    frozen_feature = routed_enc_features[inj_idx]
                     frozen_channels_expected = self.frozen_enc_channels[inj_idx]
                     self._validate_feature_shape(frozen_feature, hidden.shape[-2], hidden.shape[-1],
                                                 frozen_channels_expected, f'encoder_mix_{inj_idx}')
-                    key = ('enc_144', 'enc_36', 'enc_9')[inj_idx]
                     hidden = torch.cat([hidden, frozen_feature], dim=1)  # Concatenate along channel dimension
-                    hidden = self.enc_mixers[key](hidden)                 # Mix back to base channels
-                elif self.frozen_enc_channels[inj_idx] > 0:
-                    # Expected frozen channels but none provided - let shape validation catch it
-                    key = ('enc_144', 'enc_36', 'enc_9')[inj_idx]
-                    self._validate_feature_shape(None, hidden.shape[-2], hidden.shape[-1],
-                                                self.frozen_enc_channels[inj_idx], f'encoder_mix_{inj_idx}')
+                
+                # Always apply mixer (acts as channel mixer even when no frozen features)
+                hidden = self.enc_mixers[key](hidden)
             
-            skips.append(hidden)
+            skips.append(hidden) # Skips are appended for every layer because in 'classic' mode we need all of them
 
         if return_features:
             encoder_feats = [skips[0], skips[2], skips[4]]  # Scales: 144, 36, 9
