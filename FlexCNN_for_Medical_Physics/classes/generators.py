@@ -606,9 +606,9 @@ class Generator_288(nn.Module):
         #       In 'classic' mode, skip connections merged at scales 9, 18, 36, 72, 144
 
         # --- Stage 1: Mix/merge at scale 9, then upsample to 18 ---
-        frozen_dec_feat = routed_dec_features[2] if routed_dec_features is not None else None
+        routed_dec_feature9 = routed_dec_features[2] if routed_dec_features is not None else None
         hidden, decoder_feat_scale9 = self._inject_and_merge_at_decoder_stage(
-            hidden, skips[4], frozen_dec_feat, inject_idx=2, mixer_key='dec_9', 
+            hidden, skips[4], routed_dec_feature9, inject_idx=2, mixer_key='dec_9', 
             return_features=return_features
         )
         hidden = self.expand_blocks[0](hidden)  # 9 → 18
@@ -620,9 +620,9 @@ class Generator_288(nn.Module):
 
         # --- Stage 3: Mix/merge at scale 36, then upsample to 72 ---
         if self.skip_handling == '1x1Conv':
-            frozen_dec_feat = routed_dec_features[1] if routed_dec_features is not None else None
+            routed_dec_feature36 = routed_dec_features[1] if routed_dec_features is not None else None
             hidden, decoder_feat_scale36 = self._inject_and_merge_at_decoder_stage(
-                hidden, skips[2], frozen_dec_feat, inject_idx=1, mixer_key='dec_36',
+                hidden, skips[2], routed_dec_feature36, inject_idx=1, mixer_key='dec_36',
                 return_features=return_features
             )
         else:
@@ -638,9 +638,11 @@ class Generator_288(nn.Module):
         hidden = self.expand_blocks[3](hidden)  # 72 → 144
 
         # --- Stage 5: Mix/merge at scale 144, then upsample to 288 ---
-        frozen_dec_feat = routed_dec_features[0] if routed_dec_features is not None else None
+        
+        # Note: a 'classic' mode skip connection is not employed here because you don't want raw skips at final output scale
+        routed_dec_feature144 = routed_dec_features[0] if routed_dec_features is not None else None
         hidden, decoder_feat_scale144 = self._inject_and_merge_at_decoder_stage(
-            hidden, skips[0], frozen_dec_feat, inject_idx=0, mixer_key='dec_144',
+            hidden, skips[0], routed_dec_feature144, inject_idx=0, mixer_key='dec_144',
             return_features=return_features
         )
         hidden = self.expand_blocks[4](hidden)  # 144 → 288
