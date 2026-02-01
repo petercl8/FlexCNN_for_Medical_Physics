@@ -7,7 +7,7 @@ from torch import nn
 #############################
 
 class Generator_288(nn.Module):
-    def __init__(self, config, gen_SI=True, gen_skip_handling: str = '1x1Conv', gen_flow_mode: str = 'coflow', enc_inject_channels=None, dec_inject_channels=None, scaling_exp=0.7):
+    def __init__(self, config, gen_SI=True, gen_skip_handling: str = '1x1Conv', gen_flow_mode: str = 'coflow', frozen_enc_channels=None, frozen_dec_channels=None, enable_encoder_mixer=True, enable_decoder_mixer=True, scaling_exp=0.7):
         '''
         Encoder-decoder generator with optional skip connections, producing 288x288 output.
         
@@ -17,9 +17,9 @@ class Generator_288(nn.Module):
             Expanding path: 9→18→36→72→144→288
         
         Skip Handling Modes:
-            - 'classic': Standard U-Net skip connections (add/concat/none). No feature injection.
+            - 'classic': Standard U-Net skip connections (add/concat/none). No feature mixing.
             - '1x1Conv': Advanced mode for frozen flow architectures. Skip connections and frozen
-                         features are concatenated, then projected via 1x1 convolutions at decoder stages.
+                         features are concatenated, then mixed via 1x1 convolutions at decoder stages.
                          Enables transfer learning from frozen backbone networks.
         
         Flow Modes (1x1Conv only):
@@ -27,9 +27,10 @@ class Generator_288(nn.Module):
                         Frozen decoder features → generator decoder stages
             - 'counterflow': Frozen features are swapped (encoder↔decoder)
         
-        Injection Tuples:
+        Frozen Feature Dimensions:
             Format: (channels_at_144, channels_at_36, channels_at_9)
-            Set to None or (0,0,0) to disable injection at specific network.
+            Specifies expected channel counts from frozen backbone at each scale.
+            Set to None or (0,0,0) to disable frozen feature mixing at specific network.
         
         Args:
             config: Dictionary with network hyperparameters and data dimensions:
@@ -50,8 +51,10 @@ class Generator_288(nn.Module):
             gen_SI: True for sinogram→image, False for image→sinogram
             gen_skip_handling: 'classic' or '1x1Conv'
             gen_flow_mode: 'coflow' or 'counterflow' (only used with 1x1Conv)
-            enc_inject_channels: Tuple (ch_144, ch_36, ch_9) for encoder injection
-            dec_inject_channels: Tuple (ch_144, ch_36, ch_9) for decoder injection
+            frozen_enc_channels: Tuple (ch_144, ch_36, ch_9) for encoder frozen feature mixing
+            frozen_dec_channels: Tuple (ch_144, ch_36, ch_9) for decoder frozen feature mixing
+            enable_encoder_mixer: Whether to create encoder mixers (default True in 1x1Conv mode)
+            enable_decoder_mixer: Whether to create decoder mixers (default True in 1x1Conv mode)
             scaling_exp: Root exponent used to soften channel growth across stages
                          (e.g., channels scale by mult**(k**scaling_exp))
         
@@ -64,8 +67,8 @@ class Generator_288(nn.Module):
             gen_trainable = Generator_288(config, gen_SI=True,
                                          gen_skip_handling='1x1Conv',
                                          gen_flow_mode='coflow',
-                                         enc_inject_channels=(64, 128, 256),
-                                         dec_inject_channels=(64, 128, 256))
+                                         frozen_enc_channels=(64, 128, 256),
+                                         frozen_dec_channels=(64, 128, 256))
             output = gen_trainable(input, frozen_encoder_features=enc_feats,
                                   frozen_decoder_features=dec_feats)
         '''
@@ -97,7 +100,7 @@ class Generator_288(nn.Module):
         self.skip_mode = direction_config['skip_mode']
 
         # ========================================================================
-        # FEATURE INJECTION CONFIGURATION (1x1Conv mode only)
+        # FEATURE MIXING CONFIGURATION (1x1Conv mode only)
         # ========================================================================
         self.skip_handling = gen_skip_handling
         if self.skip_handling not in ('classic', '1x1Conv'):
@@ -107,17 +110,17 @@ class Generator_288(nn.Module):
         if self.flow_mode not in ('coflow', 'counterflow'):
             raise ValueError('gen_flow_mode must be one of {coflow, counterflow}')
 
-        # Normalize injection tuples to (ch_144, ch_36, ch_9) format
-        self.enc_inject_channels = self._normalize_injection_tuple(enc_inject_channels)
-        self.dec_inject_channels = self._normalize_injection_tuple(dec_inject_channels)
+        # Normalize frozen feature channel tuples to (ch_144, ch_36, ch_9) format
+        self.frozen_enc_channels = self._normalize_injection_tuple(frozen_enc_channels)
+        self.frozen_dec_channels = self._normalize_injection_tuple(frozen_dec_channels)
         
-        # Validate: injection requires 1x1Conv mode
-        if self.skip_handling == 'classic' and (any(self.enc_inject_channels) or any(self.dec_inject_channels)):
-            raise ValueError('Injection requires gen_skip_handling="1x1Conv"')
+        # Validate: mixing requires 1x1Conv mode
+        if self.skip_handling == 'classic' and (any(self.frozen_enc_channels) or any(self.frozen_dec_channels)):
+            raise ValueError('Frozen feature mixing requires gen_skip_handling="1x1Conv"')
         
-        # Set flags for conditional injection logic
-        self.enable_encoder_inject = self.skip_handling == '1x1Conv' and any(self.enc_inject_channels)
-        self.enable_decoder_inject = self.skip_handling == '1x1Conv' and any(self.dec_inject_channels)
+        # Store mixer enablement flags (applies only in 1x1Conv mode)
+        self.enable_encoder_mixer = enable_encoder_mixer if self.skip_handling == '1x1Conv' else False
+        self.enable_decoder_mixer = enable_decoder_mixer if self.skip_handling == '1x1Conv' else False
         
         # ========================================================================
         # OUTPUT SCALING CONFIGURATION
@@ -155,6 +158,13 @@ class Generator_288(nn.Module):
         dim_5 = int(hidden_dim * mult ** (5 ** self.scaling_exp))
         dim_6 = int(hidden_dim * mult ** (6 ** self.scaling_exp))
 
+        # Channel references for injection (144,36,9 scales)
+        self.enc_stage_channels = (dim_0, dim_2, dim_4)
+        # Decoder stages at resolutions 9 (pre first upsample), 36 (pre 36->144 upsample), 144 (pre final upsample)
+        self.dec_stage_channels = (dim_0, dim_2, dim_4)
+        # Skip connection channels at 144, 72, 36 scales
+        self.dec_skip_channels = (dim_0, dim_2, dim_4)
+
         if input_size != 288:
             raise ValueError('This generator is configured for 288x288 inputs.')
 
@@ -173,14 +183,8 @@ class Generator_288(nn.Module):
         self.neck = self._build_neck(neck, dim_4, dim_5, dim_6, z_dim, pad, fill, norm, drop)
         self.expand_blocks = self._build_expand(exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop, self.skip_handling)
 
-        # Channel references for injection (144,36,9 scales)
-        self.enc_stage_channels = (dim_0, dim_2, dim_4)
-        # Decoder stages at resolutions 9 (pre first upsample), 36 (pre 36->144 upsample), 144 (pre final upsample)
-        self.dec_stage_channels = (dim_0, dim_2, dim_4)
-        self.dec_skip_channels = (dim_0, dim_2, dim_4)
-
         if self.skip_handling == '1x1Conv':
-            self._build_injectors(pad, norm, drop)
+            self._build_mixers()
 
     # ============================================================================
     # CONFIGURATION HELPERS
@@ -327,7 +331,7 @@ class Generator_288(nn.Module):
         Args:
             exp_kernel: Kernel size for transposed convolutions {3, 4}
             out_chan: Output channels (final image/sinogram channels)
-            dim_0: Channels at scale 144/288
+            dim_0: Channels at scale 144
             dim_1: Channels at scale 72
             dim_2: Channels at scale 36
             dim_3: Channels at scale 18
@@ -343,7 +347,7 @@ class Generator_288(nn.Module):
         """
         # Expanding Path: 9 -> 18 -> 36 -> 72 -> 144 -> 288
         if exp_kernel == 3:
-            stage_params = [
+            stage_params = [   # kernel, stride, padding, output_padding
                 (3, 2, 1, 1),  # 9->18
                 (3, 2, 1, 1),  # 18->36
                 (3, 2, 1, 1),  # 36->72
@@ -379,47 +383,42 @@ class Generator_288(nn.Module):
         blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[4][0], stage_params[4][1], stage_params[4][2], stage_params[4][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop, final_layer=True))
         return blocks
 
-    def _build_injectors(self, pad, norm, drop):
+    def _build_mixers(self):
         """
-        Build 1x1 convolutional projection layers for feature injection in 1x1Conv mode.
+        Build 1x1 convolutional projection layers for feature mixing in 1x1Conv mode.
         
-        Creates two sets of injectors:
-        - Encoder injectors: Merge frozen encoder features at scales 144, 36, 9
-        - Decoder injectors: Merge skip connections + frozen decoder features (always created)
+        Creates two sets of mixers:
+        - Encoder mixers: Mix frozen encoder features at scales 144, 36, 9 (if enabled)
+        - Decoder mixers: Mix skip connections + frozen decoder features (always enabled in 1x1Conv)
         
-        Each injector concatenates multiple feature sources (base features + skip + frozen),
-        then projects back to base channel count via 1x1 conv. Only built when skip_handling='1x1Conv'.
-        
-        Args:
-            pad: Padding mode (unused, kept for consistency)
-            norm: Normalization type (unused, kept for consistency)
-            drop: Dropout flag (unused, kept for consistency)
-        
+        Each mixer concatenates multiple feature sources (base features + optional skip + optional frozen),
+        then projects back to base channel count via 1x1 conv. Always created when enabled.
+                
         Returns:
-            None (creates self.enc_injectors and self.dec_injectors ModuleDicts)
+            None (creates self.enc_mixers and self.dec_mixers ModuleDicts)
         """
         def _make_proj(in_ch, out_ch):
             return nn.Conv2d(in_ch, out_ch, kernel_size=1, stride=1, padding=0)
 
-        # Encoder injectors (only if requested)
+        # Encoder mixers (created if enabled)
         enc_keys = ['enc_144', 'enc_36', 'enc_9']
         enc_chs = self.enc_stage_channels
-        self.enc_injectors = nn.ModuleDict()
-        for key, base_ch, inj_ch in zip(enc_keys, enc_chs, self.enc_inject_channels):
-            if inj_ch > 0:
-                self.enc_injectors[key] = _make_proj(base_ch + inj_ch, base_ch)
+        self.enc_mixers = nn.ModuleDict()
+        if self.enable_encoder_mixer:
+            for key, base_ch, frozen_ch in zip(enc_keys, enc_chs, self.frozen_enc_channels):
+                # Mixer handles base channels + any frozen channels at this scale
+                self.enc_mixers[key] = _make_proj(base_ch + frozen_ch, base_ch)
 
-        # Decoder injectors (always in 1x1Conv mode)
+        # Decoder mixers (always created in 1x1Conv mode)
         dec_keys = ['dec_144', 'dec_36', 'dec_9']
         dec_chs = self.dec_stage_channels
         skip_chs = self.dec_skip_channels
-        self.dec_injectors = nn.ModuleDict()
-        for key, base_ch, skip_ch, inj_ch in zip(dec_keys, dec_chs, skip_chs, self.dec_inject_channels):
-            total_in = base_ch
+        self.dec_mixers = nn.ModuleDict()
+        for key, base_ch, skip_ch, frozen_ch in zip(dec_keys, dec_chs, skip_chs, self.frozen_dec_channels):
+            total_in = base_ch + frozen_ch
             if self.skip_mode != 'none':
                 total_in += skip_ch
-            total_in += inj_ch
-            self.dec_injectors[key] = _make_proj(total_in, base_ch)
+            self.dec_mixers[key] = _make_proj(total_in, base_ch)
 
     # ============================================================================
     # FORWARD PASS HELPERS
@@ -436,9 +435,6 @@ class Generator_288(nn.Module):
         Returns:
             (routed_encoder_features, routed_decoder_features) as tuples or None
         """
-        # Validate: classic mode cannot accept frozen features
-        if self.skip_handling == 'classic' and (frozen_encoder_features is not None or frozen_decoder_features is not None):
-            raise ValueError('Frozen features provided but gen_skip_handling is classic.')
 
         # Route features based on flow mode
         routed_enc_features = frozen_encoder_features
@@ -451,12 +447,17 @@ class Generator_288(nn.Module):
         routed_enc_features = tuple(routed_enc_features) if routed_enc_features is not None else None
         routed_dec_features = tuple(routed_dec_features) if routed_dec_features is not None else None
 
-        # Validate: if injection is enabled, features must be provided
-        if self.skip_handling == '1x1Conv':
-            if self.enable_encoder_inject and routed_enc_features is None:
-                raise ValueError('Encoder injection requested but frozen_encoder_features not provided.')
-            if self.enable_decoder_inject and routed_dec_features is None:
-                raise ValueError('Decoder injection requested but frozen_decoder_features not provided.')
+        # Validate: frozen encoder features require encoder mixer to be enabled
+        if routed_enc_features is not None and not self.enable_encoder_mixer:
+            raise ValueError('Frozen encoder features provided but enable_encoder_mixer=False')
+        
+        # Validate: frozen decoder features require decoder mixer to be enabled
+        if routed_dec_features is not None and not self.enable_decoder_mixer:
+            raise ValueError('Frozen decoder features provided but enable_decoder_mixer=False')
+
+        # Validate: classic mode cannot accept frozen features
+        if self.skip_handling == 'classic' and (frozen_encoder_features is not None or frozen_decoder_features is not None):
+            raise ValueError('Frozen features provided but gen_skip_handling is classic.')
 
         return routed_enc_features, routed_dec_features
     
@@ -483,18 +484,18 @@ class Generator_288(nn.Module):
             raise ValueError(f'Channel mismatch for {label}: expected {expected_c}, got {tensor.shape[1]}')
     
     def _inject_and_merge_at_decoder_stage(self, hidden, skip_tensor, frozen_feature,
-                                           inject_idx, injector_key, return_features):
+                                           inject_idx, mixer_key, return_features):
         """
-        Merge skip connection and inject frozen features at a decoder stage.
+        Mix skip connection and frozen decoder features at a decoder stage.
         
         Handles both classic mode (simple merge) and 1x1Conv mode (concat + projection).
         
         Args:
             hidden: Current decoder output tensor
-            skip_tensor: Skip connection from encoder
-            frozen_feature: Frozen feature to inject (or None for classic mode)
-            inject_idx: Index into dec_inject_channels (0, 1, or 2)
-            injector_key: Key for dec_injectors ModuleDict
+            skip_tensor: Skip connection from encoder (always passed, even if not used)
+            frozen_feature: Frozen feature to mix (or None)
+            inject_idx: Index into frozen_dec_channels (0, 1, or 2)
+            mixer_key: Key for dec_mixers ModuleDict
             return_features: Whether to capture features for return
         
         Returns:
@@ -508,24 +509,24 @@ class Generator_288(nn.Module):
             if self.skip_mode != 'none':
                 parts.append(skip_tensor)
 
-            if self.dec_inject_channels[inject_idx] > 0:
-                inject_channels_expected = self.dec_inject_channels[inject_idx]
+            if self.frozen_dec_channels[inject_idx] > 0:
+                frozen_channels_expected = self.frozen_dec_channels[inject_idx]
                 self._validate_feature_shape(frozen_feature, skip_tensor.shape[-2],
-                                            skip_tensor.shape[-1], inject_channels_expected,
-                                            f'decoder_inject_{injector_key}')
+                                            skip_tensor.shape[-1], frozen_channels_expected,
+                                            f'decoder_mix_{mixer_key}')
                 parts.append(frozen_feature)
 
             # Concatenate and project back to base channels
             hidden = torch.cat(parts, dim=1)
-            hidden = self.dec_injectors[injector_key](hidden)
+            hidden = self.dec_mixers[mixer_key](hidden)
 
-            # Capture features AFTER injection
+            # Capture features AFTER mixing
             if return_features:
                 captured_feature = hidden
         else:
             # Classic mode: simple skip connection merge
             if return_features:
-                captured_feature = hidden
+                captured_feature = hidden # Capture BEFORE merging because otherwise the channel number would be 2X larger
             hidden = self._merge_classic(skip_tensor, hidden)
         
         return hidden, captured_feature
@@ -572,18 +573,23 @@ class Generator_288(nn.Module):
         for idx, block in enumerate(self.contract_blocks):
             hidden = block(hidden)
             
-            # Inject frozen encoder features at scales 144, 36, 9
-            if self.enable_encoder_inject and idx in (0, 2, 4):
+            # Mix frozen encoder features at scales 144, 36, 9
+            if self.enable_encoder_mixer and idx in (0, 2, 4):
                 inj_idx = {0: 0, 2: 1, 4: 2}[idx]
-                inject_channels_expected = self.enc_inject_channels[inj_idx]
-                frozen_feature = routed_enc_features[inj_idx]
+                frozen_feature = routed_enc_features[inj_idx] if routed_enc_features is not None else None
                 
-                self._validate_feature_shape(frozen_feature, hidden.shape[-2], hidden.shape[-1],
-                                            inject_channels_expected, f'encoder_inject_{inj_idx}')
-                
-                key = ('enc_144', 'enc_36', 'enc_9')[inj_idx]
-                hidden = torch.cat([hidden, frozen_feature], dim=1)  # Concatenate along channel dimension
-                hidden = self.enc_injectors[key](hidden)              # Project back to base channels
+                if frozen_feature is not None and self.frozen_enc_channels[inj_idx] > 0:
+                    frozen_channels_expected = self.frozen_enc_channels[inj_idx]
+                    self._validate_feature_shape(frozen_feature, hidden.shape[-2], hidden.shape[-1],
+                                                frozen_channels_expected, f'encoder_mix_{inj_idx}')
+                    key = ('enc_144', 'enc_36', 'enc_9')[inj_idx]
+                    hidden = torch.cat([hidden, frozen_feature], dim=1)  # Concatenate along channel dimension
+                    hidden = self.enc_mixers[key](hidden)                 # Mix back to base channels
+                elif self.frozen_enc_channels[inj_idx] > 0:
+                    # Expected frozen channels but none provided - let shape validation catch it
+                    key = ('enc_144', 'enc_36', 'enc_9')[inj_idx]
+                    self._validate_feature_shape(None, hidden.shape[-2], hidden.shape[-1],
+                                                self.frozen_enc_channels[inj_idx], f'encoder_mix_{inj_idx}')
             
             skips.append(hidden)
 
@@ -601,10 +607,10 @@ class Generator_288(nn.Module):
         # Note: In '1x1Conv' mode, frozen features are injected at scales 9, 72, 144
         #       In 'classic' mode, skip connections merged at scales 9, 18, 36, 72, 144
 
-        # --- Stage 1: Injection/merge at scale 9, then upsample to 18 ---
+        # --- Stage 1: Mix/merge at scale 9, then upsample to 18 ---
         frozen_dec_feat = routed_dec_features[2] if routed_dec_features is not None else None
         hidden, decoder_feat_scale9 = self._inject_and_merge_at_decoder_stage(
-            hidden, skips[4], frozen_dec_feat, inject_idx=2, injector_key='dec_9', 
+            hidden, skips[4], frozen_dec_feat, inject_idx=2, mixer_key='dec_9', 
             return_features=return_features
         )
         hidden = self.expand_blocks[0](hidden)  # 9 → 18
@@ -614,11 +620,11 @@ class Generator_288(nn.Module):
             hidden = self._merge_classic(skips[3], hidden)
         hidden = self.expand_blocks[1](hidden)  # 18 → 36
 
-        # --- Stage 3: Injection/merge at scale 36, then upsample to 72 ---
+        # --- Stage 3: Mix/merge at scale 36, then upsample to 72 ---
         if self.skip_handling == '1x1Conv':
             frozen_dec_feat = routed_dec_features[1] if routed_dec_features is not None else None
             hidden, decoder_feat_scale36 = self._inject_and_merge_at_decoder_stage(
-                hidden, skips[2], frozen_dec_feat, inject_idx=1, injector_key='dec_36',
+                hidden, skips[2], frozen_dec_feat, inject_idx=1, mixer_key='dec_36',
                 return_features=return_features
             )
         else:
@@ -633,10 +639,10 @@ class Generator_288(nn.Module):
             hidden = self._merge_classic(skips[1], hidden)
         hidden = self.expand_blocks[3](hidden)  # 72 → 144
 
-        # --- Stage 5: Injection/merge at scale 144, then upsample to 288 ---
+        # --- Stage 5: Mix/merge at scale 144, then upsample to 288 ---
         frozen_dec_feat = routed_dec_features[0] if routed_dec_features is not None else None
         hidden, decoder_feat_scale144 = self._inject_and_merge_at_decoder_stage(
-            hidden, skips[0], frozen_dec_feat, inject_idx=0, injector_key='dec_144',
+            hidden, skips[0], frozen_dec_feat, inject_idx=0, mixer_key='dec_144',
             return_features=return_features
         )
         hidden = self.expand_blocks[4](hidden)  # 144 → 288
