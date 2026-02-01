@@ -18,14 +18,13 @@ class Generator_288(nn.Module):
         
         Skip Handling Modes:
             - 'classic': Standard U-Net skip connections (add/concat/none). No feature injection.
-                         ~95% of use cases. Default mode for standard training.
             - '1x1Conv': Advanced mode for frozen flow architectures. Skip connections and frozen
                          features are concatenated, then projected via 1x1 convolutions at decoder stages.
                          Enables transfer learning from frozen backbone networks.
         
         Flow Modes (1x1Conv only):
-            - 'coflow': Frozen encoder features → decoder encoder stages,
-                        Frozen decoder features → decoder decoder stages
+            - 'coflow': Frozen encoder features → generator encoder stages,
+                        Frozen decoder features → generator decoder stages
             - 'counterflow': Frozen features are swapped (encoder↔decoder)
         
         Injection Tuples:
@@ -53,10 +52,12 @@ class Generator_288(nn.Module):
             gen_flow_mode: 'coflow' or 'counterflow' (only used with 1x1Conv)
             enc_inject_channels: Tuple (ch_144, ch_36, ch_9) for encoder injection
             dec_inject_channels: Tuple (ch_144, ch_36, ch_9) for decoder injection
+            scaling_exp: Root exponent used to soften channel growth across stages
+                         (e.g., channels scale by mult**(k**scaling_exp))
         
         Example Usage:
             # Classic U-Net:
-            gen = Generator_288(config, gen_SI=True)
+            gen = Generator_288(config, gen_SI=True, gen_skip_handling='classic')
             output = gen(input)
             
             # Frozen flow (receiving features from frozen backbone):
