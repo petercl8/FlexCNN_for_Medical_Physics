@@ -5,10 +5,8 @@ from skimage.transform import radon, resize
 import os
 import sys
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from functions.helper.display_images import show_multiple_matched_tensors, show_multiple_unmatched_tensors
-from classes.dataset_resizing import (
+from ..helper.display_images import show_multiple_matched_tensors, show_multiple_unmatched_tensors
+from ...classes.dataset_resizing import (
     bilinear_resize_sino,
     crop_pad_sino,
 )
