@@ -64,3 +64,5 @@ def run_pipeline(
         raise SystemExit
     else:
         raise ValueError(f"Unknown run_mode '{run_mode}'.")
+    
+    return
