@@ -4,6 +4,7 @@ from ray import air, tune
 from ray.tune import CLIReporter, JupyterNotebookReporter
 from ray.tune.schedulers import ASHAScheduler, FIFOScheduler
 from ray.tune.search.hyperopt import HyperOptSearch
+from ray.tune.search.optuna import OptunaSearch
 from ray.tune.result_grid import ResultGrid
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
@@ -27,7 +28,8 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
     tune_opts : dict
         Tuning-specific options with keys:
         'tune_metric', 'tune_minutes', 'tune_exp_name', 'tune_scheduler',
-        'tune_restore', 'tune_max_t', 'tune_grace_period', 'num_CPUs', 'num_GPUs'.
+        'tune_restore', 'tune_max_t', 'tune_grace_period', 'num_CPUs', 'num_GPUs',
+        'tune_search_alg' ('optuna' or 'hyperopt', default='optuna').
     base_dirs : dict
         Base directory paths (project_dirPath, etc.).
 
@@ -56,6 +58,7 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
     num_GPUs = tune_opts.get('num_GPUs')
     cpus_per_trial = tune_opts.get('cpus_per_trial')
     gpus_per_trial = tune_opts.get('gpus_per_trial')
+    tune_search_alg = tune_opts.get('tune_search_alg', 'optuna')  # 'optuna' or 'hyperopt'
 
     os.environ.pop("AIR_VERBOSITY", None)
 
@@ -147,14 +150,18 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
             stop={'training_iteration': tune_max_t},  # When using the FIFO scheduler, we must explicitly specify the stopping criterian.
         )
 
-    ## HyperOpt Search Algorithm ##
+    ## Search Algorithm Selection ##
     # If the user has requested a fixed config for debugging (no tunable params), disable the searcher
     use_fixed_config = tune_opts.get('tune_force_fixed_config', tune_opts.get('use_fixed_config', False))
     if use_fixed_config:
         search_alg = None
     else:
-        search_alg = HyperOptSearch(metric=optim_metric, mode=min_max)  # It's also possible to pass the search space directly to the search algorithm here.
-                                                                    # But then the search space needs to be defined in terms of the specific search algorithm methods, rather than letting RayTune translate.
+        if tune_search_alg == 'hyperopt':
+            search_alg = HyperOptSearch(metric=optim_metric, mode=min_max)
+        elif tune_search_alg == 'optuna':
+            search_alg = OptunaSearch(metric=optim_metric, mode=min_max)
+        else:
+            raise ValueError(f"tune_search_alg must be 'optuna' or 'hyperopt', got '{tune_search_alg}'")
 
     ## Unified trainable ##
     # Select appropriate trainable function based on network_type
