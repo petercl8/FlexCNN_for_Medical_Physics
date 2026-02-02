@@ -21,7 +21,8 @@ def sample_trim_resize(
     pool_w_factor=None,
     seed=42,
     log_file='log-SampleTrimResize.txt',
-    skip_if_exists_vm=False
+    skip_if_exists_vm=False,
+    dry_run=False
 ):
     """
     Sample, optionally remove slices, center-crop, and apply pooling or resize, then copy a numpy dataset to Google Drive
@@ -49,6 +50,7 @@ def sample_trim_resize(
         seed (int, default=42): Random seed for reproducible slice removal and sampling.
         log_file (str, default='log-SampleTrimResize.txt'): Name of the log file written in the current working directory.
         skip_if_exists_vm (bool, default=False): If True, processing is skipped if the VM output file already exists.
+        dry_run (bool, default=False): If True, perform parameter validation and print output shape without creating files.
 
     Returns:
         None. Writes the processed dataset to:
@@ -140,6 +142,24 @@ def sample_trim_resize(
     # --- Device ---
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+    print(f"\n📊 Final dataset shape: ({n_final}, {channels}, {out_h}, {out_w})")
+    
+    # --- Dry run: show parameters and exit ---
+    if dry_run:
+        print(f"\n🔍 DRY RUN MODE - No files will be created")
+        print(f"   Input:  {input_path}")
+        print(f"   Output: {drive_output_path}")
+        print(f"   Original shape: ({n_samples}, {channels}, {height}, {width})")
+        print(f"   Samples removed: {remove_n}")
+        print(f"   Sample division: {sample_division}")
+        print(f"   Crop (H×W): {crop_h_eff}×{crop_w_eff}")
+        if apply_pooling:
+            print(f"   Pooling: {pool_h_factor or 1}×{pool_w_factor or 1}")
+            print(f"   Padding (H×W): {pad_h}×{pad_w}")
+        elif apply_resize:
+            print(f"   Resize to: {out_h}×{out_w}")
+        print(f"   Final shape: ({n_final}, {channels}, {out_h}, {out_w})")
+        return
 
     # --- Operation selection flags ---
     apply_pooling = pool_h_factor is not None or pool_w_factor is not None
