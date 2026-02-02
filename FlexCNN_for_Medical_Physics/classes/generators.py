@@ -239,9 +239,9 @@ class Generator_288(nn.Module):
                 'drop': config['IS_dropout'],
                 'final_activation': config['IS_gen_final_activ'],
                 'normalize': config['IS_normalize'],
-                'skip_mode': config.get('IS_skip_mode', 'none'),
-                'fixed_scale': config.get('IS_fixedScale', 1.0),
-                'learned_scale_init': config.get('IS_learnedScale_init'),
+                'skip_mode': config['IS_skip_mode'],
+                'fixed_scale': config['IS_fixedScale'],
+                'learned_scale_init': config['IS_learnedScale_init'],
             }
     
     def _normalize_injection_tuple(self, cfg):
@@ -424,7 +424,7 @@ class Generator_288(nn.Module):
     # FORWARD PASS HELPERS
     # ============================================================================
     
-    def _setup_and_validate_frozen_features(self, frozen_encoder_features, frozen_decoder_features):
+    def _validate_and_route_frozen_features(self, frozen_encoder_features, frozen_decoder_features):
         """
         Validate and route frozen features based on skip_handling and flow_mode.
         
@@ -557,7 +557,7 @@ class Generator_288(nn.Module):
         # ================================================================================
         # SECTION 1: SETUP AND VALIDATION
         # ================================================================================
-        routed_enc_features, routed_dec_features = self._setup_and_validate_frozen_features(
+        routed_enc_features, routed_dec_features = self._validate_and_route_frozen_features(
             frozen_encoder_features, frozen_decoder_features
         ) # routed_enc_features: tuple or None; routed_dec_features: tuple or None
 
@@ -910,9 +910,9 @@ class Generator_320(nn.Module):
                 'drop': config['IS_dropout'],
                 'final_activation': config['IS_gen_final_activ'],
                 'normalize': config['IS_normalize'],
-                'skip_mode': config.get('IS_skip_mode', 'none'),
-                'fixed_scale': config.get('IS_fixedScale', 1.0),
-                'learned_scale_init': config.get('IS_learnedScale_init'),
+                'skip_mode': config['IS_skip_mode'],
+                'fixed_scale': config['IS_fixedScale'],
+                'learned_scale_init': config['IS_learnedScale_init'],
             }
     
     def _normalize_injection_tuple(self, cfg):
@@ -1100,7 +1100,7 @@ class Generator_320(nn.Module):
     # FORWARD PASS HELPERS
     # ============================================================================
     
-    def _setup_and_validate_frozen_features(self, frozen_encoder_features, frozen_decoder_features):
+    def _validate_and_route_frozen_features(self, frozen_encoder_features, frozen_decoder_features):
         """
         Validate and route frozen features based on skip_handling and flow_mode.
         
@@ -1233,7 +1233,7 @@ class Generator_320(nn.Module):
         # ================================================================================
         # SECTION 1: SETUP AND VALIDATION
         # ================================================================================
-        routed_enc_features, routed_dec_features = self._setup_and_validate_frozen_features(
+        routed_enc_features, routed_dec_features = self._validate_and_route_frozen_features(
             frozen_encoder_features, frozen_decoder_features
         ) # routed_enc_features: tuple or None; routed_dec_features: tuple or None
 
@@ -1314,6 +1314,8 @@ class Generator_320(nn.Module):
         hidden = self.expand_blocks[3](hidden)  # 80 → 160
 
         # --- Stage 5: Mix/merge at scale 160, then upsample to 320 ---
+
+         # Note: a 'classic' mode skip connection is not employed here because you don't want raw skips at final output scale
         routed_dec_feature160 = routed_dec_features[0] if routed_dec_features is not None else None
         hidden, decoder_feat_scale160 = self._inject_and_merge_at_decoder_stage(
             hidden, skips[0], routed_dec_feature160, inject_idx=0, mixer_key='dec_160',
@@ -1769,7 +1771,7 @@ class Generator_180(nn.Module):
     # FORWARD PASS HELPERS
     # ============================================================================
     
-    def _setup_and_validate_frozen_features(self, frozen_encoder_features, frozen_decoder_features):
+    def _validate_and_route_frozen_features(self, frozen_encoder_features, frozen_decoder_features):
         """
         Validate and route frozen features based on skip_handling and flow_mode.
         
@@ -1902,7 +1904,7 @@ class Generator_180(nn.Module):
         # ================================================================================
         # SECTION 1: SETUP AND VALIDATION
         # ================================================================================
-        routed_enc_features, routed_dec_features = self._setup_and_validate_frozen_features(
+        routed_enc_features, routed_dec_features = self._validate_and_route_frozen_features(
             frozen_encoder_features, frozen_decoder_features
         ) # routed_enc_features: tuple or None; routed_dec_features: tuple or None
 
