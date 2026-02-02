@@ -144,6 +144,10 @@ def sample_trim_resize(
     print(f"Using device: {device}")
     print(f"\n📊 Final dataset shape: ({n_final}, {channels}, {out_h}, {out_w})")
     
+    # --- Operation selection flags ---
+    apply_pooling = pool_h_factor is not None or pool_w_factor is not None
+    apply_resize = new_height is not None or new_width is not None
+    
     # --- Dry run: show parameters and exit ---
     if dry_run:
         print(f"\n🔍 DRY RUN MODE - No files will be created")
@@ -160,10 +164,6 @@ def sample_trim_resize(
             print(f"   Resize to: {out_h}×{out_w}")
         print(f"   Final shape: ({n_final}, {channels}, {out_h}, {out_w})")
         return
-
-    # --- Operation selection flags ---
-    apply_pooling = pool_h_factor is not None or pool_w_factor is not None
-    apply_resize = new_height is not None or new_width is not None
 
     # --- Define resize_slice function ---
     if apply_pooling:
