@@ -39,7 +39,8 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
     # Force clean Ray restart to pick up new resource config
     try:
         ray.shutdown()
-    except:
+    except RuntimeError:
+        # Ray was not initialized; proceed without error
         pass
 
 

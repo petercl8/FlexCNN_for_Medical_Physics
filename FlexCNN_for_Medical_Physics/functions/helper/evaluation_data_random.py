@@ -2,12 +2,13 @@
 Helpers for evaluation data loading during tuning with fresh random batches.
 
 Supports two evaluation modes:
-- 'val': report on fresh validation batches (no caching, no augmentation)
-- 'qa': report on fresh QA phantom batches (no caching, with augmentation for variety)
+- 'val': report on fresh validation batches (dataset cached, no augmentation)
+- 'qa': report on fresh QA phantom batches (dataset cached, with augmentation for variety)
 
-Each evaluation call loads new random samples, providing natural regularization
-against overfitting to a fixed batch. QA batches are augmented to exploit limited
-phantom data; validation batches use the large validation set as-is.
+Each evaluation call samples new random samples from cached datasets, providing natural
+regularization against overfitting to a fixed batch. Datasets are cached per (paths, config)
+to avoid expensive re-instantiation on every evaluation. QA batches are augmented to
+exploit limited phantom data; validation batches use the large validation set as-is.
 """
 
 import numpy as np
@@ -16,6 +17,11 @@ from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, custom_metric
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric
 from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_simple_phantom
+
+
+# Module-level caches: persistent for the lifetime of the Ray worker process
+val_dataset = None
+qa_dataset = None
 
 
 def load_validation_batch(paths, config, settings):
@@ -45,22 +51,25 @@ def load_validation_batch(paths, config, settings):
     
     tune_eval_batch_size = settings.get('tune_eval_batch_size', 32)
     
-    # Load full validation set (memory-mapped for efficiency)
-    val_dataset = NpArrayDataSet(
-        act_image_path=paths['tune_val_act_image_path'],
-        act_sino_path=paths['tune_val_act_sino_path'],
-        config=config,
-        settings=settings,
-        augment=(None, False),  # No augmentation for validation
-        offset=0,
-        num_examples=-1,  # Load entire validation set
-        sample_division=1,
-        device='cpu',  # Load to CPU; caller handles device placement
-        act_recon1_path=None,
-        act_recon2_path=None,
-        atten_image_path=None,
-        atten_sino_path=None
-    )
+    global val_dataset
+    
+    # Load validation dataset on first call; reuse on subsequent calls
+    if val_dataset is None:
+        val_dataset = NpArrayDataSet(
+            act_image_path=paths['tune_val_act_image_path'],
+            act_sino_path=paths['tune_val_act_sino_path'],
+            config=config,
+            settings=settings,
+            augment=(None, False),  # No augmentation for validation
+            offset=0,
+            num_examples=-1,  # Load entire validation set
+            sample_division=1,
+            device='cpu',  # Load to CPU; caller handles device placement
+            act_recon1_path=None,
+            act_recon2_path=None,
+            atten_image_path=None,
+            atten_sino_path=None
+        )
     
     # Sample a fresh random batch (no fixed seed; differs each call)
     # Allow replacement when requested batch size exceeds dataset size
@@ -120,24 +129,25 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
     
     tune_eval_batch_size = settings.get('tune_eval_batch_size', 32)
     
-    # Load full QA set
-    # Use training-time augmentations for QA (same pipeline)
-    # Pass hotMask via recon1_path and hotBackgroundMask via recon2_path so augmentations apply consistently
-    qa_dataset = NpArrayDataSet(
-        act_image_path=paths['tune_qa_act_image_path'],
-        act_sino_path=paths['tune_qa_act_sino_path'],
-        config=config,
-        settings=settings,
-        augment=augment,  # Enable augmentation for QA using training pipeline setting
-        offset=0,
-        num_examples=-1,  # Load entire QA set
-        sample_division=1,
-        device='cpu',  # Load to CPU; caller handles device placement
-        act_recon1_path=paths['tune_qa_hotMask_path'],      # Hot mask via recon1_path
-        act_recon2_path=paths['tune_qa_hotBackgroundMask_path'],  # Hot background via recon2_path
-        atten_image_path=None, 
-        atten_sino_path=None,
-    )
+    global qa_dataset
+    
+    # Load QA dataset on first call; reuse on subsequent calls
+    if qa_dataset is None:
+        qa_dataset = NpArrayDataSet(
+            act_image_path=paths['tune_qa_act_image_path'],
+            act_sino_path=paths['tune_qa_act_sino_path'],
+            config=config,
+            settings=settings,
+            augment=augment,  # Enable augmentation for QA using training pipeline setting
+            offset=0,
+            num_examples=-1,  # Load entire QA set
+            sample_division=1,
+            device='cpu',  # Load to CPU; caller handles device placement
+            act_recon1_path=paths['tune_qa_hotMask_path'],      # Hot mask via recon1_path
+            act_recon2_path=paths['tune_qa_hotBackgroundMask_path'],  # Hot background via recon2_path
+            atten_image_path=None, 
+            atten_sino_path=None,
+        )
     
     # Sample a fresh random batch (no fixed seed; differs each call)
     indices = np.random.choice(len(qa_dataset), size=tune_eval_batch_size, replace=True) # Allow replacement due to small QA set
