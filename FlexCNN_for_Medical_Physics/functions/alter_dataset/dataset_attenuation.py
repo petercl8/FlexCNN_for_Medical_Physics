@@ -117,7 +117,7 @@ def visualize_sinogram_alignment(
     '''
 
     # Load Raw Data
-    activity_sinos = np.load(paths['train_sino_path'], mmap_mode='r')
+    activity_sinos = np.load(paths['train_act_sino_path'], mmap_mode='r')
     atten_images = np.load(paths['train_atten_image_path'], mmap_mode='r')
 
     # Load Scales
