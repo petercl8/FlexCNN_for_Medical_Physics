@@ -37,7 +37,7 @@ config_ACT_SI = {
   "gen_image_channels": 1,
   "gen_image_size": 180,
   "gen_sino_channels": 3, #3
-  "gen_sino_size": 320, # default: 180 (288, 320)
+  "gen_sino_size": 288, # default: 180 (288, 320)
   "sup_base_criterion": nn.MSELoss(),
   "SI_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
   "SI_alpha_min": -1, # -1
