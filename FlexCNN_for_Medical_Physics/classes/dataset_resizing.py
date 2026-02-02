@@ -1,6 +1,70 @@
 import torch
+import numpy as np
 from torchvision import transforms
 import torch.nn.functional as F
+
+
+def vertical_crop_pad_sino(act_sino_tensor=None, atten_sino_tensor=None, target_height=None):
+    """
+    Vertically crop/pad sinograms to target_height, optimized for numpy domain (before torch conversion).
+    Processes stacked sinograms together when both are present for efficiency.
+    
+    Args:
+        act_sino_tensor: Activity sinogram as numpy array [H, W] or None
+        atten_sino_tensor: Attenuation sinogram as numpy array [H, W] or None
+        target_height: Desired vertical height. If None or matches current height, returns unchanged.
+    
+    Returns:
+        Tuple (act_sino_resized, atten_sino_resized) with None values preserved
+    """
+    # Early return if no target specified
+    if target_height is None:
+        return (act_sino_tensor, atten_sino_tensor)
+    
+    # Determine current height
+    if act_sino_tensor is not None:
+        current_height = act_sino_tensor.shape[0]
+    elif atten_sino_tensor is not None:
+        current_height = atten_sino_tensor.shape[0]
+    else:
+        return (None, None)
+    
+    # Early return if already at target height
+    if target_height == current_height:
+        return (act_sino_tensor, atten_sino_tensor)
+    
+    def _process_single(sino_array):
+        """Helper to apply vertical crop/pad to a single sinogram."""
+        H, W = sino_array.shape
+        if H > target_height:
+            # Center crop
+            top = (H - target_height) // 2
+            return sino_array[top:top + target_height, :]
+        elif H < target_height:
+            # Center pad with replication
+            pad_total = target_height - H
+            pad_top = pad_total // 2
+            pad_bottom = pad_total - pad_top
+            # Replicate edges for padding
+            top_pad = np.repeat(sino_array[0:1, :], pad_top, axis=0)
+            bottom_pad = np.repeat(sino_array[-1:, :], pad_bottom, axis=0)
+            return np.vstack([top_pad, sino_array, bottom_pad])
+        else:
+            return sino_array
+    
+    # Process sinograms
+    if act_sino_tensor is not None and atten_sino_tensor is not None:
+        # Stack for batch processing
+        stacked = np.stack([act_sino_tensor, atten_sino_tensor], axis=0)  # [2, H, W]
+        # Apply crop/pad to each
+        processed_stacked = np.array([_process_single(stacked[0]), _process_single(stacked[1])])
+        return (processed_stacked[0], processed_stacked[1])
+    elif act_sino_tensor is not None:
+        return (_process_single(act_sino_tensor), None)
+    elif atten_sino_tensor is not None:
+        return (None, _process_single(atten_sino_tensor))
+    else:
+        return (None, None)
 
 
 def bilinear_resize_sino(sino_multChannel, atten_sino_multChannel, sino_size):
@@ -29,99 +93,110 @@ def crop_pad_sino(
     pad_type='sinogram'
 ):
     """
-    Crop vertically, pad horizontally, then perform horizontal average pooling
-    to reduce angular resolution, producing a sinogram of desired target_width.
-    Applies identical transforms to both sino and atten_sino.
+    Crop vertically, pool horizontally (if pool_size > 1), then pad horizontally to target_width.
+    Applies identical transforms to both sino and atten_sino with efficient stacked processing when both present.
+    
+    Operation sequence:
+    1) Vertical crop/pad to vert_size (if needed)
+    2) Horizontal pooling (only if pool_size > 1)
+    3) Horizontal padding to target_width
 
     Args:
         sino_multChannel (torch.Tensor): Input tensor of shape [C, H, W] or None
         atten_sino_multChannel (torch.Tensor): Attenuation sinogram tensor of shape [C, H, W] or None
         vert_size (int): Desired vertical size after cropping/padding
-        target_width (int): Desired horizontal size after pooling
-        pool_size (int): Number of adjacent angular bins to average (horizontal pooling)
+        target_width (int): Desired horizontal size after pooling and padding
+        pool_size (int): Number of adjacent angular bins to average (horizontal pooling). If 1, skips pooling.
         pad_type (str): 'sinogram' (mirror vertical axis) or 'zeros' for padding
 
     Returns:
         Tuple (sino_multChannel, atten_sino_multChannel)
     """
 
-    def _process_single_sino(sino_tensor):
-        """Helper to apply all transforms to a single sinogram tensor."""
-        C, H, W = sino_tensor.shape
-
-        # Vertical crop/pad to vert_size
-        if H > vert_size:
-            top = (H - vert_size) // 2
-            sino_tensor = sino_tensor[:, top:top + vert_size, :]
-        elif H < vert_size:
-            pad_total = vert_size - H
-            pad_top = pad_total // 2
-            pad_bottom = pad_total - pad_top
-            sino_tensor = F.pad(sino_tensor, (0, 0, pad_top, pad_bottom))
-
-        # Pre-pad horizontally to reach target_width * pool_size
-        pre_pool_width = target_width * pool_size
-        W_curr = sino_tensor.shape[2]
-        pad_needed = max(0, pre_pool_width - W_curr)
-
-        left_pad = _build_pad(sino_tensor, pad_needed // 2, side='left', pad_type=pad_type)
-        right_pad = _build_pad(sino_tensor, pad_needed - pad_needed // 2, side='right', pad_type=pad_type)
-
-        if left_pad is not None and right_pad is not None:
-            sino_tensor = torch.cat([left_pad, sino_tensor, right_pad], dim=2)
-        elif left_pad is not None:
-            sino_tensor = torch.cat([left_pad, sino_tensor], dim=2)
-        elif right_pad is not None:
-            sino_tensor = torch.cat([sino_tensor, right_pad], dim=2)
-
-        # Average-pool adjacent bins horizontally
-        C, H, W = sino_tensor.shape
-        assert W % pool_size == 0, "Pre-padded width must be divisible by pool_size"
-        sino_tensor = sino_tensor.view(C, H, W // pool_size, pool_size).mean(dim=3)
-
-        # Final horizontal adjust to target_width
-        curr_w = sino_tensor.shape[2]
-        if curr_w > target_width:
-            start = (curr_w - target_width) // 2
-            sino_tensor = sino_tensor[:, :, start:start + target_width]
-        elif curr_w < target_width:
-            pad_total = target_width - curr_w
-            left_pad = _build_pad(sino_tensor, pad_total // 2, side='left', pad_type=pad_type)
-            right_pad = _build_pad(sino_tensor, pad_total - pad_total // 2, side='right', pad_type=pad_type)
-            if left_pad is not None and right_pad is not None:
-                sino_tensor = torch.cat([left_pad, sino_tensor, right_pad], dim=2)
-            elif left_pad is not None:
-                sino_tensor = torch.cat([left_pad, sino_tensor], dim=2)
-            elif right_pad is not None:
-                sino_tensor = torch.cat([sino_tensor, right_pad], dim=2)
-
-        return sino_tensor
-
-    def _build_pad(source, pad_width, side, pad_type):
-        if pad_width <= 0:
-            return None
-        if pad_type == 'zeros':
-            return torch.zeros(
-                (source.shape[0], source.shape[1], pad_width),
-                device=source.device,
-                dtype=source.dtype
-            )
-        # Sinogram-style padding: take edge columns and flip vertically
-        if side == 'left':
-            tile = source[:, :, -pad_width:]
-        else:  # right
-            tile = source[:, :, :pad_width]
-        tile = torch.flip(tile, dims=[1])
-        return tile
-
-    # Process activity sinogram if provided
-    if sino_multChannel is not None:
-        sino_multChannel = _process_single_sino(sino_multChannel)
-
-    # Process attenuation sinogram if provided
-    if atten_sino_multChannel is not None:
-        atten_sino_multChannel = _process_single_sino(atten_sino_multChannel)
-
+    def _process_sinogram_stack(sino_stack):
+        """
+        Helper to apply all transforms to sinogram stack [B, C, H, W] where B=1 or B=2.
+        Returns processed stack with same batch dimension.
+        """
+        B, C, H, W = sino_stack.shape
+        
+        # Step 1: Vertical crop/pad to vert_size
+        if H != vert_size:
+            if H > vert_size:
+                # Center crop
+                top = (H - vert_size) // 2
+                sino_stack = sino_stack[:, :, top:top + vert_size, :]
+            else:
+                # Center pad
+                pad_total = vert_size - H
+                pad_top = pad_total // 2
+                pad_bottom = pad_total - pad_top
+                sino_stack = F.pad(sino_stack, (0, 0, pad_top, pad_bottom))
+        
+        # Step 2: Horizontal pooling (conditional on pool_size > 1)
+        if pool_size > 1:
+            # Pad horizontally to make width divisible by pool_size
+            W_curr = sino_stack.shape[3]
+            pad_needed = (pool_size - (W_curr % pool_size)) % pool_size
+            
+            if pad_needed > 0:
+                # Apply replication padding on right side
+                sino_stack = F.pad(sino_stack, (0, pad_needed), mode='replicate')
+            
+            # Apply horizontal-only average pooling (no vertical pooling)
+            B, C, H, W = sino_stack.shape
+            assert W % pool_size == 0, f"Width {W} must be divisible by pool_size {pool_size}"
+            sino_stack = F.avg_pool2d(sino_stack, kernel_size=(1, pool_size), stride=(1, pool_size))
+        
+        # Step 3: Horizontal padding to target_width
+        curr_w = sino_stack.shape[3]
+        if curr_w != target_width:
+            if curr_w > target_width:
+                raise ValueError(f"Width after pooling ({curr_w}) exceeds target_width ({target_width}). Check pool_size and target_width parameters.")
+            else:
+                # Pad to target_width
+                pad_total = target_width - curr_w
+                pad_left = pad_total // 2
+                pad_right = pad_total - pad_left
+                
+                # Build padding based on pad_type
+                if pad_type == 'zeros':
+                    # Zero padding
+                    sino_stack = F.pad(sino_stack, (pad_left, pad_right), mode='constant', value=0)
+                else:
+                    # Sinogram-style padding: take columns from opposite side and flip vertically
+                    # Left padding: take rightmost pad_left columns, flip vertically
+                    left_pad = sino_stack[:, :, :, -pad_left:].flip(dims=[2])  # [B, C, H, pad_left]
+                    
+                    # Right padding: take leftmost pad_right columns, flip vertically
+                    right_pad = sino_stack[:, :, :, :pad_right].flip(dims=[2])  # [B, C, H, pad_right]
+                    
+                    # Concatenate: left_pad | sino_stack | right_pad
+                    sino_stack = torch.cat([left_pad, sino_stack, right_pad], dim=3)
+        
+        return sino_stack
+    
+    # Determine stacking requirement
+    has_act = sino_multChannel is not None
+    has_atten = atten_sino_multChannel is not None
+    
+    if has_act and has_atten:
+        # Stack both sinograms for efficient batch processing
+        stacked = torch.stack([sino_multChannel, atten_sino_multChannel], dim=0)  # [2, C, H, W]
+        processed_stack = _process_sinogram_stack(stacked)  # [2, C, H, W]
+        sino_multChannel, atten_sino_multChannel = torch.unbind(processed_stack, dim=0)
+    elif has_act:
+        # Process activity only
+        stacked = sino_multChannel.unsqueeze(0)  # [1, C, H, W]
+        processed_stack = _process_sinogram_stack(stacked)  # [1, C, H, W]
+        sino_multChannel = processed_stack.squeeze(0)  # [C, H, W]
+    elif has_atten:
+        # Process attenuation only
+        stacked = atten_sino_multChannel.unsqueeze(0)  # [1, C, H, W]
+        processed_stack = _process_sinogram_stack(stacked)  # [1, C, H, W]
+        atten_sino_multChannel = processed_stack.squeeze(0)  # [C, H, W]
+    # else: both None, return as-is
+    
     return sino_multChannel, atten_sino_multChannel
 
 
