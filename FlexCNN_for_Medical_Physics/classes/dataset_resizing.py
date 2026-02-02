@@ -141,7 +141,7 @@ def crop_pad_sino(
             
             if pad_needed > 0:
                 # Apply replication padding on right side
-                sino_stack = F.pad(sino_stack, (0, pad_needed), mode='replicate')
+                sino_stack = F.pad(sino_stack, (0, pad_needed, 0, 0), mode='replicate')
             
             # Apply horizontal-only average pooling (no vertical pooling)
             B, C, H, W = sino_stack.shape
@@ -162,7 +162,7 @@ def crop_pad_sino(
                 # Build padding based on pad_type
                 if pad_type == 'zeros':
                     # Zero padding
-                    sino_stack = F.pad(sino_stack, (pad_left, pad_right), mode='constant', value=0)
+                    sino_stack = F.pad(sino_stack, (pad_left, pad_right, 0, 0), mode='constant', value=0)
                 else:
                     # Sinogram-style padding: take columns from opposite side and flip vertically
                     # Left padding: take rightmost pad_left columns, flip vertically
