@@ -298,7 +298,7 @@ def visualize_train(batch_data, mean_gen_loss, mean_CNN_MSE, mean_CNN_SSIM,
     if input_.shape[1] == 1:
         show_single_unmatched_tensor(input_[0:2], fig_size=5)
     else:
-        show_single_unmatched_tensor(input_[0:3], fig_size=10)
+        show_single_unmatched_tensor(input_[0:2], fig_size=20)
     print(input_.shape)
     print('Target/Output:')
     show_multiple_matched_tensors(target[0:8], CNN_output[0:8])
