@@ -167,7 +167,7 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
     trainable_with_resources = tune.with_resources(trainable_param, {"CPU": cpus_per_trial, "GPU": gpus_per_trial})
 
     ## If starting from scratch ##
-    if tune_restore == False:
+    if not tune_restore:
 
         # When debugging with a fixed config, run a single sample and don't use a searcher
         num_samples = 1 if use_fixed_config else -1
