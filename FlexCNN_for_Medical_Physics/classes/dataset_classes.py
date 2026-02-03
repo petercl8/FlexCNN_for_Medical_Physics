@@ -153,14 +153,14 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
         # Resize sinogram (like a Sinogram)
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
-            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, pool_size=2
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, pool_size=1
         )
 
     if augment[0]=='II':
         # If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
-            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type='zeros', pool_size=2
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type='zeros', pool_size=1
         )
 
         # Augment data (with image-like augmentations)
