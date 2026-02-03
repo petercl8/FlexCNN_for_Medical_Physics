@@ -265,16 +265,16 @@ def report_tune_metrics(gen, paths, config, settings, tune_dataframe, tune_dataf
     return tune_dataframe
 
 
-def visualize_train(batch_data, mean_gen_loss, mean_CNN_MSE, mean_CNN_SSIM, 
+def visualize_train(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM, 
                     epoch, batch_step, example_num):
     """
-    Display training progress: metrics, input/target/output visualizations.
+    Display training progress: loss and current batch metrics, input/target/output visualizations.
     
     Args:
         batch_data: Dict with 'input', 'target', 'CNN_output', 'recon1_output', 'recon2_output'
-        mean_gen_loss: Mean generator loss over display_step
-        mean_CNN_MSE: Mean MSE over display_step
-        mean_CNN_SSIM: Mean SSIM over display_step
+        mean_gen_loss: Mean generator loss over display_step (accumulated from training batches)
+        current_CNN_MSE: MSE on current batch only
+        current_CNN_SSIM: SSIM on current batch only
         epoch: Current epoch
         batch_step: Current batch step
         example_num: Current example number
@@ -288,12 +288,10 @@ def visualize_train(batch_data, mean_gen_loss, mean_CNN_MSE, mean_CNN_SSIM,
     print('================Training===================')
     print(f'CURRENT PROGRESS: epoch: {epoch} / batch_step: {batch_step} / image #: {example_num}')
     print(f'mean_gen_loss: {mean_gen_loss}')
-    print(f'mean_CNN_MSE : {mean_CNN_MSE}')
-    print(f'mean_CNN_SSIM: {mean_CNN_SSIM}')
+    print(f'current_CNN_MSE : {current_CNN_MSE}')
+    print(f'current_CNN_SSIM: {current_CNN_SSIM}')
     print('===========================================')
-    print('Last Batch MSE: ', calculate_metric(target, CNN_output, MSE))
-    print('Last Batch SSIM: ', calculate_metric(target, CNN_output, SSIM))
-    print('Last Batch LDM: ', patchwise_moment_metric(target, CNN_output, return_per_moment=True))
+    print('Current Batch LDM: ', patchwise_moment_metric(target, CNN_output, return_per_moment=True))
     print('Input Sinogram:')
     if input_.shape[1] == 1:
         show_single_unmatched_tensor(input_[0:2], fig_size=5)

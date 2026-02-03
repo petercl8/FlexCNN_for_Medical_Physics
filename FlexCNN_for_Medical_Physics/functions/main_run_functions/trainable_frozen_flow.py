@@ -198,8 +198,6 @@ def run_trainable_frozen_flow(config, paths, settings):
     # SECTION 8: INITIALIZE RUNNING METRICS AND TIMERS
     # ========================================================================================
     mean_gen_loss = 0
-    mean_CNN_SSIM = 0
-    mean_CNN_MSE = 0
     report_num = 1
 
     time_init_full = time.time()
@@ -273,11 +271,6 @@ def run_trainable_frozen_flow(config, paths, settings):
             # ========================================================================================
             time_init_metrics = time.time()
 
-            # Tuning or Training: we only calculate the mean value of the metrics, but not dataframes or reconstructions. Mean values are used to calculate the optimization metrics #
-            if run_mode in ('tune', 'train'):
-                mean_CNN_SSIM += calculate_metric(target, CNN_output, SSIM) / display_step
-                mean_CNN_MSE += calculate_metric(target, CNN_output, MSE) / display_step
-
             # Test: Calculate individual image metrics and store in dataframe
             if run_mode == 'test':
                 test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output = \
@@ -317,7 +310,9 @@ def run_trainable_frozen_flow(config, paths, settings):
                 # Training visualization
                 if run_mode == 'train':
                     print('Flow mode: ', flow_mode)
-                    visualize_train(batch_data, mean_gen_loss, mean_CNN_MSE, mean_CNN_SSIM, epoch, batch_step, example_num)
+                    current_CNN_SSIM = calculate_metric(target, CNN_output, SSIM)
+                    current_CNN_MSE = calculate_metric(target, CNN_output, MSE)
+                    visualize_train(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM, epoch, batch_step, example_num)
 
                 # Test visualization
                 if run_mode == 'test':
@@ -336,8 +331,6 @@ def run_trainable_frozen_flow(config, paths, settings):
 
                 # Reset running metrics after each display interval
                 mean_gen_loss = 0
-                mean_CNN_SSIM = 0
-                mean_CNN_MSE = 0
 
                 _ = display_times('visualization time', time_init_visualization, show_times)
 
