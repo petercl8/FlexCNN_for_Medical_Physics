@@ -104,17 +104,36 @@ def cache_dataset_paths(path_map: Dict[str, str], settings: dict, exclude_keys: 
     for idx, (key, src_path, cached_path, src_size, src_mtime) in enumerate(copy_plan, 1):
         print(f"  [{idx}/{len(copy_plan)}] Copying {os.path.basename(src_path)} ({src_size / (1024 ** 3):.2f} GB)...", end='', flush=True)
         os.makedirs(os.path.dirname(cached_path), exist_ok=True)
-        shutil.copy2(src_path, cached_path)
-        cache_index[src_path] = {
-            'cached_path': cached_path,
-            'size': src_size,
-            'mtime': src_mtime,
-        }
-        updated[key] = cached_path
-        print(" ✓")
+        
+        # Copy to temp file first (atomic write to prevent corruption)
+        temp_path = cached_path + '.tmp'
+        try:
+            shutil.copy2(src_path, temp_path)
+            # Validate size after copy
+            if os.path.getsize(temp_path) != src_size:
+                raise IOError(f"Size mismatch after copy: expected {src_size}, got {os.path.getsize(temp_path)}")
+            # Atomic rename (replaces any partial file)
+            if os.path.exists(cached_path):
+                os.remove(cached_path)
+            os.rename(temp_path, cached_path)
+            # Update index only after successful copy
+            cache_index[src_path] = {
+                'cached_path': cached_path,
+                'size': src_size,
+                'mtime': src_mtime,
+            }
+            updated[key] = cached_path
+            print(" ✓")
+        except Exception as e:
+            # Clean up temp file on error
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            print(f" ✗ FAILED: {e}")
+            print(f"  Skipping cache for {key}, will use original path")
+            # Don't update path; keep original
     
     if copy_plan:
-        print(f"✅ Caching complete! All files ready in {cache_dir}\n")
+        print(f"✅ Caching complete! All successful files ready in {cache_dir}\n")
 
     with open(index_path, 'w', encoding='utf-8') as f:
         json.dump(cache_index, f, indent=2)
