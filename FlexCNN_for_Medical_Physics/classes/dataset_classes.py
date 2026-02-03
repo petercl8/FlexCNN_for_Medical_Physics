@@ -10,7 +10,7 @@ from torch import nn
 from torch.utils.data import Dataset
 import numpy as np
 from .dataset_augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
-from .dataset_resizing import resize_image_data, resize_sino_data, vertical_crop_pad_sino
+from .dataset_resizing import resize_image_data, resize_sino_data
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
@@ -94,26 +94,15 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     # ========================================================================================
     # SECTION 3: Select Data and Convert to Tensors
     # ========================================================================================
-
-    # --- Sinogram Data ---
-    # Extract sinogram data from memmap
-    act_sino_numpy = act_sino_array[index,:] if act_sino_array is not None else None
-    atten_sino_numpy = atten_sino_array[index,:] if atten_sino_array is not None else None
-    
-    # Apply vertical crop/pad in numpy domain (only for crop_pad resize type). This reduces resources needed for later operations.
-    if sino_resize_type == 'crop_pad':
-        act_sino_numpy, atten_sino_numpy = vertical_crop_pad_sino(
-            act_sino_numpy, atten_sino_numpy, target_height=gen_sino_size
-        )
-    act_sino_multChannel = torch.from_numpy(np.ascontiguousarray(act_sino_numpy)).float() if act_sino_numpy is not None else None
-    atten_sino_multChannel = torch.from_numpy(np.ascontiguousarray(atten_sino_numpy)).float() if atten_sino_numpy is not None else None
-
-
-    # --- Image Data ---
+    # Activity data (required for ACT/CONCAT/FROZEN; None for ATTEN)
     act_image_multChannel = torch.from_numpy(np.ascontiguousarray(act_image_array[index,:])).float() if act_image_array is not None else None
+    act_sino_multChannel = torch.from_numpy(np.ascontiguousarray(act_sino_array[index,:])).float() if act_sino_array is not None else None
     act_recon1_multChannel = torch.from_numpy(np.ascontiguousarray(act_recon1_array[index,:])).float() if act_recon1_array is not None else None
     act_recon2_multChannel = torch.from_numpy(np.ascontiguousarray(act_recon2_array[index,:])).float() if act_recon2_array is not None else None
+
+    # Attenuation data (required for ATTEN/CONCAT/FROZEN; None for ACT)
     atten_image_multChannel = torch.from_numpy(np.ascontiguousarray(atten_image_array[index,:])).float() if atten_image_array is not None else None
+    atten_sino_multChannel = torch.from_numpy(np.ascontiguousarray(atten_sino_array[index,:])).float() if atten_sino_array is not None else None
 
     # ========================================================================================
     # SECTION 4: Resize Warning

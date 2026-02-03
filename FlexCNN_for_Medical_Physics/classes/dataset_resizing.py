@@ -34,21 +34,38 @@ def vertical_crop_pad_sino(act_sino_tensor=None, atten_sino_tensor=None, target_
         return (act_sino_tensor, atten_sino_tensor)
     
     def _process_single(sino_array):
-        """Helper to apply vertical crop/pad to a single sinogram."""
-        H, W = sino_array.shape
+        """Helper to apply vertical crop/pad to a single sinogram or multi-channel sinogram."""
+        # Handle both 2D (H, W) and 3D (C, H, W) inputs
+        if sino_array.ndim == 2:
+            H, W = sino_array.shape
+            is_multichannel = False
+        elif sino_array.ndim == 3:
+            C, H, W = sino_array.shape
+            is_multichannel = True
+        else:
+            raise ValueError(f"Expected 2D or 3D sinogram, got shape {sino_array.shape}")
+        
         if H > target_height:
             # Center crop
             top = (H - target_height) // 2
-            return sino_array[top:top + target_height, :]
+            if is_multichannel:
+                return sino_array[:, top:top + target_height, :]
+            else:
+                return sino_array[top:top + target_height, :]
         elif H < target_height:
             # Center pad with replication
             pad_total = target_height - H
             pad_top = pad_total // 2
             pad_bottom = pad_total - pad_top
             # Replicate edges for padding
-            top_pad = np.repeat(sino_array[0:1, :], pad_top, axis=0)
-            bottom_pad = np.repeat(sino_array[-1:, :], pad_bottom, axis=0)
-            return np.vstack([top_pad, sino_array, bottom_pad])
+            if is_multichannel:
+                top_pad = np.repeat(sino_array[:, 0:1, :], pad_top, axis=1)
+                bottom_pad = np.repeat(sino_array[:, -1:, :], pad_bottom, axis=1)
+                return np.concatenate([top_pad, sino_array, bottom_pad], axis=1)
+            else:
+                top_pad = np.repeat(sino_array[0:1, :], pad_top, axis=0)
+                bottom_pad = np.repeat(sino_array[-1:, :], pad_bottom, axis=0)
+                return np.vstack([top_pad, sino_array, bottom_pad])
         else:
             return sino_array
     
