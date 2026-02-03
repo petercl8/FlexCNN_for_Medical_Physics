@@ -28,7 +28,7 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-run_mode='none'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working with GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 use_cache=False   # Cache dataset to Google Colab VM? Uses time to copy files. Might make dataset faster, might not.
@@ -273,6 +273,15 @@ visualize_shuffle=True      # Shuffle data set when visualizing?
 
 import os, sys, glob, importlib, inspect, types, subprocess, pkgutil
 
+# Configure matplotlib for the environment
+import matplotlib
+try:
+    get_ipython()  # If running in Jupyter/Colab
+    matplotlib.use('module://ipykernel.pylab.backend_inline')
+except:
+    # Local script: use interactive backend for real-time plotting
+    matplotlib.use('TkAgg')
+
 def sense_colab():
     try:
         import google.colab
@@ -350,12 +359,29 @@ def install_packages(IN_COLAB=True, force_reinstall=False, include_optional=True
             return
         
         print(f"📦 Installing missing packages: {', '.join(missing)}")
-        cmd = ["pip", "install", "--upgrade"] + missing
-        try:
-            subprocess.check_call(cmd)
-            print("✅ Installation complete.")
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Installation failed: {e}")
+        
+        # For Colab, install PyTorch with CUDA support (cu124 works on Colab)
+        torch_packages = [p for p in missing if p.split("[")[0] in ["torch", "torchvision", "torchaudio"]]
+        other_missing = [p for p in missing if p.split("[")[0] not in ["torch", "torchvision", "torchaudio"]]
+        
+        if torch_packages:
+            print(f"📦 Installing PyTorch with CUDA (cu124) for Colab GPU support...")
+            cmd_torch = ["pip", "install", "--upgrade", "--index-url", "https://download.pytorch.org/whl/cu124"] + torch_packages
+            try:
+                subprocess.check_call(cmd_torch)
+                print("✅ PyTorch installation complete.")
+            except subprocess.CalledProcessError as e:
+                print(f"❌ PyTorch installation failed: {e}")
+                return
+        
+        if other_missing:
+            print(f"📦 Installing other packages...")
+            cmd = ["pip", "install", "--upgrade"] + other_missing
+            try:
+                subprocess.check_call(cmd)
+                print("✅ Installation complete.")
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Installation failed: {e}")
         return
 
     # Local: Always install CUDA PyTorch (cu124), other packages with standard PyPI

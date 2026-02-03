@@ -4,6 +4,43 @@ import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 from matplotlib.colors import Normalize
 
+# Smart plt.show() - displays inline in Jupyter, non-blocking in scripts
+def smart_show():
+    """
+    Display plots:
+    - Jupyter: inline display
+    - Scripts: non-blocking window display, positioned at top-right of screen
+    """
+    backend = plt.get_backend()
+    
+    # In Jupyter backends, use standard plt.show()
+    if 'ipykernel' in backend or 'inline' in backend:
+        plt.show()
+    else:
+        # In script mode (TkAgg): enable interactive mode and show non-blocking
+        plt.ion()  # Turn on interactive mode
+        
+        # Position windows at top-right of screen before showing
+        for fig_num in plt.get_fignums():
+            fig = plt.figure(fig_num)
+            try:
+                # Get the figure manager and its window
+                fig_manager = fig.canvas.manager
+                # Position window at top-right: (x=screen_width/2, y=0)
+                # Format: "widthxheight+x+y"
+                fig_manager.window.wm_geometry("+960+0")  # Adjust +960 based on your screen width
+            except:
+                pass  # If positioning fails, just show normally
+        
+        plt.show(block=False)
+        plt.pause(0.01)  # Allow GUI to process events
+        
+        # Close previous figures to avoid window clutter (keep only 1-2 most recent)
+        all_figs = plt.get_fignums()
+        if len(all_figs) > 2:
+            for fig_num in all_figs[:-2]:  # Close all but the last 2
+                plt.close(fig_num)
+
 def show_single_unmatched_tensor(image_tensor, grid=False, cmap='inferno', fig_size=10):
     '''
     Function for visualizing images. The images are displayed, each with their own colormap scaling, so quantitative comparisons are not possible.
@@ -77,7 +114,7 @@ def show_single_unmatched_tensor(image_tensor, grid=False, cmap='inferno', fig_s
             plt.axis("off")
             plt.imshow(img.squeeze(), cmap=cmap)
 
-    plt.show()
+    smart_show()
 
 def show_multiple_unmatched_tensors(*image_tensors, cmap='inferno', fig_size=3):
     """
@@ -148,7 +185,7 @@ def show_multiple_unmatched_tensors(*image_tensors, cmap='inferno', fig_size=3):
                 ax[row, i].imshow(torch.ones_like(img), cmap='gray')
             i += 1
 
-    plt.show()
+    smart_show()
 
 def show_multiple_matched_tensors(*image_tensors, cmap='inferno', fig_size=1.5):
     '''
@@ -233,7 +270,7 @@ def show_multiple_matched_tensors(*image_tensors, cmap='inferno', fig_size=1.5):
                 ax[row, i].imshow(blank.squeeze())
             i+=1
 
-    plt.show()
+    smart_show()
 
 def show_single_commonmap_tensor(image_tensor, nrow=15, figsize=(27,18), cmap='inferno'):
     '''
@@ -257,7 +294,7 @@ def show_single_commonmap_tensor(image_tensor, nrow=15, figsize=(27,18), cmap='i
     #plt.imshow(image_grid, cmap=cmap)
     im = ax.imshow(image_grid, cmap=cmap)
     #fig.colorbar(im, ax=ax)
-    plt.show()
+    smart_show()
 
 def show_multiple_commonmap_tensors(*image_tensors, cmap='inferno'):
     '''
@@ -288,4 +325,4 @@ def show_multiple_commonmap_tensors(*image_tensors, cmap='inferno'):
     image_grid = image_grid[0,:].squeeze()
     im = ax.imshow(image_grid, cmap=cmap)
     fig.colorbar(im, ax=ax)
-    plt.show()
+    smart_show()
