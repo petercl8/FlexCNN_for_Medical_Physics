@@ -325,6 +325,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
     # Common settings (now minimal)
     settings['run_mode'] = run_mode
     settings['device'] = common_settings['device']
+    settings['use_cache'] = common_settings['use_cache']
     settings['num_examples'] = common_settings['num_examples']
     settings['act_sino_scale'] = common_settings['act_sino_scale']
     settings['act_recon1_scale'] = common_settings['act_recon1_scale']

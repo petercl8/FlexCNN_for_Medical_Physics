@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 import numpy as np
 from .dataset_augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
 from .dataset_resizing import resize_image_data, resize_sino_data
+from FlexCNN_for_Medical_Physics.functions.helper.cache_paths import cache_dataset_paths
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
@@ -284,6 +285,26 @@ class NpArrayDataSet(Dataset):
         # ========================================================================================
         # SUBSECTION: Load Data to Arrays
         # ========================================================================================
+        path_map = {
+            'act_sino_path': act_sino_path,
+            'act_image_path': act_image_path,
+            'atten_image_path': atten_image_path,
+            'atten_sino_path': atten_sino_path,
+            'act_recon1_path': act_recon1_path,
+            'act_recon2_path': act_recon2_path,
+        }
+        path_map = cache_dataset_paths(
+            path_map,
+            settings,
+            exclude_keys={'act_recon1_path', 'act_recon2_path'},
+        )
+        act_sino_path = path_map['act_sino_path']
+        act_image_path = path_map['act_image_path']
+        atten_image_path = path_map['atten_image_path']
+        atten_sino_path = path_map['atten_sino_path']
+        act_recon1_path = path_map['act_recon1_path']
+        act_recon2_path = path_map['act_recon2_path']
+
         image_array = np.load(act_image_path, mmap_mode='r') if act_image_path is not None else None
         sino_array = np.load(act_sino_path, mmap_mode='r') if act_sino_path is not None else None
         recon1_array = np.load(act_recon1_path, mmap_mode='r') if act_recon1_path is not None else None
