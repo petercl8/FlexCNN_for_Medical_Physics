@@ -4,6 +4,12 @@ import os
 import shutil
 from typing import Dict, Iterable
 
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
+
 
 def cache_dataset_paths(path_map: Dict[str, str], settings: dict, exclude_keys: Iterable[str] = ()): 
     """
@@ -13,6 +19,15 @@ def cache_dataset_paths(path_map: Dict[str, str], settings: dict, exclude_keys: 
       - use_cache: bool (default False)
       - cache_dir: str (required when use_cache True)
       - cache_max_gb: int/float (default 40)
+    
+    NOTE: This cache is most effective for:
+      - Many small files (<100 MB each) where network latency per file adds up
+      - Random access patterns across multiple files
+      - Full file loads (not memory-mapped reads)
+    
+    For large monolithic memory-mapped .np files (>1 GB) on Colab Drive,
+    the cache may actually SLOW DOWN loading due to Drive's FUSE optimizations
+    for large sequential reads. In such cases, set use_cache=False.
     """
     if not settings.get('use_cache', False):
         return path_map
@@ -101,8 +116,17 @@ def cache_dataset_paths(path_map: Dict[str, str], settings: dict, exclude_keys: 
         print(f"\n📦 Caching {len(copy_plan)} file(s) to {cache_dir} ({total_to_copy / (1024 ** 3):.2f} GB total)")
         print("This may take 5-20 minutes depending on file sizes and network speed...")
     
-    for idx, (key, src_path, cached_path, src_size, src_mtime) in enumerate(copy_plan, 1):
-        print(f"  [{idx}/{len(copy_plan)}] Copying {os.path.basename(src_path)} ({src_size / (1024 ** 3):.2f} GB)...", end='', flush=True)
+    iterator = enumerate(copy_plan, 1)
+    if HAS_TQDM:
+        iterator = tqdm(iterator, total=len(copy_plan), desc="Caching files", unit="file")
+    
+    for idx, (key, src_path, cached_path, src_size, src_mtime) in iterator:
+        file_desc = f"{os.path.basename(src_path)} ({src_size / (1024 ** 3):.2f} GB)"
+        if not HAS_TQDM:
+            print(f"  [{idx}/{len(copy_plan)}] Copying {file_desc}...", end='', flush=True)
+        else:
+            iterator.set_postfix_str(file_desc)
+        
         os.makedirs(os.path.dirname(cached_path), exist_ok=True)
         
         # Copy to temp file first (atomic write to prevent corruption)
@@ -123,12 +147,16 @@ def cache_dataset_paths(path_map: Dict[str, str], settings: dict, exclude_keys: 
                 'mtime': src_mtime,
             }
             updated[key] = cached_path
-            print(" ✓")
+            if not HAS_TQDM:
+                print(" ✓")
         except Exception as e:
             # Clean up temp file on error
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-            print(f" ✗ FAILED: {e}")
+            if not HAS_TQDM:
+                print(f" ✗ FAILED: {e}")
+            else:
+                print(f"\n  ✗ FAILED copying {os.path.basename(src_path)}: {e}")
             print(f"  Skipping cache for {key}, will use original path")
             # Don't update path; keep original
     
