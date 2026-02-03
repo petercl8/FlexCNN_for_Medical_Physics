@@ -103,17 +103,21 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
     print('===================')
 
     ## Reporters ##
-    reporter = CLIReporter(metric_columns=[optim_metric, 'batch_step'])
-
-    # Optional notebook reporter template (not currently used)
-    notebook_reporter_template = JupyterNotebookReporter(
-        overwrite=True,
-        metric_columns=[optim_metric, 'batch_step', 'example_num'],
-        parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],
-        sort_by_metric=True,
-        metric=optim_metric,
-        mode=min_max,
-    )
+    # Auto-detect Jupyter/Interactive Window environment
+    try:
+        get_ipython()  # If this works, we're in Jupyter/Colab/Interactive Window
+        reporter = JupyterNotebookReporter(
+            overwrite=True,
+            metric_columns=[optim_metric, 'batch_step', 'example_num'],
+            parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],
+            sort_by_metric=True,
+            metric=optim_metric,
+            mode=min_max,
+        )
+        print("[INFO] Using JupyterNotebookReporter (Jupyter/Interactive environment detected)")
+    except:
+        reporter = CLIReporter(metric_columns=[optim_metric, 'batch_step'])
+        print("[INFO] Using CLIReporter (terminal environment)")
 
     ## Trial Scheduler and Run Config ##
     if tune_scheduler == 'ASHA':

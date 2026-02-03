@@ -28,7 +28,7 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working with GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 use_cache=False   # Cache dataset to Google Colab VM? Uses time to copy files. Might make dataset faster, might not.
@@ -104,13 +104,13 @@ tune_exp_name='search-ACT-320-padZeros-tunedSSIM'  # Experiment directory: Ray t
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
 tune_restore=False           # Restore a run (from the file tune_exp_name in tune_storage_dirPath). Use this if a tuning run terminated early for some reason.
-tune_minutes = 540           # How long to run RayTune. 180 minutes is good for 180x180 input.
+tune_minutes = 150           # How long to run RayTune. 180 minutes is good for 180x180 input.
 tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=10   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
 tune_examples_per_report=2*512 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
-tune_grace_period=2          # Minimum number of reports before terminating a trial
-tune_max_t = 15              # Maximum number of reports before terminating a trial
+tune_grace_period=3          # Minimum number of reports before terminating a trial
+tune_max_t = 12              # Maximum number of reports before terminating a trial
                              # 24 is a good number for ASHA. For FIFO, 12 is a good number.
 tune_report_for='val'        # Set to 'val' to report IQA metrics using or cross-validation set. Set to 'qa' to use contrast recovery coefficients for QA phantoms.
 tune_eval_batch_size=512*4   # If tuning on validation or QA set, what is the batch size to evaluate?

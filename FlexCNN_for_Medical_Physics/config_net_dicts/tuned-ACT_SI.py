@@ -21,7 +21,7 @@ config_ACT_SI = {
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
   "SI_gen_final_activ": nn.Sigmoid(),
-  "SI_gen_hidden_dim": 19,
+  "SI_gen_hidden_dim": 19,  # 19
   "SI_gen_mult": 2.065329728174869,
   "SI_gen_neck": "wide", #medium", "narrow", "wide"
   "SI_gen_z_dim": 1181,
@@ -30,7 +30,7 @@ config_ACT_SI = {
   "SI_normalize": False,
   "SI_pad_mode": "zeros", # "zeros", "replicate"
   "SI_skip_mode": "add", # 'add', 'concat', 'none', 'conv'
-  "batch_base2_exponent": 8,
+  "batch_base2_exponent": 8, # 8 (my GPU can handle up to 9)
   "gen_b1": 0.22046050861804858,
   "gen_b2": 0.152643657443423,
   "gen_lr": 0.00099063275528607,
