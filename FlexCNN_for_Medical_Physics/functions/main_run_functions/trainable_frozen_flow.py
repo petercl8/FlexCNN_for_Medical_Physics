@@ -160,15 +160,27 @@ def run_trainable_frozen_flow(config, paths, settings):
     )
 
     # ========================================================================================
-    # SECTION 7: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
+    # SECTION 7A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
+    # ========================================================================================
+    if config['network_type'] == 'FROZEN_COFLOW':
+        # Coflow uses attenuation sinogram input only
+        paths['atten_image_path'] = None
+    elif config['network_type'] == 'FROZEN_COUNTERFLOW':
+        # Counterflow uses attenuation image input only
+        paths['atten_sino_path'] = None
+
+    # ========================================================================================
+    # SECTION 7B: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
     # ========================================================================================
     def require_path(key: str):
         if key not in paths or paths[key] is None:
             raise ValueError(f"Missing required path: '{key}'. Provide act_*/atten_* paths for frozen flow.")
     require_path('act_image_path')
     require_path('act_sino_path')
-    require_path('atten_image_path')
-    require_path('atten_sino_path')
+    if config['network_type'] == 'FROZEN_COFLOW':
+        require_path('atten_sino_path')
+    else:
+        require_path('atten_image_path')
 
     # Build dataloader for joint activity/attenuation batches
     dataloader = DataLoader(

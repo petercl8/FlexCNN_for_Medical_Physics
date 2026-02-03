@@ -38,7 +38,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
-    'SI_gen_hidden_dim': tune.lograndint(2, 16),                # Generator channel scaling factor. Larger numbers give more total channels.
+    'SI_gen_hidden_dim': tune.lograndint(10, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
     'SI_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
                                                                 # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
@@ -48,7 +48,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_half_life_examples': -1, # tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
 
     # Discriminator Network
-    'SI_disc_hidden_dim': tune.lograndint(10, 20),              # Discriminator channel scaling factor
+    'SI_disc_hidden_dim': tune.lograndint(10, 30),              # Discriminator channel scaling factor
     'SI_disc_patchGAN': tune.choice([True, False]),             # Use PatchGAN or not
     # Discriminator Optimizer
     'SI_disc_lr': tune.loguniform(1e-4,1e-2),
@@ -84,7 +84,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_pad_mode': tune.choice(['zeros', 'replicate']),
     'IS_dropout': tune.choice([True,False]),
     'IS_exp_kernel': tune.choice([3,4]),
-    'IS_gen_hidden_dim': tune.lograndint(2, 16),
+    'IS_gen_hidden_dim': tune.lograndint(10, 30),
     'IS_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
                                                                 # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
@@ -94,7 +94,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_half_life_examples': -1, # tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
 
     # Discriminator Network
-    'IS_disc_hidden_dim': tune.lograndint(10, 20),
+    'IS_disc_hidden_dim': tune.lograndint(10, 30),
     'IS_disc_patchGAN': tune.choice([True, False]),
     # Discriminator Optimizer
     'IS_disc_lr': tune.loguniform(1e-4,1e-2),
