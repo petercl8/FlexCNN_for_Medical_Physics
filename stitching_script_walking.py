@@ -66,6 +66,7 @@ device_opt='cuda' # Options: 'sense', cuda', 'cpu'. Set to 'sense' to set to 'cp
 
 skip_local_package_installs=True # Local only: skip package checks and pip installs, just reload code. Set to True after first run for faster startup.
 ray_tune_version=None # Optional: Pin Ray Tune to specific version (e.g., '2.9.0'). Set to None to use latest.
+skip_colab_git_update=False # Colab only: Skip git pull when setting up repository. Useful if you have uncommitted changes or git operations fail.
 
 ## Github Repository for Functions & Classes ##
 github_username='petercl8'
@@ -446,10 +447,18 @@ def setup_colab_environment(
     github_username: str = "petercl8",
     repo_name: str = "FlexCNN_for_Medical_Physics",
     local_repo_path: str = None,
+    skip_git_update: bool = False,
     verbose: bool = True):
     """
     Setup environment for Colab: clone/pull repo and install via pip.
     Injects all package symbols into caller's globals.
+    
+    Args:
+        github_username: GitHub username for the repository
+        repo_name: Repository name
+        local_repo_path: Local path (unused for Colab, kept for consistency)
+        skip_git_update: If True, skip git pull (useful if already up-to-date or if git operations fail)
+        verbose: Print status messages
     """
     # Determine base directory
     base_dir = "/content"
@@ -460,17 +469,32 @@ def setup_colab_environment(
     if not os.path.exists(repo_path):
         if verbose:
             print(f"📦 Cloning {repo_name} into {base_dir}...")
-        subprocess.run(["git", "clone", repo_url], cwd=base_dir, check=True)
-    else:
+        try:
+            subprocess.run(["git", "clone", repo_url], cwd=base_dir, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️  Git clone failed: {e}")
+            print(f"   Proceeding without updating repository...")
+    elif not skip_git_update:
         if verbose:
             print(f"🔄 Pulling latest changes in {repo_path}...")
-        subprocess.run(["git", "pull"], cwd=repo_path, check=True)
+        try:
+            subprocess.run(["git", "pull"], cwd=repo_path, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️  Git pull failed: {e}")
+            print(f"   Proceeding with existing repository...")
+    else:
+        if verbose:
+            print(f"⏭️  Skipping git update (skip_git_update=True)")
 
     # Install package in editable mode
     if verbose:
         print("⚙️ Installing the package in editable mode...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."],
-                   cwd=repo_path, check=True)
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."],
+                       cwd=repo_path, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️  Package installation failed: {e}")
+        print(f"   Attempting to proceed anyway...")
 
     # Ensure repo path is importable
     if repo_path not in sys.path:
@@ -652,13 +676,13 @@ if IN_COLAB:
     setup_colab_environment(
         github_username=github_username,
         repo_name=repo_name,
-        local_repo_path=local_repo_dirPath
+        local_repo_path=local_repo_dirPath,
+        skip_git_update=skip_colab_git_update
     )
 else:
     setup_local_environment(repo_name=repo_name)
 
 # --- Test Resources ---
-#if not (not IN_COLAB and skip_local_package_installs):
 list_compute_resources()
 
 # --- Set main project directory
