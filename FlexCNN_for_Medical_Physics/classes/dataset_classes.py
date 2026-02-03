@@ -48,7 +48,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
                       config, settings, augment=False,
-                      sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='zeros', index=0, device='cuda',
+                      sino_resize_type='bilinear', sino_pad_type='zeros', image_pad_type='zeros', index=0, device='cuda',
                       ):
 
     global resize_warned
