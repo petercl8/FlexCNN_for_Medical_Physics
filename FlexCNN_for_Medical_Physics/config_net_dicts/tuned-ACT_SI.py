@@ -30,7 +30,7 @@ config_ACT_SI = {
   "SI_normalize": False,
   "SI_pad_mode": "zeros", # "zeros", "replicate"
   "SI_skip_mode": "add", # 'add', 'concat', 'none', 'conv'
-  "batch_base2_exponent": 5,
+  "batch_base2_exponent": 8,
   "gen_b1": 0.22046050861804858,
   "gen_b2": 0.152643657443423,
   "gen_lr": 0.00099063275528607,
