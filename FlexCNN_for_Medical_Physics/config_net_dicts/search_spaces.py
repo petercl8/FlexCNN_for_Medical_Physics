@@ -34,7 +34,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_gen_mult': tune.uniform(1.1, 3),                        # Factor by which to multiply channels/block as one moves twowards the center of the network
     'SI_gen_fill': tune.choice([0,1,2]),                        # Number of constant-sized Conv2d layers/block
     'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
-    'SI_gen_z_dim': tune.lograndint(512, 4000),                  # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
+    'SI_gen_z_dim': tune.lograndint(512, 1500),                  # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
     'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
@@ -122,7 +122,7 @@ config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
 }
 config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning
     # NEW: New parameters added to config_RAY_SI (related to generator optimizer)
-    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
+    'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
     'gen_lr': tune.loguniform(1e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': tune.loguniform(0.1, 0.999),
@@ -150,7 +150,7 @@ config_RAY_SUP_FROZEN = {} # Frozen-specific hyperparameters merged with config_
 
 config_RAY_SUP_SIMULT= { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
     # SHARED HYPERPARAMETERS
-    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
+    'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
     'gen_lr': tune.loguniform(0.5e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
     'gen_b2': tune.loguniform(0.1, 0.999),
@@ -165,7 +165,7 @@ config_RAY_SUP_SIMULT= { # Mixed New/Overwrites (when combined with config_SI/co
 
 config_RAY_GAN = { # This is MERGED with either config_RAY_IS or config_RAY_SI to form a single dictionary for a generative adversarial network.
     # NEW
-    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
+    'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
     'gen_lr': tune.loguniform(1e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': 0.999, #tune.loguniform(0.1, 0.999),
@@ -183,7 +183,7 @@ config_RAY_GAN_CYCLE = { # Mixed New/Overwrites (when combined with config_SI/co
     'gen_adv_criterion': nn.MSELoss(), #tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
     'IS_disc_lr': tune.loguniform(1e-4,1e-2),
     'SI_disc_lr': tune.loguniform(1e-4,1e-2),
-    'batch_base2_exponent': tune.randint(5, 10),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
+    'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128, 8->256, 9->512)
     'gen_lr': tune.loguniform(0.5e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': 0.999, #tune.loguniform(0.1, 0.999),
