@@ -186,12 +186,12 @@ def run_trainable(config, paths, settings):
         # Require activity domain
         require_path('act_image_path')
         require_path('act_sino_path')
-    if network_type in ('ATTEN', 'CONCAT'):
+    if network_type in ('ATTEN', 'CONCAT'): 
         # Require attenuation domain
         require_path('atten_image_path')
         require_path('atten_sino_path')
     if network_type == 'CONCAT':
-        # CONCAT needs activity target and both sinograms
+        # CONCAT needs activity target and both sinograms#
         require_path('act_image_path')
 
     dataloader = DataLoader(
