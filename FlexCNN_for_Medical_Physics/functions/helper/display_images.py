@@ -3,43 +3,35 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 from matplotlib.colors import Normalize
+import os
 
-# Smart plt.show() - displays inline in Jupyter, non-blocking in scripts
+# Smart plt.show() - displays inline in Jupyter, silent in regular terminal
 def smart_show():
     """
-    Display plots:
-    - Jupyter: inline display
-    - Scripts: non-blocking window display, positioned at top-right of screen
+    Display plots based on FLEXCNN_PLOT_MODE environment variable:
+    - 'always': always show plots
+    - 'inline': only show in Jupyter/Interactive Window
+    - 'never': never show (silent)
     """
+    plot_mode = os.environ.get('FLEXCNN_PLOT_MODE', 'inline')
     backend = plt.get_backend()
     
-    # In Jupyter backends, use standard plt.show()
-    if 'ipykernel' in backend or 'inline' in backend:
-        plt.show()
-    else:
-        # In script mode (TkAgg): enable interactive mode and show non-blocking
-        plt.ion()  # Turn on interactive mode
-        
-        # Position windows at top-right of screen before showing
-        for fig_num in plt.get_fignums():
-            fig = plt.figure(fig_num)
-            try:
-                # Get the figure manager and its window
-                fig_manager = fig.canvas.manager
-                # Position window at top-right: (x=screen_width/2, y=0)
-                # Format: "widthxheight+x+y"
-                fig_manager.window.wm_geometry("+960+0")  # Adjust +960 based on your screen width
-            except:
-                pass  # If positioning fails, just show normally
-        
-        plt.show(block=False)
-        plt.pause(0.01)  # Allow GUI to process events
-        
-        # Close previous figures to avoid window clutter (keep only 1-2 most recent)
-        all_figs = plt.get_fignums()
-        if len(all_figs) > 2:
-            for fig_num in all_figs[:-2]:  # Close all but the last 2
-                plt.close(fig_num)
+    if plot_mode == 'never':
+        # Silent mode - never show
+        return
+    elif plot_mode == 'always':
+        # Always show - use appropriate method for backend
+        if 'ipykernel' in backend or 'inline' in backend:
+            plt.show()
+        else:
+            plt.ion()
+            plt.show(block=False)
+            plt.pause(0.01)
+    else:  # plot_mode == 'inline'
+        # Only show in Jupyter/interactive backends
+        if 'ipykernel' in backend or 'inline' in backend:
+            plt.show()
+        # else: silent (do nothing)
 
 def show_single_unmatched_tensor(image_tensor, grid=False, cmap='inferno', fig_size=10):
     '''

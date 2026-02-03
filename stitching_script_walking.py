@@ -35,6 +35,8 @@ use_cache=False   # Cache dataset to Google Colab VM? Uses time to copy files. M
 cache_max_gb = 40 # Max size for cache. You'll error if you go over this.
 cache_dir = '/content/cache'
 
+plot_mode='inline'    # Options: 'always' (always show plots), 'inline' (only in Jupyter/Interactive Window), 'never' (silent)
+
 ## See note below for info about these options ##
 gen_sino_size=320         # Options: 180, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 90). Images are square.
@@ -178,7 +180,7 @@ train_checkpoint_file='temp'
 train_load_state=False     # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=False     # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 200         # Number of training epochs.
-train_display_step=5      # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=10      # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=True     # Show calculation times during training?
 
@@ -273,14 +275,31 @@ visualize_shuffle=True      # Shuffle data set when visualizing?
 
 import os, sys, glob, importlib, inspect, types, subprocess, pkgutil
 
+# Store plot_mode in environment for display_images.py to access
+os.environ['FLEXCNN_PLOT_MODE'] = plot_mode
+
 # Configure matplotlib for the environment
 import matplotlib
-try:
-    get_ipython()  # If running in Jupyter/Colab
-    matplotlib.use('module://ipykernel.pylab.backend_inline')
-except:
-    # Local script: use interactive backend for real-time plotting
-    matplotlib.use('TkAgg')
+if plot_mode == 'never':
+    # Never display plots
+    matplotlib.use('Agg')
+    print(f"[INFO] Plot mode: never - silent plotting (Agg backend)")
+elif plot_mode == 'always':
+    # Always display plots
+    try:
+        get_ipython()
+        print(f"[INFO] Plot mode: always - using interactive backend: {matplotlib.get_backend()}")
+    except:
+        matplotlib.use('TkAgg')
+        print(f"[INFO] Plot mode: always - using TkAgg backend for window display")
+else:  # plot_mode == 'inline'
+    # Only display in Jupyter/Interactive Window
+    try:
+        get_ipython()
+        print(f"[INFO] Plot mode: inline - using interactive backend: {matplotlib.get_backend()}")
+    except:
+        matplotlib.use('Agg')
+        print(f"[INFO] Plot mode: inline - terminal mode, silent plotting (Agg backend)")
 
 def sense_colab():
     try:
