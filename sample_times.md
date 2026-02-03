@@ -5,7 +5,7 @@
 time/report = 9 min/5 = 1.8 min/report
 
 
-320 Network (not presized)
+320 Network (not presized, crop/pad)
 
 FULL STEP TIME (ms): 7387.162208557129
 training time (ms): 526.1828899383545
@@ -27,46 +27,44 @@ FULL STEP TIME (ms): 1242.074728012085
 training time (ms): 37.36734390258789
 metrics time (ms): 90.45839309692383
 
-320 Network (presized - bilinear)
+320 Network (metrics deleted, presized - crop/pad)
 
-FULL STEP TIME (ms): 3965.873956680298
-training time (ms): 311.5701675415039
-metrics time (ms): 740.8497333526611
-loader time (ms): 1350.7413864135742
-FULL STEP TIME (ms): 2403.4557342529297
-training time (ms): 309.2813491821289
-metrics time (ms): 722.4709987640381
-loader time (ms): 1235.6395721435547
-FULL STEP TIME (ms): 2267.703056335449
-training time (ms): 316.4796829223633
-metrics time (ms): 745.520830154419
-loader time (ms): 1292.1366691589355
-FULL STEP TIME (ms): 2354.4251918792725
-training time (ms): 311.4633560180664
-metrics time (ms): 785.944938659668
-loader time (ms): 1422.1911430358887
-FULL STEP TIME (ms): 2519.9267864227295
+training time (ms): 309.23008918762207
+metrics time (ms): 0.0011920928955078125
+loader time (ms): 1636.7833614349365
+FULL STEP TIME (ms): 1946.2459087371826
+training time (ms): 313.95649909973145
+metrics time (ms): 0.0016689300537109375
+loader time (ms): 1667.5975322723389
+FULL STEP TIME (ms): 1981.7934036254883
+training time (ms): 316.195011138916
+metrics time (ms): 0.0011920928955078125
+loader time (ms): 1655.0331115722656
+FULL STEP TIME (ms): 1971.4460372924805
+training time (ms): 309.7882270812988
+metrics time (ms): 0.00095367431640625
+loader time (ms): 1602.879524230957
+FULL STEP TIME (ms): 1912.9130840301514
 
+320 Network (metrics deleted, presized - bilinear)
 
-320 Network (presized - crop/pad)
-
-FULL STEP TIME (ms): 1261.1677646636963
-training time (ms): 309.5557689666748
-metrics time (ms): 786.2229347229004
-loader time (ms): 1176.7621040344238
-FULL STEP TIME (ms): 2272.8588581085205
-training time (ms): 312.2889995574951
-metrics time (ms): 744.2150115966797
-loader time (ms): 1102.4694442749023
-FULL STEP TIME (ms): 2159.5470905303955
-training time (ms): 311.85388565063477
-metrics time (ms): 754.180908203125
-loader time (ms): 1136.0881328582764
-FULL STEP TIME (ms): 2202.666759490967
-training time (ms): 310.1785182952881
-metrics time (ms): 743.227481842041
-loader time (ms): 1097.5782871246338
-FULL STEP TIME (ms): 2151.5440940856934
+FULL STEP TIME (ms): 3532.111883163452
+training time (ms): 309.9021911621094
+metrics time (ms): 0.0011920928955078125
+loader time (ms): 1411.1788272857666
+FULL STEP TIME (ms): 1721.3232517242432
+training time (ms): 309.9331855773926
+metrics time (ms): 0.0011920928955078125
+loader time (ms): 1638.756275177002
+FULL STEP TIME (ms): 1949.1779804229736
+training time (ms): 314.87202644348145
+metrics time (ms): 0.0019073486328125
+loader time (ms): 1639.3897533416748
+FULL STEP TIME (ms): 1954.746961593628
+training time (ms): 314.7139549255371
+metrics time (ms): 0.0019073486328125
+loader time (ms): 1613.8956546783447
+FULL STEP TIME (ms): 1928.8349151611328
 
 
 288 Network (presized)
