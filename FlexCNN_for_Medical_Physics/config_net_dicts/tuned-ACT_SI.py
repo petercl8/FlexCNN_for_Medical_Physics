@@ -1,3 +1,4 @@
+from sympy import false
 from torch import nn
 from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
 
@@ -13,7 +14,52 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
+config_ACT_SI = { # 288x288, tuned SSIM, pad_type='zeros'
+  "IS_disc_adv_criterion": 1,
+  "IS_disc_b1": 1,
+  "IS_disc_b2": 1,
+  "IS_disc_hidden_dim": 1,
+  "IS_disc_lr": 1,
+  "IS_disc_patchGAN": 1,
+  "SI_alpha_min": -1,
+  "SI_disc_adv_criterion": 1,
+  "SI_disc_b1": 1,
+  "SI_disc_b2": 1,
+  "SI_disc_hidden_dim": 1,
+  "SI_disc_lr": 1,
+  "SI_disc_patchGAN": 1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 10,
+  "SI_gen_mult": 1.5012782419950113,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 872,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 7.305980552864529,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 1.6943444827125673,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "conv",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 7,
+  "gen_b1": 0.3600790033157822,
+  "gen_b2": 0.6033159868492163,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0024018267054557695,
+  "gen_sino_channels": 3,
+  "gen_sino_size": 288,
+  "network_type": "ACT",
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
 
+
+'''
 ## highCountSino-->actMap, tuned for SSIM, Augugment: SI
 config_ACT_SI = {
   "SI_dropout": False,
@@ -46,7 +92,7 @@ config_ACT_SI = {
   "network_type": "ACT",
   "train_SI": True
 }
-
+'''
 '''
 ## highCountSino-->actMap, tuned for SSIM, Augugment: II
 config_ACT_SI = {
