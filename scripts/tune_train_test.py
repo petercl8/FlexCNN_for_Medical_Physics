@@ -28,7 +28,7 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='none'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working with GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 use_cache=False   # Cache dataset to Google Colab VM? Uses time to copy files. Might make dataset faster, might not.
@@ -63,12 +63,14 @@ num_GPUs=1
 # Set Resources Allocated per Trial #
 CPUs_per_trial=2
 GPUs_per_trial=1
-
 device_opt='cuda' # Options: 'sense', cuda', 'cpu'. Set to 'sense' to set to 'cpu' if available, else 'cpu'.
 
+# Colab / Local Setup Options ##
 skip_local_package_installs=True # Local only: skip package checks and pip installs, just reload code. Set to True after first run for faster startup.
 ray_tune_version=None # Optional: Pin Ray Tune to specific version (e.g., '2.9.0'). Set to None to use latest.
 skip_colab_git_update=False # Colab only: Skip git pull when setting up repository. Useful if you have uncommitted changes or git operations fail.
+setup_mode='walk' # Local only: 'walk' for module walking or 'install' for editable install from local repo.
+base_repo_path=None # Optional: override repo root detection (useful for notebooks).
 
 ## Github Repository for Functions & Classes ##
 github_username='petercl8'
@@ -95,16 +97,16 @@ num_examples=-1                    # Number of examples from dataset to load. Se
 ## Tuning ##
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
-tune_csv_file='frame-ACT-320-padZeros-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-288-padZeros-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='temp'
 
-tune_exp_name='search-ACT-320-padZeros-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-288-padZeros-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
-tune_restore=False           # Restore a run (from the file tune_exp_name in tune_storage_dirPath). Use this if a tuning run terminated early for some reason.
-tune_minutes = 180           # How long to run RayTune. 180 minutes is good for 180x180 input.
+tune_restore=False           # Resume a terminated run (loads tune_exp_name from tune_storage_dirPath). If False, deletes any existing tune_exp_name folder and starts fresh.
+tune_minutes = 8*60           # How long to run RayTune. 180 minutes is good for 180x180 input.
 tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=10   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
@@ -275,436 +277,114 @@ visualize_shuffle=True      # Shuffle data set when visualizing?
 ## Some Setup Funcs
 """
 
-import os, sys, glob, importlib, inspect, types, subprocess, pkgutil
+import os
+import sys
 
+
+# Minimal bootstrap helpers (no external imports, works before package is available)
 def sense_colab():
+    """Detect if running in Colab."""
     try:
-        import google.colab
-        IN_COLAB = True
+        import google.colab  # noqa: F401
+        return True
     except ImportError:
-        IN_COLAB = False
-    return IN_COLAB
+        return False
 
-def sense_device(device='sense'):
-    if device == 'sense':
-        if torch.cuda.is_available():
-            device = 'cuda'
-        else:
-            device = 'cpu'
-    elif device == 'cpu':
-        device = 'cpu'
-    elif device == 'cuda':
-        device = 'cuda'
-    return device
 
-def install_packages(IN_COLAB=True, force_reinstall=False, include_optional=True, ray_version=None):
-    """
-    Installs required Python packages efficiently.
-    - Detects if running in Colab or locally.
-    - Installs missing packages only (unless force_reinstall=True).
-    - For local: always installs CUDA-enabled PyTorch (cu124).
-    - Optionally pin Ray version with ray_version (e.g., "2.9.0").
-    """
-
-    # Base list of non-PyTorch packages
-    other_packages = [
-        "ray[tune]", "tensorboardX", "hyperopt", "optuna",
-        "numpy", "pandas", "matplotlib",
-        "scikit-image", "scipy"
-    ]
-
-    # Optional packages
-    optional_packages = ["tensorboard"]
-    widgets_packages = ["ipywidgets"]
-
-    missing = []
-
-    # On Colab, just use standard installation
-    if IN_COLAB:
-        packages = [
-            "torch", "torchvision", "torchaudio",
-            "ray[tune]", "tensorboardX", "hyperopt", "optuna",
-            "numpy", "pandas", "matplotlib",
-            "scikit-image", "scipy"
-        ]
-        optional_packages_to_install = ["tensorboard"] if include_optional else []
-        widgets_packages_to_install = ["ipywidgets"] if include_optional else []
-        
-        for pkg in packages + optional_packages_to_install + widgets_packages_to_install:
-            pkg_name = pkg.split("[")[0]
-            if pkg_name == "ray":
-                try:
-                    import ray
-                    import ray.tune
-                    ray_tune_installed = True
-                except ImportError:
-                    ray_tune_installed = False
-                
-                # Pin Ray version if specified
-                if ray_version:
-                    pkg = f"ray[tune]=={ray_version}"
-                
-                if force_reinstall or not ray_tune_installed:
-                    missing.append(pkg)
-            elif importlib.util.find_spec(pkg_name) is None or force_reinstall:
-                missing.append(pkg)
-        
-        if not missing:
-            print("✅ All required packages already installed.")
-            return
-        
-        print(f"📦 Installing missing packages: {', '.join(missing)}")
-        
-        # For Colab, install PyTorch with CUDA support (cu124 works on Colab)
-        torch_packages = [p for p in missing if p.split("[")[0] in ["torch", "torchvision", "torchaudio"]]
-        other_missing = [p for p in missing if p.split("[")[0] not in ["torch", "torchvision", "torchaudio"]]
-        
-        if torch_packages:
-            print(f"📦 Installing PyTorch with CUDA (cu124) for Colab GPU support...")
-            cmd_torch = [sys.executable, "-m", "pip", "install", "--upgrade", "--index-url", "https://download.pytorch.org/whl/cu124"] + torch_packages
-            try:
-                subprocess.check_call(cmd_torch)
-                print("✅ PyTorch installation complete.")
-            except subprocess.CalledProcessError as e:
-                print(f"❌ PyTorch installation failed: {e}")
-                return
-        
-        if other_missing:
-            print(f"📦 Installing other packages...")
-            try:
-                cmd = [sys.executable, "-m", "pip", "install", "--upgrade"] + other_missing
-                subprocess.check_call(cmd)
-                print("✅ Installation complete.")
-            except subprocess.CalledProcessError as e:
-                print(f"❌ Installation failed: {e}")
-                print("🔁 Retrying installs individually (no cache)...")
-                failed = []
-                for pkg in other_missing:
-                    try:
-                        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "--no-cache-dir", pkg])
-                    except subprocess.CalledProcessError:
-                        failed.append(pkg)
-                if failed:
-                    raise RuntimeError(f"Failed to install packages: {failed}")
-
-        # Validate Ray is available before importing package modules
-        try:
-            import ray  # noqa: F401
-            import ray.tune  # noqa: F401
-        except ImportError as e:
-            raise RuntimeError("Ray Tune is required but not installed. Please re-run the install cell.") from e
-        return
-
-    # Local: Always install CUDA PyTorch (cu124), other packages with standard PyPI
-    print("🖥️  Local environment detected. Installing CUDA-enabled PyTorch...")
-    
-    torch_packages = ["torch", "torchvision", "torchaudio"]
-    
-    # Check which packages are missing
-    for pkg in other_packages:
-        pkg_name = pkg.split("[")[0]
-        if pkg_name == "ray":
-            try:
-                import ray
-                import ray.tune
-                ray_tune_installed = True
-            except ImportError:
-                ray_tune_installed = False
-            
-            # Pin Ray version if specified
-            if ray_version:
-                pkg = f"ray[tune]=={ray_version}"
-            
-            if force_reinstall or not ray_tune_installed:
-                missing.append(pkg)
-        elif importlib.util.find_spec(pkg_name) is None or force_reinstall:
-            missing.append(pkg)
-    
-    if include_optional:
-        missing += optional_packages + widgets_packages
-    
-    missing = list(dict.fromkeys(missing))
-    
-    # Install torch with CUDA index
-    print(f"📦 Installing PyTorch with CUDA (cu124)...")
-    cmd_torch = [sys.executable, "-m", "pip", "install", "--upgrade", "--index-url", "https://download.pytorch.org/whl/cu124"] + torch_packages
-    try:
-        subprocess.check_call(cmd_torch)
-        print("✅ PyTorch installation complete.")
-    except subprocess.CalledProcessError as e:
-        print(f"❌ PyTorch installation failed: {e}")
-        return
-    
-    # Install other packages with standard PyPI
-    if missing:
-        print(f"📦 Installing other packages...")
-        cmd_other = [sys.executable, "-m", "pip", "install", "--upgrade"] + missing
-        try:
-            subprocess.check_call(cmd_other)
-            print("✅ Other packages installation complete.")
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Other packages installation failed: {e}")
-    
-    # Diagnose CUDA
-    print("\n" + "="*60)
-    print("CUDA Diagnostic Information:")
-    print("="*60)
-    try:
-        import torch
-        print(f"✅ PyTorch version: {torch.__version__}")
-        print(f"✅ CUDA available: {torch.cuda.is_available()}")
-        if torch.cuda.is_available():
-            print(f"✅ CUDA device count: {torch.cuda.device_count()}")
-            for i in range(torch.cuda.device_count()):
-                print(f"   GPU {i}: {torch.cuda.get_device_name(i)}")
-        else:
-            print("❌ CUDA is NOT available - this is a problem!")
-            print("   Checking nvidia-smi...")
-            try:
-                result = subprocess.check_output("nvidia-smi", shell=True).decode()
-                print("   nvidia-smi output:")
-                for line in result.split('\n')[:10]:
-                    print(f"     {line}")
-            except Exception as e:
-                print(f"   nvidia-smi not found: {e}")
-    except ImportError as e:
-        print(f"❌ PyTorch import failed: {e}")
-    print("="*60 + "\n")
-
-def reload_submodules(pkg):
-    """Reload all submodules in a package to pick up code changes."""
-    for importer, modname, ispkg in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
-        try:
-            sub_module = importlib.import_module(modname)
-            importlib.reload(sub_module)
-        except Exception:
-            pass
-
-def setup_colab_environment(
-    github_username: str = "peterlabcl8",
-    repo_name: str = "FlexCNN_for_Medical_Physics",
-    local_repo_path: str = None,
-    skip_git_update: bool = False,
-    verbose: bool = True):
-    """
-    Setup environment for Colab: clone/pull repo and install via pip.
-    Injects all package symbols into caller's globals.
-    
-    Args:
-        github_username: GitHub username for the repository
-        repo_name: Repository name
-        local_repo_path: Local path (unused for Colab, kept for consistency)
-        skip_git_update: If True, skip git pull (useful if already up-to-date or if git operations fail)
-        verbose: Print status messages
-    """
-    # Determine base directory
-    base_dir = "/content"
-    repo_path = os.path.join(base_dir, repo_name)
-    repo_url = f"https://github.com/{github_username}/{repo_name}.git"
-
-    # Clone or update
-    if not os.path.exists(repo_path):
-        if verbose:
-            print(f"📦 Cloning {repo_name} into {base_dir}...")
-        try:
-            subprocess.run(["git", "clone", repo_url], cwd=base_dir, check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"⚠️  Git clone failed: {e}")
-            print(f"   Proceeding without updating repository...")
-    elif not skip_git_update:
-        if verbose:
-            print(f"🔄 Pulling latest changes in {repo_path}...")
-        try:
-            subprocess.run(["git", "pull"], cwd=repo_path, check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"⚠️  Git pull failed: {e}")
-            print(f"   Proceeding with existing repository...")
+def bootstrap_repo_root(base_repo_path=None):
+    """Add repo root to sys.path so we can import the package."""
+    if base_repo_path:
+        repo_root = base_repo_path
     else:
-        if verbose:
-            print(f"⏭️  Skipping git update (skip_git_update=True)")
-
-    # Install package in editable mode
-    if verbose:
-        print("⚙️ Installing the package in editable mode...")
-    try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."],
-                       cwd=repo_path, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"⚠️  Package installation failed: {e}")
-        print(f"   Attempting to proceed anyway...")
-
-    # Ensure repo path is importable
-    if repo_path not in sys.path:
-        sys.path.insert(0, repo_path)
-
-    # Import the package
-    package = importlib.import_module(repo_name)
-
-    # Reload all submodules
-    reload_submodules(package)
-
-    # Gather all symbols
-    imported = {}
-    for _, modname, ispkg in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
-        mod = importlib.import_module(modname)
-        for name, obj in inspect.getmembers(mod):
-            if not name.startswith("_"):
-                imported[name] = obj
-
-    # Inject symbols into caller's globals
-    if verbose:
-        print("✨ Injecting all symbols into global namespace...")
-    caller_globals = inspect.stack()[1].frame.f_globals
-    caller_globals.update(imported)
-    if verbose:
-        print(f"✅ Setup complete: {len(imported)} symbols loaded into globals.")
-
-def setup_local_environment(
-    repo_name: str = "FlexCNN_for_Medical_Physics",
-    verbose: bool = True):
-    """
-    Setup environment for local machine: add to sys.path and walk package.
-    Injects all package symbols into caller's globals.
-    """
-    # Find package root
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    package_root = script_dir
-    while package_root != os.path.dirname(package_root):
-        if os.path.exists(os.path.join(package_root, "setup.py")) or os.path.exists(os.path.join(package_root, "pyproject.toml")):
-            break
-        package_root = os.path.dirname(package_root)
-    
-    # Add to sys.path
-    if package_root not in sys.path:
-        sys.path.insert(0, package_root)
-        if verbose:
-            print(f"📂 Added {package_root} to sys.path")
-    
-    # Import and walk the package
-    if verbose:
-        print(f"📦 Loading {repo_name} package via module walking...")
-    package = importlib.import_module(repo_name)
-    
-    # Reload all submodules to pick up code changes
-    reload_submodules(package)
-    
-    # Gather all symbols from all modules
-    imported = {}
-    for _, modname, ispkg in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
         try:
-            mod = importlib.import_module(modname)
-            imported.update({name: obj for name, obj in vars(mod).items() if not name.startswith('_')})
-        except Exception:
-            pass
-    
-    # Inject symbols into caller's globals
-    if verbose:
-        print("✨ Injecting all symbols into global namespace...")
-    caller_globals = inspect.stack()[1].frame.f_globals
-    caller_globals.update(imported)
-    if verbose:
-        print(f"✅ Setup complete: {len(imported)} symbols loaded into globals.")
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+        except NameError:
+            script_dir = os.getcwd()
+        repo_root = os.path.abspath(os.path.join(script_dir, ".."))
 
-def refresh_repo(
-    IN_COLAB = True,
-    repo_name: str = "FlexCNN_for_Medical_Physics",
-    github_username: str = "petercl8",
-    local_repo_path: str = None,
-    auto_import: bool = True,
-    verbose: bool = True):
-    """
-    Clone/pull and install the repo, then optionally auto-import all modules.
-    Also reloads all submodules to reflect changes without restarting the runtime.
-    """
-    # --- Determine base directory ---
-    base_dir = "/content" if IN_COLAB else local_repo_path
-    if base_dir is None:
-        raise ValueError("local_repo_path must be provided if not in Colab")
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
 
-    repo_path = os.path.join(base_dir, repo_name)
-    repo_url = (
-        f"https://github.com/{github_username}/{repo_name}.git"
-        if IN_COLAB
-        else f"git@github.com:{github_username}/{repo_name}.git"
+    return repo_root
+
+
+# Import setup helpers from the dedicated module (will be available after bootstrap)
+def load_setup_environment():
+    """Lazy-load setup helpers. Must be called AFTER bootstrap_repo_root()."""
+    from FlexCNN_for_Medical_Physics.functions.setup_notebook.setup_environment import (
+        install_packages,
+        sense_device,
+        setup_colab_environment,
+        setup_local_environment,
     )
+    return install_packages, sense_device, setup_colab_environment, setup_local_environment
 
-    # --- Clone or update ---
-    if not os.path.exists(repo_path):
-        if verbose:
-            print(f"📦 Cloning {repo_name} into {base_dir}...")
-        subprocess.run(["git", "clone", repo_url], cwd=base_dir, check=True)
-    else:
-        if verbose:
-            print(f"🔄 Pulling latest changes in {repo_path}...")
-        subprocess.run(["git", "pull"], cwd=repo_path, check=True)
 
-    # --- Install package in editable mode ---
-    if verbose:
-        print("⚙️ Installing the package in editable mode...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."],
-                   cwd=repo_path, check=True)
-
-    # --- Ensure repo path is importable ---
-    if repo_path not in sys.path:
-        sys.path.insert(0, repo_path)
-
-    # --- Import the package ---
-    package = importlib.import_module(repo_name)
-
-    # --- Reload all submodules recursively ---
-    def reload_submodules(pkg):
-        for _, modname, ispkg in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
-            if modname in sys.modules:
-                importlib.reload(sys.modules[modname])
-            else:
-                importlib.import_module(modname)
-        importlib.reload(pkg)
-
-    reload_submodules(package)
-
-    # --- Gather all symbols ---
-    imported = {}
-    for _, modname, ispkg in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
-        mod = importlib.import_module(modname)
-        for name, obj in inspect.getmembers(mod):
-            if not name.startswith("_"):
-                imported[name] = obj
-
-    # --- Inject symbols into caller's globals if requested ---
-    if auto_import:
-        if verbose:
-            print("✨ Injecting all symbols into global namespace...")
-        caller_globals = inspect.stack()[1].frame.f_globals
-        caller_globals.update(imported)
-        if verbose:
-            print(f"✅ Setup complete: {len(imported)} symbols loaded into globals.")
-    else:
-        if verbose:
-            print(f"✅ Imported {len(imported)} symbols (not injected).")
+# Bootstrap now so sys.path is ready
+bootstrap_repo_root(base_repo_path=base_repo_path)
 
 """## Install Packages & Setup Repo"""
 
-# --- Sense environment ---
+# Sense environment first
 IN_COLAB = sense_colab()
 
-# --- Environment-aware install + repo refresh ---
 if IN_COLAB:
-    # Colab: install deps, then clone/pull and reload
+    # Colab: setup repo FIRST (clone/install), then load setup helpers
+    import subprocess
+    import importlib
+    
+    base_dir = "/content"
+    repo_path = os.path.join(base_dir, repo_name)
+    repo_url = f"https://github.com/{github_username}/{repo_name}.git"
+    
+    # Clone repo if needed
+    if not os.path.exists(repo_path):
+        print(f"Cloning {repo_name}...")
+        subprocess.run(["git", "clone", repo_url], cwd=base_dir, check=True)
+    elif not skip_colab_git_update:
+        print(f"Pulling latest changes...")
+        subprocess.run(["git", "pull"], cwd=repo_path, check=True)
+    
+    # Install package in editable mode
+    print("Installing package...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."],
+                   cwd=repo_path, check=True)
+    
+    # Explicitly add repo_path to sys.path for Colab (bootstrap_repo_root doesn't work in notebooks)
+    if repo_path not in sys.path:
+        sys.path.insert(0, repo_path)
+    
+    # Force Python to forget old module cache
+    if 'FlexCNN_for_Medical_Physics' in sys.modules:
+        del sys.modules['FlexCNN_for_Medical_Physics']
+    
+    # Now it's safe to load and use setup helpers
+    install_packages, sense_device, setup_colab_environment, setup_local_environment = load_setup_environment()
+    
+    # Install Python packages
     install_packages(IN_COLAB, ray_version=ray_tune_version)
-    setup_colab_environment(
-        github_username=github_username,
-        repo_name=repo_name,
-        skip_git_update=skip_colab_git_update
-    )
+    
+    # Reload the package to pick up symbols
+    package = importlib.import_module(repo_name)
+    def reload_submodules(pkg):
+        for _, modname, _ in __import__('pkgutil').walk_packages(pkg.__path__, pkg.__name__ + "."):
+            try:
+                importlib.reload(__import__(modname, fromlist=['']))
+            except Exception:
+                pass
+    reload_submodules(package)
 else:
-    # Local: optionally install deps, then reload modules
+    # Local: Load setup helpers (package is already on sys.path), then setup
+    install_packages, sense_device, setup_colab_environment, setup_local_environment = load_setup_environment()
+    
+    # Install packages if needed
     if not skip_local_package_installs:
-        # Local: install missing packages (full check)
         install_packages(IN_COLAB, ray_version=ray_tune_version)
     else:
-        # Local with skip_local_package_installs=True: assume packages already installed
-        print("⏭️  Skipping package checks (skip_local_package_installs=True)")
-    setup_local_environment(repo_name=repo_name)
+        print("Skipping package checks (skip_local_package_installs=True)")
+    
+    # Setup local environment
+    setup_local_environment(repo_name=repo_name, mode=setup_mode, base_repo_path=base_repo_path)
 
 
 # --- Test Resources ---
@@ -915,5 +595,6 @@ run_pipeline(
     settings=settings,
     tune_opts=tune_opts,
     base_dirs=base_dirs,
-    test_opts=test_opts
+    test_opts=test_opts,
+    IN_COLAB=IN_COLAB
 )

@@ -1,4 +1,5 @@
 import os
+import shutil
 import ray
 from ray import tune
 from ray.tune import CLIReporter, JupyterNotebookReporter, RunConfig, CheckpointConfig, FailureConfig
@@ -179,6 +180,11 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
 
     ## If starting from scratch ##
     if not tune_restore:
+        # Check if search folder already exists
+        tune_exp_path = os.path.join(tune_storage_dirPath, tune_exp_name)
+        if os.path.exists(tune_exp_path):
+            print(f"⚠️  [WARNING] Search folder already exists: {tune_exp_path}")
+            print(f"⚠️  [WARNING] Ray Tune will append to existing results. To start fresh, manually delete this folder first.")
 
         # When debugging with a fixed config, run a single sample and don't use a searcher
         num_samples = 1 if use_fixed_config else -1

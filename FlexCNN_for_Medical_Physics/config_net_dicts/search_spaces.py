@@ -30,14 +30,14 @@ scale='mean'  # 'mean' or 'std'
 # --- Begin replacement for config_RAY_SI (flattened, dependent choices) ---
 config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     # Generator Network
-    'SI_gen_mult': tune.uniform(1.1, 3),                        # Factor by which to multiply channels/block as one moves twowards the center of the network
+    'SI_gen_mult': tune.uniform(1.1, 3.5),                        # Factor by which to multiply channels/block as one moves twowards the center of the network
     'SI_gen_fill': tune.choice([0,1]),                        # Number of constant-sized Conv2d layers/block
     'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
     'SI_gen_z_dim': tune.lograndint(512, 2000),                  # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
     'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
-    'SI_gen_hidden_dim': tune.lograndint(10, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
+    'SI_gen_hidden_dim': tune.lograndint(10, 35),                # Generator channel scaling factor. Larger numbers give more total channels.
     'SI_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
                                                                 # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 

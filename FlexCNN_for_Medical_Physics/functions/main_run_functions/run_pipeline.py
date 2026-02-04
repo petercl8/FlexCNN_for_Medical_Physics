@@ -4,6 +4,7 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import r
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_frozen_flow import run_trainable_frozen_flow
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.tune import tune_networks
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.test_by_chunks import test_by_chunks
+from FlexCNN_for_Medical_Physics.functions.helper.power_management import enable_system_wakelock, disable_system_wakelock
 
 def run_pipeline(
     config,
@@ -12,6 +13,7 @@ def run_pipeline(
     tune_opts=None,
     base_dirs=None,
     test_opts=None,
+    IN_COLAB=False,
 ):
     """
     Dispatch function for tuning, training, visualization, or testing.
@@ -23,10 +25,15 @@ def run_pipeline(
         tune_opts: Tuning options dict
         base_dirs: Base directories dict
         test_opts: Test options dict (contains test_begin_at, test_chunk_size, testset_size, etc.)
+        IN_COLAB: Whether running in Google Colab (for power management)
     """
     # Extract from dictionaries
     run_mode = settings['run_mode']
     network_type = config['network_type']
+    
+    # Enable system wakelock on local machines during long-running operations
+    if not IN_COLAB and run_mode in ['tune', 'train', 'test']:
+        enable_system_wakelock()
 
     allowed_types = ('ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW', 'CYCLEGAN', 'GAN')
     if network_type not in allowed_types:
@@ -65,4 +72,6 @@ def run_pipeline(
     else:
         raise ValueError(f"Unknown run_mode '{run_mode}'.")
     
-    return
+    # Always restore normal power management when done
+    if not IN_COLAB:
+        disable_system_wakelock()
