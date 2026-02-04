@@ -310,14 +310,40 @@ def bootstrap_repo_root(base_repo_path=None):
 
 # Import setup helpers from the dedicated module (will be available after bootstrap)
 def load_setup_environment():
-    """Lazy-load setup helpers. Must be called AFTER bootstrap_repo_root()."""
-    from FlexCNN_for_Medical_Physics.functions.setup_notebook.setup_environment import (
-        install_packages,
-        sense_device,
-        setup_colab_environment,
-        setup_local_environment,
-    )
-    return install_packages, sense_device, setup_colab_environment, setup_local_environment
+    """Lazy-load setup helpers by loading the module directly from file."""
+    import importlib.util
+    
+    # Try package import first (for local)
+    try:
+        from FlexCNN_for_Medical_Physics.functions.setup_notebook.setup_environment import (
+            install_packages,
+            sense_device,
+            setup_colab_environment,
+            setup_local_environment,
+        )
+        return install_packages, sense_device, setup_colab_environment, setup_local_environment
+    except ModuleNotFoundError:
+        # Fall back to direct file loading (for Colab after pip install)
+        # sys.path[0] should be the parent directory (e.g., /content in Colab)
+        setup_env_path = os.path.join(
+            sys.path[0],
+            "FlexCNN_for_Medical_Physics",
+            "functions",
+            "setup_notebook",
+            "setup_environment.py"
+        )
+        spec = importlib.util.spec_from_file_location(
+            "setup_environment",
+            setup_env_path
+        )
+        setup_env = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(setup_env)
+        return (
+            setup_env.install_packages,
+            setup_env.sense_device,
+            setup_env.setup_colab_environment,
+            setup_env.setup_local_environment,
+        )
 
 
 # Bootstrap now so sys.path is ready
@@ -353,9 +379,9 @@ if IN_COLAB:
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."],
                    cwd=repo_path, check=True)
     
-    # Explicitly add repo_path to sys.path for Colab (bootstrap_repo_root doesn't work in notebooks)
-    if repo_path not in sys.path:
-        sys.path.insert(0, repo_path)
+    # Explicitly add PARENT directory to sys.path for Colab (so FlexCNN_for_Medical_Physics can be imported)
+    if base_dir not in sys.path:
+        sys.path.insert(0, base_dir)
     
     # Force Python to forget old module cache
     if 'FlexCNN_for_Medical_Physics' in sys.modules:
