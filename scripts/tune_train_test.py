@@ -343,7 +343,10 @@ if IN_COLAB:
         subprocess.run(["git", "clone", repo_url], cwd=base_dir, check=True)
     elif not skip_colab_git_update:
         print(f"Pulling latest changes...")
-        subprocess.run(["git", "pull"], cwd=repo_path, check=True)
+        try:
+            subprocess.run(["git", "pull"], cwd=repo_path, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: git pull failed. Proceeding with existing repo...")
     
     # Install package in editable mode
     print("Installing package...")
