@@ -1,7 +1,7 @@
 import os
 import ray
-from ray import air, tune
-from ray.tune import CLIReporter, JupyterNotebookReporter
+from ray import tune
+from ray.tune import CLIReporter, JupyterNotebookReporter, RunConfig, CheckpointConfig, FailureConfig
 from ray.tune.schedulers import ASHAScheduler, FIFOScheduler
 from ray.tune.search.hyperopt import HyperOptSearch
 from ray.tune.search.optuna import OptunaSearch
@@ -12,6 +12,10 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_frozen_f
 
 def tune_exp():
     print("placeholder")
+
+def short_trial_dirname(trial):
+    """Generate shorter trial directory names to avoid Windows 260-char path limit."""
+    return f"trial_{trial.trial_id[-8:]}"  # Use last 8 chars of trial ID
 
 def tune_networks(config, paths, settings, tune_opts, base_dirs):
     """
@@ -59,6 +63,8 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
     cpus_per_trial = tune_opts.get('cpus_per_trial')
     gpus_per_trial = tune_opts.get('gpus_per_trial')
     tune_search_alg = tune_opts.get('tune_search_alg', 'optuna')  # 'optuna' or 'hyperopt'
+    
+    print(f"[DEBUG] num_GPUs={num_GPUs}, gpus_per_trial={gpus_per_trial}")
 
     os.environ.pop("AIR_VERBOSITY", None)
 
@@ -67,6 +73,10 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
     os.environ.setdefault("RAY_PROMETHEUS_MULTIPROC_DIR", os.path.join(base_dirs.get('project_dirPath', os.getcwd()), "ray_prometheus"))
 
     ray.init(ignore_reinit_error=True, num_cpus=num_CPUs, num_gpus=num_GPUs, include_dashboard=False)
+    
+    # Check what Ray actually detected
+    resources = ray.available_resources()
+    print(f"[DEBUG] Ray available resources: {resources}")
 
     # Extract tune_storage_dirPath directly from paths
     tune_storage_dirPath = paths['tune_storage_dirPath']
@@ -103,21 +113,10 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
     print('===================')
 
     ## Reporters ##
-    # Auto-detect Jupyter/Interactive Window environment
-    try:
-        get_ipython()  # If this works, we're in Jupyter/Colab/Interactive Window
-        reporter = JupyterNotebookReporter(
-            overwrite=True,
-            metric_columns=[optim_metric, 'batch_step', 'example_num'],
-            parameter_columns=['SI_normalize', 'SI_layer_norm', 'SI_gen_hidden_dim', 'batch_size'],
-            sort_by_metric=True,
-            metric=optim_metric,
-            mode=min_max,
-        )
-        print("[INFO] Using JupyterNotebookReporter (Jupyter/Interactive environment detected)")
-    except:
-        reporter = CLIReporter(metric_columns=[optim_metric, 'batch_step'])
-        print("[INFO] Using CLIReporter (terminal environment)")
+    # Simple CLIReporter - Ray will show parameters too, just zoom out or ignore them
+    reporter = CLIReporter(
+        metric_columns=['MSE', 'SSIM', 'CUSTOM', 'training_iteration', 'example_num'],
+    )
 
     ## Trial Scheduler and Run Config ##
     if tune_scheduler == 'ASHA':
@@ -129,12 +128,12 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
             grace_period=grace_period,  # Train for a minumum number of time_attr. Set in Tune() arguments.
             # reduction_factor=2
         )
-        run_config = air.RunConfig(       # How to perform the run
+        run_config = RunConfig(       # How to perform the run
             name=tune_exp_name,         # Ray checkpoints saved to this file, relative to tune_storage_dirPath. Set in "User Parameters"
             storage_path=tune_storage_dirPath,     # Tune search directory. Set in "User Parameters"
             progress_reporter=reporter,  # Specified above
-            failure_config=air.FailureConfig(fail_fast=False),  # default = False. Keeps running if there is an error.
-            checkpoint_config=air.CheckpointConfig(
+            failure_config=FailureConfig(fail_fast=False),  # default = False. Keeps running if there is an error.
+            checkpoint_config=CheckpointConfig(
                 num_to_keep=10,         # Maximum number of checkpoints that are kept per run (for each trial)
                 checkpoint_score_attribute=optim_metric,  # Determines which checkpoints are kept on disk.
                 checkpoint_score_order=min_max
@@ -142,12 +141,12 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
         )
     else:
         scheduler = FIFOScheduler()     # First in/first out scheduler
-        run_config = air.RunConfig(
+        run_config = RunConfig(
             name=tune_exp_name,         # Ray checkpoints saved to this file, relative to tune_storage_dirPath
             storage_path=tune_storage_dirPath,     # Local directory
             progress_reporter=reporter,
-            failure_config=air.FailureConfig(fail_fast=False),  # default = False
-            checkpoint_config=air.CheckpointConfig(
+            failure_config=FailureConfig(fail_fast=False),  # default = False
+            checkpoint_config=CheckpointConfig(
                 num_to_keep=10,         # Maximum number of checkpoints that are kept per run.
                 checkpoint_score_attribute=optim_metric,  # Determines which checkpoints are kept on disk.
                 checkpoint_score_order=min_max),
@@ -193,7 +192,8 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
                 time_budget_s=tune_minutes * 60,  # time_budget is in seconds
                 scheduler=scheduler,
                 search_alg=search_alg,
-                max_concurrent_trials=1
+                max_concurrent_trials=1,
+                trial_dirname_creator=short_trial_dirname  # Shorter trial names to avoid path length issues
             ),
             run_config=run_config
         )
@@ -209,4 +209,10 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
         )
 
     result_grid: ResultGrid = tuner.fit()
+    
+    print("\n" + "="*80)
+    print("[INFO] Tuning complete.")
+    best_result = result_grid.get_best_result(metric=optim_metric, mode=min_max)
+    print(f"[INFO] Best {optim_metric}: {best_result.metrics[optim_metric]:.6f}")
+    print("="*80)
     return result_grid

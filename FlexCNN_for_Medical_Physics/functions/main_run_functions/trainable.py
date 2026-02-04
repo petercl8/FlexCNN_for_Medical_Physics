@@ -26,7 +26,6 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     build_checkpoint_dict,
     save_checkpoint,
     log_tune_debug,
-    report_tune_metrics,
     visualize_train,
     visualize_test,
     visualize_visualize,
@@ -37,10 +36,13 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     init_checkpoint_state,
 )
 
+from FlexCNN_for_Medical_Physics.functions.cross_validation import report_tune_metrics
+
 from FlexCNN_for_Medical_Physics.functions.helper.setup_generators_optimizer import (
     create_generator,
     create_optimizer,
 )
+from FlexCNN_for_Medical_Physics.functions.helper.config_materialize import materialize_config
 
 
 # Module logger for optional Tune debug output
@@ -56,6 +58,9 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     # SECTION 1: EXTRACT CONFIGURATION VARIABLES
     # ========================================================================================
+    # Materialize config (convert string references to objects for consistency)
+    config = materialize_config(config)
+    
     run_mode = settings['run_mode']
     device = settings['device']
     tune_debug = settings.get('tune_debug', False)
@@ -164,14 +169,29 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     # SECTION 7A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
     # ========================================================================================
+    # Set unneeded training data paths to None to prevent accidental loading
     if network_type == 'ACT':
         # Activity-only: attenuation paths are not required
         paths['atten_image_path'] = None
         paths['atten_sino_path'] = None
+        paths['tune_val_atten_image_path'] = None
+        paths['tune_val_atten_sino_path'] = None
+        paths['tune_qa_atten_path']=None
+        paths['tune_qa_atten_image_path']=None
     elif network_type == 'ATTEN':
         # Attenuation-only: activity paths are not required
         paths['act_image_path'] = None
         paths['act_sino_path'] = None
+        paths['tune_val_act_sino_path'] = None
+        paths['tune_val_act_image_path'] = None
+        paths['tune_qa_act_path']=None
+        paths['tune_qa_act_image_path']=None
+    elif network_type == 'CONCAT':
+        # CONCAT: only attenuation image path is not required
+        paths['atten_image_path'] = None
+        paths['tune_val_atten_image_path'] = None
+        paths['tune_qa_atten_image_path']=None
+
 
     # ========================================================================================
     # SECTION 7B: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
@@ -322,9 +342,9 @@ def run_trainable(config, paths, settings):
                 # _____ REPORTING: Ray Tune Validation (tune mode) _____
                 if run_mode == 'tune' and session is not None:
                     tune_dataframe = report_tune_metrics(
-                        gen, paths, config, settings, tune_dataframe, tune_dataframe_path,
+                        (gen,), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         train_SI, tune_dataframe_fraction, tune_max_t, report_num,
-                        example_num, batch_step, epoch, session, device
+                        example_num, batch_step, epoch, device
                     )
                     report_num += 1
 

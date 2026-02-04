@@ -20,7 +20,7 @@ config_ACT_SI = {
   "SI_exp_kernel": 4, #4, 3
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
-  "SI_gen_final_activ": nn.Sigmoid(),
+  "SI_gen_final_activ": 'Sigmoid',
   "SI_gen_hidden_dim": 19,  # 19
   "SI_gen_mult": 2.065329728174869,
   "SI_gen_neck": "wide", #medium", "narrow", "wide"
@@ -37,9 +37,9 @@ config_ACT_SI = {
   "gen_image_channels": 1,
   "gen_image_size": 180,
   "gen_sino_channels": 3, #3
-  "gen_sino_size": 320, # default: 180 (288, 320)
-  "sup_base_criterion": nn.MSELoss(),
-  "SI_stats_criterion": PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=3, scale='mean', weights=None),
+  "gen_sino_size": 288, # default: 180 (288, 320)
+  "sup_base_criterion": 'MSELoss',
+  "SI_stats_criterion": 'PatchwiseMomentLoss',
   "SI_alpha_min": -1, # -1
   "SI_half_life_examples": 2000,
   "SI_output_scale_lr_mult": 1.0,  # No learnable output scale

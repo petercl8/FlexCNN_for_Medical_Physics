@@ -1,5 +1,4 @@
 from ast import If
-from torch import nn
 from ray import tune
 from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
 
@@ -54,7 +53,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_disc_lr': tune.loguniform(1e-4,1e-2),
     'SI_disc_b1': tune.loguniform(0.1, 0.999),
     'SI_disc_b2': tune.loguniform(0.1, 0.999),
-    'SI_disc_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]), # Possible options: tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.BCEWithLogitsLoss()]),
+    'SI_disc_adv_criterion': tune.choice(['MSELoss', 'BCEWithLogitsLoss']), # Possible options: tune.choice(['MSELoss', 'KLDivLoss', 'BCEWithLogitsLoss'])
 }
 
 config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
@@ -64,7 +63,7 @@ config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     'SI_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'SI_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
     'SI_layer_norm': tune.choice(['none', 'instance', 'group']),
-    'SI_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
+    'SI_gen_final_activ': tune.choice([None, 'LeakyReLU', 'ELU', 'Sigmoid', 'Tanh']),
 }
 
 config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
@@ -72,7 +71,7 @@ config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
     'SI_fixedScale': 1,
     'SI_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'SI_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
-    'SI_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
+    'SI_gen_final_activ': tune.choice([None, 'Tanh', 'Sigmoid', 'ReLU']),
 }
 
 config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
@@ -100,7 +99,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_disc_lr': tune.loguniform(1e-4,1e-2),
     'IS_disc_b1': tune.loguniform(0.1, 0.999),
     'IS_disc_b2': tune.loguniform(0.1, 0.999),
-    'IS_disc_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]),
+    'IS_disc_adv_criterion': tune.choice(['MSELoss', 'BCEWithLogitsLoss']),
 }
 
 config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
@@ -110,7 +109,7 @@ config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     'IS_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'IS_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
     'IS_layer_norm': tune.choice(['none', 'instance', 'group']),
-    'IS_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
+    'IS_gen_final_activ': tune.choice([None, 'LeakyReLU', 'ELU', 'Sigmoid', 'Tanh']),
 }
 
 config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
@@ -118,7 +117,7 @@ config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
     'IS_fixedScale': 1,
     'IS_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'IS_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
-    'IS_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
+    'IS_gen_final_activ': tune.choice([None, 'Tanh', 'Sigmoid', 'ReLU']),
 }
 config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning
     # NEW: New parameters added to config_RAY_SI (related to generator optimizer)
@@ -126,7 +125,7 @@ config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or 
     'gen_lr': tune.loguniform(1e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': tune.loguniform(0.1, 0.999),
-    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]), # Could also include nn.KLDivLoss(reduction='batchmean'). Not prefixed with SI or IS because this is used for both.
+    'sup_base_criterion': tune.choice(['MSELoss', 'L1Loss', 'VarWeightedMSE']), # Could also include 'KLDivLoss'. Not prefixed with SI or IS because this is used for both.
     # OVERWRITES: overwrites values from config_RAY_SI or config_RAY_IS. This is done so time isn't wasted looking for unused hyperparameters.
     'SI_disc_hidden_dim': 1,
     'SI_disc_patchGAN': 1,
@@ -154,7 +153,7 @@ config_RAY_SUP_SIMULT= { # Mixed New/Overwrites (when combined with config_SI/co
     'gen_lr': tune.loguniform(0.5e-4,1e-2),
     'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
     'gen_b2': tune.loguniform(0.1, 0.999),
-    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    'sup_base_criterion': tune.choice(['MSELoss', 'L1Loss', 'VarWeightedMSE']),
     # SPECIFICALLY FOR SSIMULTANEOUS TRAINING
     'gen_lr_scalar': tune.loguniform(0.1,10),  # learning rate mixing: gen_lr * gen_lr_scalar for one generator, gen_lr / gen_lr_scalar for the other
     'cycle_criterion': None,
@@ -170,18 +169,18 @@ config_RAY_GAN = { # This is MERGED with either config_RAY_IS or config_RAY_SI t
     'gen_b1': tune.loguniform(0.1, 0.999),
     'gen_b2': 0.999, #tune.loguniform(0.1, 0.999),
 
-    'gen_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]),
+    'gen_adv_criterion': tune.choice(['MSELoss', 'BCEWithLogitsLoss']),
     }
 
 config_RAY_GAN_CYCLE = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent generative adversarial network.
     # NEW
-    'cycle_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
-    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    'cycle_criterion': tune.choice(['MSELoss', 'L1Loss', 'VarWeightedMSE']),
+    'sup_base_criterion': tune.choice(['MSELoss', 'L1Loss', 'VarWeightedMSE']),
     'lambda_adv': 1,
     'lambda_sup': 0,
     'lambda_cycle': 1,
     # OVERWRITES
-    'gen_adv_criterion': nn.MSELoss(), #tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    'gen_adv_criterion': 'MSELoss', #tune.choice(['MSELoss', 'L1Loss', 'VarWeightedMSE']),
     'IS_disc_lr': tune.loguniform(1e-4,1e-2),
     'SI_disc_lr': tune.loguniform(1e-4,1e-2),
     'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128)

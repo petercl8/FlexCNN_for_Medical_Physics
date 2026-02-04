@@ -21,7 +21,6 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     build_checkpoint_dict,
     save_checkpoint,
     log_tune_debug,
-    report_tune_metrics,
     visualize_train,
     visualize_test,
     visualize_visualize,
@@ -31,11 +30,14 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     init_checkpoint_state,
 )
 
+from FlexCNN_for_Medical_Physics.functions.cross_validation import report_tune_metrics
+
 from FlexCNN_for_Medical_Physics.functions.helper.setup_generators_optimizer import (
     instantiate_dual_generators,
     load_dual_generator_checkpoints,
     create_optimizer,
 )
+from FlexCNN_for_Medical_Physics.functions.helper.config_materialize import materialize_config
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +47,9 @@ def run_trainable_frozen_flow(config, paths, settings):
     Train, test, or visualize a network using a frozen attenuation network (backbone)
     guiding a trainable activity network. Handles coflow/counterflow feature injection.
     """
+    # Materialize config (convert string references to objects for consistency)
+    config = materialize_config(config)
+    
     # ========================================================================================
     # SECTION 1: EXTRACT CONFIGURATION VARIABLES
     # ========================================================================================
@@ -162,12 +167,18 @@ def run_trainable_frozen_flow(config, paths, settings):
     # ========================================================================================
     # SECTION 7A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
     # ========================================================================================
+    # Set unneeded training data paths to None
     if config['network_type'] == 'FROZEN_COFLOW':
         # Coflow uses attenuation sinogram input only
         paths['atten_image_path'] = None
+        paths['tune_val_atten_image_path'] = None
+        paths['tune_qa_atten_image_path'] = None
     elif config['network_type'] == 'FROZEN_COUNTERFLOW':
         # Counterflow uses attenuation image input only
         paths['atten_sino_path'] = None
+        paths['tune_val_atten_sino_path'] = None
+        paths['tune_qa_atten_sino_path'] = None
+
 
     # ========================================================================================
     # SECTION 7B: VALIDATE REQUIRED PATHS AND BUILD DATA LOADER
@@ -313,9 +324,9 @@ def run_trainable_frozen_flow(config, paths, settings):
                 # Ray Tune reporting (tune mode)
                 if run_mode == 'tune' and session is not None:
                     tune_dataframe = report_tune_metrics(
-                        gen_act, paths, config, settings, tune_dataframe, tune_dataframe_path,
+                        (gen_act, gen_atten), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         train_SI_act, tune_dataframe_fraction, tune_max_t, report_num,
-                        example_num, batch_step, epoch, session, device,
+                        example_num, batch_step, epoch, device
                     )
                     report_num += 1
 

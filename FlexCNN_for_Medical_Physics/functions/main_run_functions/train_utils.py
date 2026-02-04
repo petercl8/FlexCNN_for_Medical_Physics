@@ -2,19 +2,22 @@
 Shared training utilities for supervisory trainables.
 
 Provides infrastructure functions (generator/optimizer creation, checkpointing),
-reporting functions (tuning metrics, visualization), and batch collation for
-reuse across trainable_supervisory.py, trainable_frozen_backbone.py, and trainable.py.
+visualization functions, batch collation, and shared utilities for training pipelines.
+
+Cross-validation (tuning metrics reporting) has been moved to cross_validation module.
 """
 import os
+import time
 import torch
 import logging
 
 from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
-from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric, update_tune_dataframe, reconstruct_images_and_update_test_dataframe
+from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
+from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric, reconstruct_images_and_update_test_dataframe
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, patchwise_moment_metric
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_single_unmatched_tensor, show_multiple_matched_tensors
 from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
-from FlexCNN_for_Medical_Physics.functions.helper.evaluation_data_random import load_validation_batch, load_qa_batch, evaluate_val, evaluate_qa
+
 
 # Module logger for optional Tune debug output
 logger = logging.getLogger(__name__)
@@ -179,92 +182,6 @@ def log_tune_debug(gen, epoch: int, batch_step: int, gen_loss, device: str) -> N
     )
 
 
-def report_tune_metrics(gen, paths, config, settings, tune_dataframe, tune_dataframe_path, 
-                        train_SI, tune_dataframe_fraction, tune_max_t, report_num, 
-                        example_num, batch_step, epoch, session, device):
-    """
-    Load evaluation batch, compute metrics, update dataframe, and report to Ray Tune.
-    
-    Args:
-        gen: Generator model (will be set to eval mode and restored to train mode)
-        paths: Path dictionary with validation/QA data paths
-        config: Configuration dictionary
-        settings: Settings dictionary with tune_report_for, tune_metric, etc.
-        tune_dataframe: Current tune dataframe
-        tune_dataframe_path: Path to save dataframe
-        train_SI: Training direction (True for sino→image)
-        tune_dataframe_fraction: Fraction of tune_max_t at which to save dataframe
-        tune_max_t: Maximum number of reports
-        report_num: Current report number
-        example_num: Current example number
-        batch_step: Current batch step
-        epoch: Current epoch
-        session: Ray Tune session object
-        device: Device string
-    
-    Returns:
-        Updated tune_dataframe
-    
-    Raises:
-        ValueError: if NaN detected in optimization metric or invalid tune_report_for
-    """
-    # Set generator to eval mode for validation
-    gen.eval()
-    
-    # Load fresh random batch and evaluate
-    tune_report_for = settings.get('tune_report_for', 'val')
-    if tune_report_for == 'val':
-        batch = load_validation_batch(paths, config, settings)
-        metrics = evaluate_val(gen, batch, device, train_SI)
-
-        # Update dataframe at specified fraction
-        if int(tune_dataframe_fraction * tune_max_t) == report_num:
-            tune_dataframe = update_tune_dataframe(
-                tune_dataframe, tune_dataframe_path, gen, config, metrics
-            )
-
-    elif tune_report_for == 'qa':
-        batch = load_qa_batch(paths, config, settings, augment=('SI', True))
-        metrics = evaluate_qa(gen, batch, device, use_ground_truth_rois=False)
-
-        # Update dataframe at specified fraction
-        if int(tune_dataframe_fraction * tune_max_t) == report_num:
-            tune_dataframe = update_tune_dataframe(
-                tune_dataframe, tune_dataframe_path, gen, config, metrics
-            )
-
-    else:
-        raise ValueError(f"Invalid tune_report_for='{tune_report_for}'")
-    
-    # Explicit memory cleanup to prevent accumulation across trials
-    del batch
-    if device.startswith('cuda'):
-        torch.cuda.empty_cache()
-    
-    # Restore generator to train mode
-    gen.train()
-    
-    # NaN check
-    metric_to_check = settings.get('tune_metric', 'SSIM')
-    if metric_to_check in metrics and (
-        metrics[metric_to_check] is None or 
-        torch.isnan(torch.tensor(metrics[metric_to_check])).item()
-    ):
-        raise ValueError(f"NaN detected in {metric_to_check}, terminating trial")
-
-    # Add metadata to metrics
-    metrics.update({
-        'example_num': example_num,
-        'batch_step': batch_step,
-        'epoch': epoch
-    })
-    
-    # Report to Ray Tune
-    session.report(metrics)
-    
-    return tune_dataframe
-
-
 def visualize_train(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM, 
                     epoch, batch_step, example_num):
     """
@@ -420,77 +337,6 @@ def route_batch_inputs(train_SI, batch_tensors, network_type=None):
         raise ValueError(f"Invalid network_type='{network_type}' for routing batch inputs")
     
     return input_, target
-
-
-def apply_feature_injection(
-    gen_act,
-    input_tensor,
-    frozen_encoder_feats,
-    frozen_decoder_feats,
-    flow_mode: str,
-    enable_inject_to_encoder: bool = True,
-    enable_inject_to_decoder: bool = True,
-):
-    """
-    Forward pass through the activity generator with optional frozen feature injection.
-
-    Injection routing is determined by flow_mode:
-    - coflow: frozen encoder -> activity encoder; frozen decoder -> activity decoder (like scales)
-    - counterflow: frozen encoder -> activity decoder; frozen decoder -> activity encoder (cross scales)
-
-    Toggles enable/disable destination streams (into activity encoder/decoder). Feature shapes are matched
-    by spatial size; scaled features are added to preserve channel dimensions.
-    """
-
-    if flow_mode not in ('coflow', 'counterflow'):
-        raise ValueError("flow_mode must be one of {'coflow', 'counterflow'}")
-
-    # No feature scaling: 1x1 conv handles mixing
-    # Encoder path
-    skips = []
-    a = input_tensor
-    for block in gen_act.contract_blocks:
-        a = block(a)
-        skips.append(a)
-    # No explicit injection/scaling here; handled by generator's 1x1 conv
-
-    # Neck
-    a = gen_act.neck(a)
-
-    # Decoder path (injection handled by generator)
-    a = gen_act._merge(skips[4], a)
-    a = gen_act.expand_blocks[0](a)
-
-    a = gen_act._merge(skips[3], a)
-    a = gen_act.expand_blocks[1](a)
-
-    a = gen_act._merge(skips[2], a)
-    a = gen_act.expand_blocks[2](a)
-
-    a = gen_act._merge(skips[1], a)
-    a = gen_act.expand_blocks[3](a)
-
-    a = gen_act._merge(skips[0], a)
-    a = gen_act.expand_blocks[4](a)
-
-    # Post-processing mirrors Generator forward
-    if a.shape[-1] > gen_act.output_size:
-        crop_size = gen_act.output_size
-        margin = (a.shape[-1] - crop_size) // 2
-        a = a[:, :, margin:margin+crop_size, margin:margin+crop_size]
-
-    if gen_act.final_activation:
-        a = gen_act.final_activation(a)
-    if gen_act.normalize:
-        batch_size = len(a)
-        a = torch.reshape(a, (batch_size, gen_act.output_channels, gen_act.output_size**2))
-        a = torch.nn.functional.normalize(a, p=1, dim=2)
-        a = torch.reshape(a, (batch_size, gen_act.output_channels, gen_act.output_size, gen_act.output_size))
-
-    scale = torch.exp(gen_act.log_output_scale) if gen_act.output_scale_learnable else gen_act.fixed_output_scale
-    a = a * scale
-
-    return a
 
 
 def generate_reconstructions_for_visualization(recon1, recon2, input_, config):

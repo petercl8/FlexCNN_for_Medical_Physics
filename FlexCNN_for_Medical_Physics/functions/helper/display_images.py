@@ -1,9 +1,45 @@
 import torch
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 from matplotlib.colors import Normalize
 import os
+
+def configure_plotting(plot_mode='inline'):
+    """
+    Configure matplotlib backend and environment based on plot_mode.
+    
+    Parameters:
+    -----------
+    plot_mode : str
+        'never': Silent mode (Agg backend)
+        'always': Interactive backend (TkAgg if not in Jupyter, else default)
+        'inline': Only display in Jupyter/Interactive Window (default)
+    """
+    # Store pattern in environment for smart_show() to access
+    os.environ['FLEXCNN_PLOT_MODE'] = plot_mode
+    
+    if plot_mode == 'never':
+        # Never display plots
+        matplotlib.use('Agg')
+        print(f"[INFO] Plot mode: never - silent plotting (Agg backend)")
+    elif plot_mode == 'always':
+        # Always display plots
+        try:
+            get_ipython()
+            print(f"[INFO] Plot mode: always - using interactive backend: {matplotlib.get_backend()}")
+        except:
+            matplotlib.use('TkAgg')
+            print(f"[INFO] Plot mode: always - using TkAgg backend for window display")
+    else:  # plot_mode == 'inline'
+        # Only display in Jupyter/Interactive Window
+        try:
+            get_ipython()
+            print(f"[INFO] Plot mode: inline - using interactive backend: {matplotlib.get_backend()}")
+        except:
+            matplotlib.use('Agg')
+            print(f"[INFO] Plot mode: inline - terminal mode, silent plotting (Agg backend)")
 
 # Smart plt.show() - displays inline in Jupyter, silent in regular terminal
 def smart_show():

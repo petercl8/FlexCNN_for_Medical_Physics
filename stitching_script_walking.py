@@ -38,7 +38,7 @@ cache_dir = '/content/cache'
 plot_mode='inline'    # Options: 'always' (always show plots), 'inline' (only in Jupyter/Interactive Window), 'never' (silent)
 
 ## See note below for info about these options ##
-gen_sino_size=320         # Options: 180, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
+gen_sino_size=288         # Options: 180, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 90). Images are square.
 gen_sino_channels=3       # Number of sinogram channels for network currently being trained. (usually 1 or 3)
 gen_image_channels=1      # Number of image channels for network currently being trained (generally 1)
@@ -104,16 +104,16 @@ tune_exp_name='search-ACT-320-padZeros-tunedSSIM'  # Experiment directory: Ray t
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
 tune_restore=False           # Restore a run (from the file tune_exp_name in tune_storage_dirPath). Use this if a tuning run terminated early for some reason.
-tune_minutes = 150           # How long to run RayTune. 180 minutes is good for 180x180 input.
+tune_minutes = 180           # How long to run RayTune. 180 minutes is good for 180x180 input.
 tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=10   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
-tune_examples_per_report=2*512 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
-tune_grace_period=3          # Minimum number of reports before terminating a trial
-tune_max_t = 12              # Maximum number of reports before terminating a trial
+tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
+tune_grace_period=4          # Minimum number of reports before terminating a trial
+tune_max_t = 24              # Maximum number of reports before terminating a trial
                              # 24 is a good number for ASHA. For FIFO, 12 is a good number.
 tune_report_for='val'        # Set to 'val' to report IQA metrics using or cross-validation set. Set to 'qa' to use contrast recovery coefficients for QA phantoms.
-tune_eval_batch_size=512*4   # If tuning on validation or QA set, what is the batch size to evaluate?
+tune_eval_batch_size=64   # If tuning on validation or QA set, what is the batch size to evaluate?
 tune_augment=('SI', True)    # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
 tune_debug=False             # Run logger to debug tuning
 tune_force_fixed_config=False# Force tuning with a fixed configuration dictionary. This is useful for debugging, to make sure that a network has a good architecture for learning.
@@ -151,15 +151,17 @@ tune_val_atten_sino_file=None
 
 # QA Phantoms #
 tune_qa_hot_weight=0.5 # A weighted contrast recovery coefficient is reported to ray tune as follows: ROI_NEMA_hot * tune_qa_hot_weight + ROI_NEMA_cold * (1-tune_qa_hot_weight)
-tune_qa_act_sino_file='QA-NEMA-highCountSino.npy'
-tune_qa_act_image_file='QA-NEMA-actMap.npy'
-tune_qa_hotMask_file='QA-NEMA-hotMask_17mm.npy'
-tune_qa_hotBackgroundMask_file='QA-NEMA-backMask_17mm.npy'
-tune_qa_coldMask_file='QA-NEMA-coldMask_37mm.npy'
-tune_qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 
+tune_qa_act_sino_file=None #'QA-NEMA-highCountSino.npy'
+tune_qa_act_image_file=None #'QA-NEMA-actMap.npy'
 tune_qa_atten_image_file=None
 tune_qa_atten_sino_file=None
+
+tune_qa_hotMask_file=None #'QA-NEMA-hotMask_17mm.npy'
+tune_qa_hotBackgroundMask_file=None #'QA-NEMA-backMask_17mm.npy'
+tune_qa_coldMask_file=None #'QA-NEMA-coldMask_37mm.npy'
+tune_qa_coldBackgroundMask_file=None #'QA-NEMA-backMask_37mm.npy'
+
 
 
 ## Unlikely to Change ##
@@ -275,32 +277,6 @@ visualize_shuffle=True      # Shuffle data set when visualizing?
 
 import os, sys, glob, importlib, inspect, types, subprocess, pkgutil
 
-# Store plot_mode in environment for display_images.py to access
-os.environ['FLEXCNN_PLOT_MODE'] = plot_mode
-
-# Configure matplotlib for the environment
-import matplotlib
-if plot_mode == 'never':
-    # Never display plots
-    matplotlib.use('Agg')
-    print(f"[INFO] Plot mode: never - silent plotting (Agg backend)")
-elif plot_mode == 'always':
-    # Always display plots
-    try:
-        get_ipython()
-        print(f"[INFO] Plot mode: always - using interactive backend: {matplotlib.get_backend()}")
-    except:
-        matplotlib.use('TkAgg')
-        print(f"[INFO] Plot mode: always - using TkAgg backend for window display")
-else:  # plot_mode == 'inline'
-    # Only display in Jupyter/Interactive Window
-    try:
-        get_ipython()
-        print(f"[INFO] Plot mode: inline - using interactive backend: {matplotlib.get_backend()}")
-    except:
-        matplotlib.use('Agg')
-        print(f"[INFO] Plot mode: inline - terminal mode, silent plotting (Agg backend)")
-
 def sense_colab():
     try:
         import google.colab
@@ -385,7 +361,7 @@ def install_packages(IN_COLAB=True, force_reinstall=False, include_optional=True
         
         if torch_packages:
             print(f"📦 Installing PyTorch with CUDA (cu124) for Colab GPU support...")
-            cmd_torch = ["pip", "install", "--upgrade", "--index-url", "https://download.pytorch.org/whl/cu124"] + torch_packages
+            cmd_torch = [sys.executable, "-m", "pip", "install", "--upgrade", "--index-url", "https://download.pytorch.org/whl/cu124"] + torch_packages
             try:
                 subprocess.check_call(cmd_torch)
                 print("✅ PyTorch installation complete.")
@@ -395,12 +371,28 @@ def install_packages(IN_COLAB=True, force_reinstall=False, include_optional=True
         
         if other_missing:
             print(f"📦 Installing other packages...")
-            cmd = ["pip", "install", "--upgrade"] + other_missing
             try:
+                cmd = [sys.executable, "-m", "pip", "install", "--upgrade"] + other_missing
                 subprocess.check_call(cmd)
                 print("✅ Installation complete.")
             except subprocess.CalledProcessError as e:
                 print(f"❌ Installation failed: {e}")
+                print("🔁 Retrying installs individually (no cache)...")
+                failed = []
+                for pkg in other_missing:
+                    try:
+                        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "--no-cache-dir", pkg])
+                    except subprocess.CalledProcessError:
+                        failed.append(pkg)
+                if failed:
+                    raise RuntimeError(f"Failed to install packages: {failed}")
+
+        # Validate Ray is available before importing package modules
+        try:
+            import ray  # noqa: F401
+            import ray.tune  # noqa: F401
+        except ImportError as e:
+            raise RuntimeError("Ray Tune is required but not installed. Please re-run the install cell.") from e
         return
 
     # Local: Always install CUDA PyTorch (cu124), other packages with standard PyPI
@@ -489,7 +481,7 @@ def reload_submodules(pkg):
             pass
 
 def setup_colab_environment(
-    github_username: str = "petercl8",
+    github_username: str = "peterlabcl8",
     repo_name: str = "FlexCNN_for_Medical_Physics",
     local_repo_path: str = None,
     skip_git_update: bool = False,
@@ -690,51 +682,43 @@ def refresh_repo(
         if verbose:
             print(f"✅ Imported {len(imported)} symbols (not injected).")
 
-"""## Install Packages"""
+"""## Install Packages & Setup Repo"""
 
 # --- Sense environment ---
 IN_COLAB = sense_colab()
 
-# --- Install packages and import ---
-# Skip full GPU diagnostics for speed; only install if needed
+# --- Environment-aware install + repo refresh ---
 if IN_COLAB:
+    # Colab: install deps, then clone/pull and reload
     install_packages(IN_COLAB, ray_version=ray_tune_version)
-elif not skip_local_package_installs:
-    # Local: quick check - only reinstall if needed
-    try:
-        import torch
-        if torch.cuda.is_available():
-            print("✅ CUDA is available")
-        else:
-            print("⚠️  CUDA not detected - falling back to CPU (this won't work well)")
-    except ImportError:
-        print("📦 PyTorch not found, installing packages...")
-        install_packages(IN_COLAB, ray_version=ray_tune_version)
-else:
-    # Local with skip_local_package_installs=True: assume packages already installed
-    print("⏭️  Skipping package checks (skip_local_package_installs=True)")
-
-"""## Finish Setup"""
-
-# --- Setup Repository (environment-aware) ---
-if IN_COLAB:
     setup_colab_environment(
         github_username=github_username,
         repo_name=repo_name,
-        local_repo_path=local_repo_dirPath,
         skip_git_update=skip_colab_git_update
     )
 else:
+    # Local: optionally install deps, then reload modules
+    if not skip_local_package_installs:
+        # Local: install missing packages (full check)
+        install_packages(IN_COLAB, ray_version=ray_tune_version)
+    else:
+        # Local with skip_local_package_installs=True: assume packages already installed
+        print("⏭️  Skipping package checks (skip_local_package_installs=True)")
     setup_local_environment(repo_name=repo_name)
+
 
 # --- Test Resources ---
 list_compute_resources()
 
-# --- Set main project directory
+# --- Set main project directory ---
 project_dirPath = setup_project_dirs(IN_COLAB, project_local_dirPath, project_colab_dirPath, mount_colab_drive=True)
 
 # --- Set Device ---
 device = sense_device(device=device_opt)
+
+# --- Configure Plotting ---
+from FlexCNN_for_Medical_Physics.functions.helper.display_images import configure_plotting
+configure_plotting(plot_mode=plot_mode)
 
 # Build grouped parameter dictionaries #
 
@@ -923,9 +907,6 @@ config = construct_config(
     config_RAY_GAN=None,
     config_RAY_GAN_CYCLE=None,
 )
-
-# --- Refresh Repository ---
-#refresh_repo(IN_COLAB, local_repo_path=local_repo_dirPath)
 
 # --- Run Pipeline ---
 run_pipeline(
