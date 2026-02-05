@@ -22,7 +22,7 @@ To use in a notebook with overrides:
 #####################
 
 ## Basic Options ##
-run_mode = 'tune'  # Options: 'tune', 'train', 'test', 'visualize', 'none'
+run_mode = 'train'  # Options: 'tune', 'train', 'test', 'visualize', 'none'
 network_type = 'ACT'  # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'
 train_SI = True  # If working with GAN or SUP networks, True for Sinogram-->Image, False for Image-->Sinogram
 use_cache = False  # Cache dataset to Google Colab VM?
@@ -32,7 +32,7 @@ cache_dir = '/content/cache'
 plot_mode = 'inline'  # Options: 'always', 'inline', 'never'
 
 ## Network Input/Output Sizes ##
-gen_sino_size = 180  # Options: 180, 288, 320. Resize input sinograms to this size
+gen_sino_size = 288  # Options: 180, 288, 320. Resize input sinograms to this size
 gen_image_size = 180  # Image size (Options: 90)
 gen_sino_channels = 3  # Number of sinogram channels for network currently being trained
 gen_image_channels = 1  # Number of image channels for network currently being trained

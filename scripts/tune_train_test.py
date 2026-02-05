@@ -113,7 +113,7 @@ tune_batches_per_report=10   # If tune_even_reporting = False, this is the numbe
 tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
 tune_grace_period=4          # Minimum number of reports before terminating a trial
 tune_max_t = 48              # Maximum number of reports before terminating a trial
-                             # 24 is a good number for ASHA network. For FIFO, 12 is a good number. You can increase to 48for 180x180 network.
+                             # 24 is a good number for ASHA, 288x288 network. For FIFO, 12 is a good number. You can increase to 48for 180x180 network.
 tune_report_for='val'        # Set to 'val' to report IQA metrics using or cross-validation set. Set to 'qa' to use contrast recovery coefficients for QA phantoms.
 tune_eval_batch_size=64   # If tuning on validation or QA set, what is the batch size to evaluate?
 tune_augment=('SI', True)    # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
