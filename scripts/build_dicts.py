@@ -17,7 +17,7 @@ Usage:
     settings = all_dicts['settings']
 """
 
-from FlexCNN_for_Medical_Physics.functions.setup_notebook.construct_dictionaries import (
+from FlexCNN_for_Medical_Physics.functions.setup_environment.construct_dictionaries import (
     setup_paths, setup_settings, construct_config
 )
 from FlexCNN_for_Medical_Physics.config_net_dicts.tuned_ACT_SI import config_ACT_SI
