@@ -14,7 +14,9 @@ from FlexCNN_for_Medical_Physics.functions.helper.config_materialize import mate
 
 # Updated: BuildImageSinoTensors returns lists of all images and sinograms (activity, attenuation), and reconstructions if present
 
-def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths, indexes, device, settings):
+def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths, indexes, device, settings,
+                 sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='zeros',
+                 vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
     '''
     Return a dictionary of tensors for activity images/sinograms, attenuation images/sinograms, and reconstructions.
     Each tensor has shape (N, C, H, W), where N is the number of indexes provided (len(indexes)).
@@ -41,7 +43,10 @@ def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_na
     for idx in indexes:
         act_data, atten_data, recon_data = NpArrayDataLoader(
             act_sino_array, act_image_array, atten_image_array, atten_sino_array, recon1_array, recon2_array,
-            config, settings, augment=(None, False), index=idx, device=device
+            config, settings, augment=(None, False), index=idx, device=device,
+            sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, image_pad_type=image_pad_type,
+            cvert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size, 
+            bilinear_intermediate_size=bilinear_intermediate_size
         )
         act_sino_scaled, act_image_scaled = act_data
         atten_sino_scaled, atten_image_scaled = atten_data
@@ -180,7 +185,9 @@ def cnn_reconstruct_dual(
 def PlotPhantomRecons(indexes, checkpoint_name, network_type, 
                       config, paths, fig_size, device, settings, outputs_to_plot,
                       act_image_array_name=None, act_sino_array_name=None, atten_image_array_name=None,
-                      atten_sino_array_name=None, recon1_array_name=None, recon2_array_name=None):
+                      atten_sino_array_name=None, recon1_array_name=None, recon2_array_name=None,
+                      sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='zeros',
+                      vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
     """
     Load data, reconstruct images using a trained CNN, and visualize results.
     
@@ -233,6 +240,18 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         Filename of first reconstruction reference array (.npy file).
     recon2_array_name : str, optional
         Filename of second reconstruction reference array (.npy file).
+    sino_resize_type : str, optional
+        Sinogram resize method: 'crop_pad' or 'bilinear'. Default: 'crop_pad'.
+    sino_pad_type : str, optional
+        Sinogram padding type: 'zeros' or 'sinogram' (mirror/flip). Default: 'zeros'.
+    image_pad_type : str, optional
+        Image padding type: 'zeros' or 'none' (bilinear resize). Default: 'zeros'.
+    vert_pool_size : int, optional
+        Vertical pooling factor for sinograms (1 = no pooling). Default: 1.
+    horiz_pool_size : int, optional
+        Horizontal pooling factor for sinograms (1 = no pooling). Default: 1.
+    bilinear_intermediate_size : int, optional
+        Intermediate size for bilinear resize before padding. Default: 161.
     
     Returns
     -------
@@ -284,7 +303,10 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     # Materialize config to convert string activations to actual PyTorch objects
     config = materialize_config(config)
     tensors = BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name,
-                           recon1_array_name, recon2_array_name, config, paths, indexes, device, settings)
+                           recon1_array_name, recon2_array_name, config, paths, indexes, device, settings,
+                           sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, image_pad_type=image_pad_type,
+                           vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size,
+                           bilinear_intermediate_size=bilinear_intermediate_size)
 
     # Choose input for reconstruction based on network_type
     if network_type == 'ACT':
@@ -325,6 +347,5 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     for key in outputs_to_plot:
         tensors_to_plot.extend(plot_map.get(key, []))
 
-    show_single_unmatched_tensor(cnn_output)
     show_multiple_unmatched_tensors(*tensors_to_plot, fig_size=fig_size)
     return tensors, cnn_output
