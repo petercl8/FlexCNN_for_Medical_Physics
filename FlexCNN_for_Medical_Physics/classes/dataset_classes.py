@@ -44,22 +44,20 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 #   device:              'cuda' or 'cpu'
 
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
-                      config, settings, augment=False, index=0, device='cuda'):
+                      config, settings, augment=False, index=0, device='cuda',
+                      sino_resize_type = 'bilinear'  # 'crop_pad' or 'bilinear'
+    ):
 
     global resize_warned
     
     # ========================================================================================
     # SECTION 0: Resizing Parameters
     # ========================================================================================
-    # Sinogram resizing parameters
-    sino_resize_type = 'crop_pad'  # 'crop_pad' or 'bilinear'
     sino_pad_type = 'zeros'  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
+    image_pad_type = 'zeros'  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
     vert_pool_size = 1  # Vertical pooling factor (1 = no pooling)
     horiz_pool_size = 1  # Horizontal pooling factor (1 = no pooling)
     bilinear_intermediate_size = 161  # Intermediate size for bilinear resize before padding (None = resize directly to target)
-    
-    # Image resizing parameters
-    image_pad_type = 'zeros'  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
     
     # ========================================================================================
     # SECTION 1: Extract Parameters from Configuration

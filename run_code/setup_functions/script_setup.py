@@ -283,7 +283,7 @@ def resolve_repo_root():
         repo_root = os.path.dirname(repo_root)
 
     raise FileNotFoundError("Could not locate repo root (setup.py or pyproject.toml).")
-b
+
 
 def setup_colab_environment(
     github_username: str = "peterlabcl8",

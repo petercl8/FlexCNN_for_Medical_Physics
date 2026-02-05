@@ -32,16 +32,17 @@ run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working with GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 
-plot_mode='inline'    # Options: 'always' (always show plots), 'inline' (only in Jupyter/Interactive Window), 'never' (silent)
-
 ## See note below for info about these options ##
-gen_sino_size=288         # Options: 180, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
+gen_sino_size=180         # Options: 180, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 90). Images are square.
 gen_sino_channels=3       # Number of sinogram channels for network currently being trained. (usually 1 or 3)
 gen_image_channels=1      # Number of image channels for network currently being trained (generally 1)
 
 SI_normalize=False    # For sino-->image mappings: normalize CNN outputs (images), iterative recons, and ground truths from dataset. You can then adjust the scale factor in the search dictionaries.
 IS_normalize=False    # For image-->sinogram mappings: normalize CNN outputs (sinograms), projections, and ground truth sinograms from dataset. You can then adjust scale factor in search dicts.
+
+## Plot Mode ##
+plot_mode='inline'    # Options: 'always' (always show plots), 'inline' (only in Jupyter/Interactive Window), 'never' (silent)
 
 ## Scales ##
 act_recon1_scale = 3.350  # If doing quantitative recons (no normalization), this is the scale factor to multiply optional recon1 by
@@ -92,10 +93,10 @@ num_examples=-1                    # Number of examples from dataset to load. Se
 ## Tuning ##
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
-tune_csv_file='frame-ACT-180-padZeros-tunedSSIM-B' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-180-padZeros-tunedSSIM-' # .csv file to save tuning dataframe to
 #tune_csv_file='temp'
 
-tune_exp_name='search-ACT-180-padZeros-tunedSSIM-Bs'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-180-padZeros-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
@@ -173,12 +174,12 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 
 # Note: For dual network training, checkpoints are autmatically appended suffixes of -atten and -act.
 
-train_checkpoint_file='checkpoint-ACT-288-padZeros-tunedSSIM-100epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-180-padZeros-tunedSSIM-100epochs'  # Checkpoint file to load or save to.
 
 train_load_state=True     # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=True     # Save network weights to train_checkpoint_file file as it trains
+train_save_state=False     # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 100         # Number of training epochs.
-train_display_step=30      # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=100      # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False     # Show calculation times during training?
 

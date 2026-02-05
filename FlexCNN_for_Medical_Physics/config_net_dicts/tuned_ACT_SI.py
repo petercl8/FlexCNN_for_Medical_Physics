@@ -14,20 +14,42 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-config_ACT_SI = { # 288x288, tuned SSIM, pad_type='zeros'
-  "IS_disc_adv_criterion": 1,
-  "IS_disc_b1": 1,
-  "IS_disc_b2": 1,
-  "IS_disc_hidden_dim": 1,
-  "IS_disc_lr": 1,
-  "IS_disc_patchGAN": 1,
+
+config_ACT_SI = { # 180x180, tuned SSIM, pad_type='zeros', bilinear_intermediate_size = 161, horiz_pool=2, vert_pool=1
   "SI_alpha_min": -1,
-  "SI_disc_adv_criterion": 1,
-  "SI_disc_b1": 1,
-  "SI_disc_b2": 1,
-  "SI_disc_hidden_dim": 1,
-  "SI_disc_lr": 1,
-  "SI_disc_patchGAN": 1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 11,
+  "SI_gen_mult": 2.0282722914428213,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 584,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 10.553559972734485,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 8.240938610220685,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "conv",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.4495215605123463,
+  "gen_b2": 0.15053718115803394,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0003521542451328137,
+  "gen_sino_channels": 3,
+  "gen_sino_size": 180,
+  "network_type": "ACT",
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
+
+config_ACT_SI = { # 288x288, tuned SSIM, pad_type='zeros', interemediate size = None, horiz_pool=1, vert_pool=1
+  "SI_alpha_min": -1,
   "SI_dropout": False,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
@@ -57,7 +79,9 @@ config_ACT_SI = { # 288x288, tuned SSIM, pad_type='zeros'
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
+'''
 
+###################
 
 '''
 ## highCountSino-->actMap, tuned for SSIM, Augugment: SI
