@@ -223,6 +223,52 @@ def reload_submodules(pkg):
             pass
 
 
+def reload_package(repo_name: str = "FlexCNN_for_Medical_Physics", verbose: bool = True):
+    """
+    Reload a package and inject all symbols into caller's globals.
+    
+    Useful in Jupyter notebooks when you've edited package code and want to
+    reload changes without restarting the kernel.
+    
+    Args:
+        repo_name: Name of the package to reload
+        verbose: Print status messages
+    
+    Example:
+        # At top of notebook cell after editing package code
+        reload_package()
+        # Now all updated functions/classes are available
+    """
+    if verbose:
+        print(f"🔄 Reloading {repo_name} package...")
+    
+    # Import or reload the main package
+    if repo_name in sys.modules:
+        package = importlib.reload(sys.modules[repo_name])
+    else:
+        package = importlib.import_module(repo_name)
+    
+    # Reload all submodules
+    reload_submodules(package)
+    
+    # Gather all symbols from all modules
+    imported = {}
+    for _, modname, ispkg in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
+        try:
+            mod = importlib.import_module(modname)
+            imported.update({name: obj for name, obj in vars(mod).items() if not name.startswith('_')})
+        except Exception:
+            pass
+    
+    # Inject symbols into caller's globals
+    if verbose:
+        print("✨ Injecting all symbols into global namespace...")
+    caller_globals = inspect.stack()[1].frame.f_globals
+    caller_globals.update(imported)
+    if verbose:
+        print(f"✅ Reload complete: {len(imported)} symbols updated.")
+
+
 def resolve_repo_root(base_repo_path=None):
     """Resolve repo root by searching for setup.py/pyproject.toml."""
     if base_repo_path:

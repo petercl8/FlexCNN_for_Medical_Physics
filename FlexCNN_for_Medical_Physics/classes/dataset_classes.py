@@ -41,18 +41,27 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 #   config:              configuration dictionary with network_type, train_SI, gen_image_size, gen_sino_size,
 #                        gen_image_channels, gen_sino_channels, SI_normalize, SI_fixedScale, IS_normalize, IS_fixedScale
 #   augment:             augmentation type: 'SI', 'II', None, or False
-#   sino_resize_type:    'crop_pad' (default) or 'bilinear'
-#   sino_pad_type:       'sinogram' (default) or 'zeros'
-#   image_pad_type:      'zeros' (default--padds original-sized image with surrounding zeros) or 'none' (bilinear resize)
 #   index:               data sample index to extract
 #   device:              'cuda' or 'cpu'
 
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
-                      config, settings, augment=False,
-                      sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='zeros', index=0, device='cuda',
-                      ):
+                      config, settings, augment=False, index=0, device='cuda'):
 
     global resize_warned
+    
+    # ========================================================================================
+    # SECTION 0: Resizing Parameters
+    # ========================================================================================
+    # Sinogram resizing parameters
+    sino_resize_type = 'bilinear'  # 'crop_pad' or 'bilinear'
+    sino_pad_type = 'zeros'  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
+    vert_pool_size = 1  # Vertical pooling factor (1 = no pooling)
+    horiz_pool_size = 2  # Horizontal pooling factor (1 = no pooling)
+    bilinear_intermediate_size = 161  # Intermediate size for bilinear resize before padding (None = resize directly to target)
+    
+    # Image resizing parameters
+    image_pad_type = 'zeros'  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
+    
     # ========================================================================================
     # SECTION 1: Extract Parameters from Configuration
     # ========================================================================================
@@ -151,17 +160,19 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
         act_sino_multChannel, act_image_multChannel, atten_sino_multChannel, atten_image_multChannel, act_recon1_multChannel, act_recon2_multChannel = AugmentSinoImageDataRecons(
             act_sino_multChannel, act_image_multChannel, atten_sino_multChannel, atten_image_multChannel, act_recon1_multChannel, act_recon2_multChannel, flip_channels=augment[1]
         )
-        # Resize sinogram (like a Sinogram)
+        # Resize sinogram (like a Sinogram) - no horizontal pooling to preserve angular information
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
-            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, pool_size=1
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, 
+            vert_pool_size=vert_pool_size, horiz_pool_size=1, bilinear_intermediate_size=bilinear_intermediate_size
         )
 
     if augment[0]=='II':
         # If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
-            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type='zeros', pool_size=1
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type='zeros', 
+            vert_pool_size=vert_pool_size, horiz_pool_size=1, bilinear_intermediate_size=bilinear_intermediate_size
         )
 
         # Augment data (with image-like augmentations)
@@ -172,7 +183,8 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     if augment[0] is None:
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
-            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, pool_size=2
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, 
+            vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size, bilinear_intermediate_size=bilinear_intermediate_size
         )
 
     # Resize image data (only if needed)

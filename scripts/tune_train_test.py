@@ -28,7 +28,7 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working with GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 use_cache=False   # Cache dataset to Google Colab VM? Uses time to copy files. Might make dataset faster, might not.
@@ -38,7 +38,7 @@ cache_dir = '/content/cache'
 plot_mode='inline'    # Options: 'always' (always show plots), 'inline' (only in Jupyter/Interactive Window), 'never' (silent)
 
 ## See note below for info about these options ##
-gen_sino_size=288         # Options: 180, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
+gen_sino_size=180         # Options: 180, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 90). Images are square.
 gen_sino_channels=3       # Number of sinogram channels for network currently being trained. (usually 1 or 3)
 gen_image_channels=1      # Number of image channels for network currently being trained (generally 1)
@@ -97,23 +97,23 @@ num_examples=-1                    # Number of examples from dataset to load. Se
 ## Tuning ##
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
-#tune_csv_file='frame-ACT-288-padZeros-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='temp'
+tune_csv_file='frame-ACT-180-padZeros-tunedSSIM-B' # .csv file to save tuning dataframe to
+#tune_csv_file='temp'
 
-#tune_exp_name='search-ACT-288-padZeros-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
-tune_exp_name='temp'
+tune_exp_name='search-ACT-180-padZeros-tunedSSIM-Bs'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+#tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
 tune_restore=False           # Resume a terminated run (loads tune_exp_name from tune_storage_dirPath). If False, deletes any existing tune_exp_name folder and starts fresh.
-tune_minutes = 8*60           # How long to run RayTune. 180 minutes is good for 180x180 input.
+tune_minutes = 4*60           # How long to run RayTune. 240 minutes is good for a 288x288 network.
 tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=10   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
 tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
 tune_grace_period=4          # Minimum number of reports before terminating a trial
-tune_max_t = 24              # Maximum number of reports before terminating a trial
-                             # 24 is a good number for ASHA. For FIFO, 12 is a good number.
+tune_max_t = 48              # Maximum number of reports before terminating a trial
+                             # 24 is a good number for ASHA network. For FIFO, 12 is a good number. You can increase to 48for 180x180 network.
 tune_report_for='val'        # Set to 'val' to report IQA metrics using or cross-validation set. Set to 'qa' to use contrast recovery coefficients for QA phantoms.
 tune_eval_batch_size=64   # If tuning on validation or QA set, what is the batch size to evaluate?
 tune_augment=('SI', True)    # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
