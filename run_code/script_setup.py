@@ -283,13 +283,14 @@ def resolve_repo_root():
         repo_root = os.path.dirname(repo_root)
 
     raise FileNotFoundError("Could not locate repo root (setup.py or pyproject.toml).")
-
+b
 
 def setup_colab_environment(
     github_username: str = "peterlabcl8",
     repo_name: str = "FlexCNN_for_Medical_Physics",
     local_repo_path: str = None,
     skip_git_update: bool = False,
+    force_fresh_clone: bool = False,
     verbose: bool = True):
     """
     Setup environment for Colab: clone/pull repo and install via pip.
@@ -300,12 +301,21 @@ def setup_colab_environment(
         repo_name: Repository name
         local_repo_path: Local path (unused for Colab, kept for consistency)
         skip_git_update: If True, skip git pull (useful if already up-to-date or if git operations fail)
+        force_fresh_clone: If True, remove existing repo and clone fresh from GitHub
         verbose: Print status messages
     """
+    import shutil
+    
     # Determine base directory
     base_dir = "/content"
     repo_path = os.path.join(base_dir, repo_name)
     repo_url = f"https://github.com/{github_username}/{repo_name}.git"
+
+    # Remove old clone if force_fresh_clone is True
+    if force_fresh_clone and os.path.exists(repo_path):
+        if verbose:
+            print(f"🗑️  Removing old clone: {repo_path}")
+        shutil.rmtree(repo_path)
 
     # Clone or update
     if not os.path.exists(repo_path):
@@ -425,12 +435,24 @@ def refresh_repo(
     repo_name: str = "FlexCNN_for_Medical_Physics",
     github_username: str = "petercl8",
     local_repo_path: str = None,
+    force_fresh_clone: bool = False,
     auto_import: bool = True,
     verbose: bool = True):
     """
     Clone/pull and install the repo, then optionally auto-import all modules.
     Also reloads all submodules to reflect changes without restarting the runtime.
+    
+    Args:
+        IN_COLAB: Whether running in Colab
+        repo_name: Repository name
+        github_username: GitHub username
+        local_repo_path: Local path (required if not in Colab)
+        force_fresh_clone: If True, remove existing repo and clone fresh
+        auto_import: If True, inject all symbols into caller's globals
+        verbose: Print status messages
     """
+    import shutil
+    
     # --- Determine base directory ---
     base_dir = "/content" if IN_COLAB else local_repo_path
     if base_dir is None:
@@ -442,6 +464,12 @@ def refresh_repo(
         if IN_COLAB
         else f"git@github.com:{github_username}/{repo_name}.git"
     )
+
+    # --- Remove old clone if force_fresh_clone is True ---
+    if force_fresh_clone and os.path.exists(repo_path):
+        if verbose:
+            print(f"🗑️  Removing old clone: {repo_path}")
+        shutil.rmtree(repo_path)
 
     # --- Clone or update ---
     if not os.path.exists(repo_path):
