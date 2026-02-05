@@ -1,6 +1,8 @@
 import os
 import torch
 import numpy as np
+import sys
+import importlib
 
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataLoader
 from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
@@ -75,16 +77,29 @@ def cnn_reconstruct_single(input_tensor, config, paths, device, checkpoint_name)
     input_tensor: input for the network (act_sino for ACT, atten_sino for ATTEN, concatenated for CONCAT)
     '''
 
+    # Force reimport of generator classes to ensure fresh definitions
+    if 'FlexCNN_for_Medical_Physics.classes.generators' in sys.modules:
+        generators_module = importlib.reload(sys.modules['FlexCNN_for_Medical_Physics.classes.generators'])
+        Gen_180 = generators_module.Generator_180
+        Gen_288 = generators_module.Generator_288
+        Gen_320 = generators_module.Generator_320
+    else:
+        from FlexCNN_for_Medical_Physics.classes.generators import Generator_180 as Gen_180, Generator_288 as Gen_288, Generator_320 as Gen_320
+
     checkpoint_path = os.path.join(paths['checkpoint_dirPath'], checkpoint_name)
     net_size = config['gen_sino_size']
+    
+    print(f"[DEBUG] Creating generator: gen_sino_size={net_size}")
+    
     if net_size == 180:
-        gen = Generator_180(config=config, gen_SI=True).to(device)
+        gen = Gen_180(config=config, gen_SI=True).to(device)
     elif net_size == 288:
-        gen = Generator_288(config=config, gen_SI=True).to(device)
+        gen = Gen_288(config=config, gen_SI=True).to(device)
     elif net_size == 320:
-        gen = Generator_320(config=config, gen_SI=True).to(device)
+        gen = Gen_320(config=config, gen_SI=True).to(device)
     else:
         raise ValueError(f"No Generator class available for gen_sino_size={net_size}. Supported sizes: 180, 288, 320")
+    
     checkpoint = torch.load(checkpoint_path, map_location=device)
     try:
         gen.load_state_dict(checkpoint['gen_state_dict'])
@@ -167,8 +182,102 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
                       act_image_array_name=None, act_sino_array_name=None, atten_image_array_name=None,
                       atten_sino_array_name=None, recon1_array_name=None, recon2_array_name=None):
     """
-    outputs_to_plot: list of strings, e.g. ['act_image', 'act_sino', 'atten_image', 'atten_sino', 'recon1', 'recon2', 'cnn_output']
-    network_type: if None, will use config['network_type']
+    Load data, reconstruct images using a trained CNN, and visualize results.
+    
+    Supports single-network (ACT, ATTEN, CONCAT) and dual-network (FROZEN_COFLOW, FROZEN_COUNTERFLOW)
+    architectures. Materializes config parameters, loads data from disk, selects appropriate network
+    inputs based on architecture type, runs inference, and optionally visualizes selected outputs.
+    
+    Parameters
+    ----------
+    indexes : list of int
+        Sample indices to load and reconstruct from the dataset.
+    checkpoint_name : str
+        Name of the checkpoint file (without extension) to load. For dual-network types,
+        expects checkpoints named '{checkpoint_name}-act' and '{checkpoint_name}-atten'.
+    network_type : str
+        Network architecture type. Options:
+        - 'ACT': Activity network (sinogram -> image)
+        - 'ATTEN': Attenuation network (sino -> atten image)
+        - 'CONCAT': Concatenated dual-input network
+        - 'FROZEN_COFLOW': Frozen attenuation + trainable activity (coflow configuration)
+        - 'FROZEN_COUNTERFLOW': Frozen attenuation + trainable activity (counterflow configuration)
+        If None, uses config['network_type'].
+    config : dict
+        Hyperparameter dictionary containing network configuration (gen_sino_size, channels, 
+        activation types, etc.). Supports string activation names which are converted to 
+        PyTorch objects via materialize_config().
+    paths : dict
+        Dictionary with keys:
+        - 'data_dirPath': Directory containing .npy data files
+        - 'checkpoint_dirPath': Directory containing saved checkpoint files
+    fig_size : int or tuple
+        Figure size for visualization (passed to show_multiple_unmatched_tensors).
+    device : str
+        PyTorch device ('cpu' or 'cuda').
+    settings : dict
+        Data normalization and scaling factors (e.g., 'act_sino_scale', 'act_image_scale').
+    outputs_to_plot : list of str or None
+        List of output names to visualize. Options: 'act_image', 'act_sino', 'atten_image',
+        'atten_sino', 'recon1', 'recon2', 'cnn_output'. If None, defaults to 
+        ['act_image', 'cnn_output'].
+    act_image_array_name : str, optional
+        Filename of activity image array (.npy file).
+    act_sino_array_name : str, optional
+        Filename of activity sinogram array (.npy file).
+    atten_image_array_name : str, optional
+        Filename of attenuation image array (.npy file).
+    atten_sino_array_name : str, optional
+        Filename of attenuation sinogram array (.npy file).
+    recon1_array_name : str, optional
+        Filename of first reconstruction reference array (.npy file).
+    recon2_array_name : str, optional
+        Filename of second reconstruction reference array (.npy file).
+    
+    Returns
+    -------
+    tensors : dict
+        Dictionary of loaded and processed data tensors:
+        - 'act_image_tensor': Shape (N, C, H, W) or None
+        - 'act_sino_tensor': Shape (N, C, H, W) or None
+        - 'atten_image_tensor': Shape (N, C, H, W) or None
+        - 'atten_sino_tensor': Shape (N, C, H, W) or None
+        - 'recon1_tensor': Shape (N, C, H, W) or None
+        - 'recon2_tensor': Shape (N, C, H, W) or None
+    cnn_output : torch.Tensor or None
+        Network reconstruction output, shape (N, C, H, W) where N = len(indexes).
+        None if no reconstruction was computed.
+    
+    Notes
+    -----
+    - Config parameters are automatically materialized (string activations converted to objects).
+    - Generator classes are force-reloaded to handle Jupyter caching issues.
+    - Config must match the checkpoint's original training config for successful loading.
+    - For dual-network types, frozen attenuation features are passed to the activity network.
+    - Large datasets should use device='cpu' if memory-constrained.
+    
+    Raises
+    ------
+    ValueError
+        If network_type is unsupported or checkpoint config mismatches.
+    RuntimeError
+        If checkpoint state dict does not match the instantiated network architecture.
+    
+    Examples
+    --------
+    >>> tensors, recon = PlotPhantomRecons(
+    ...     indexes=[0, 1, 2],
+    ...     checkpoint_name='checkpoint-ACT-180-tuned',
+    ...     network_type='ACT',
+    ...     config=config_dict,
+    ...     paths={'data_dirPath': '/path/to/data', 'checkpoint_dirPath': '/path/to/checkpoints'},
+    ...     fig_size=4,
+    ...     device='cpu',
+    ...     settings=settings_dict,
+    ...     outputs_to_plot=['act_image', 'act_sino', 'cnn_output'],
+    ...     act_image_array_name='train-actMap.npy',
+    ...     act_sino_array_name='train-highCountSino-320x257.npy'
+    ... )
     """
     if network_type is None:
         network_type = config['network_type']
