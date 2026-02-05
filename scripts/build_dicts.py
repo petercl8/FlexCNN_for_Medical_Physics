@@ -20,13 +20,13 @@ Usage:
 from FlexCNN_for_Medical_Physics.functions.setup_environment.construct_dictionaries import (
     setup_paths, setup_settings, construct_config
 )
-from FlexCNN_for_Medical_Physics.config_net_dicts.tuned-ACT_SI import config_ACT_SI
-from FlexCNN_for_Medical_Physics.config_net_dicts.tuned-ACT_IS import config_ACT_IS
-from FlexCNN_for_Medical_Physics.config_net_dicts.tuned-ATTEN_SI import config_ATTEN_SI
-from FlexCNN_for_Medical_Physics.config_net_dicts.tuned-ATTEN_IS import config_ATTEN_IS
-from FlexCNN_for_Medical_Physics.config_net_dicts.tuned-CONCAT import config_CONCAT
-from FlexCNN_for_Medical_Physics.config_net_dicts.tuned-FROZEN_COFLOW import config_FROZEN_COFLOW
-from FlexCNN_for_Medical_Physics.config_net_dicts.tuned-FROZEN_COUNTERFLOW import config_FROZEN_COUNTERFLOW
+from FlexCNN_for_Medical_Physics.config_net_dicts.tuned_ACT_SI import config_ACT_SI
+from FlexCNN_for_Medical_Physics.config_net_dicts.tuned_ACT_IS import config_ACT_IS
+from FlexCNN_for_Medical_Physics.config_net_dicts.tuned_ATTEN_SI import config_ATTEN_SI
+from FlexCNN_for_Medical_Physics.config_net_dicts.tuned_ATTEN_IS import config_ATTEN_IS
+from FlexCNN_for_Medical_Physics.config_net_dicts.tuned_CONCAT import config_CONCAT
+from FlexCNN_for_Medical_Physics.config_net_dicts.tuned_FROZEN_COFLOW import config_FROZEN_COFLOW
+from FlexCNN_for_Medical_Physics.config_net_dicts.tuned_FROZEN_COUNTERFLOW import config_FROZEN_COUNTERFLOW
 from FlexCNN_for_Medical_Physics.config_net_dicts.search_spaces import (
     config_RAY_SI, config_RAY_SI_learnScale, config_RAY_SI_fixedScale,
     config_RAY_IS, config_RAY_IS_learnScale, config_RAY_IS_fixedScale,
