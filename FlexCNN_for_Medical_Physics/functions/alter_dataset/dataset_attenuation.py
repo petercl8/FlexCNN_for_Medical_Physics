@@ -6,10 +6,7 @@ import os
 import sys
 
 from ..helper.display_images import show_multiple_matched_tensors, show_multiple_unmatched_tensors
-from ...classes.dataset_resizing import (
-    bilinear_resize_sino,
-    crop_pad_sino,
-)
+from ...classes.dataset_resizing import resize_sino_data
 
 
 def project_attenuation(atten_image, sino_height, circle=False, theta=None):
@@ -169,37 +166,31 @@ def visualize_sinogram_alignment(
         # Print shapes for debugging
         print(f"Example {idx} (before resize): activity_sino shape: {activity_sino.shape}, atten_sino shape: {atten_sino.shape}")
 
-        # Resize/pad activity
-        if act_resize_type == 'crop_pad':
-            act_torch, _ = crop_pad_sino(
-                torch.from_numpy(activity_sino).unsqueeze(0).float(), None,
-                vert_size=act_vert_size,
-                target_width=act_target_width,
-                pool_size=act_pool_size,
-                pad_type=act_pad_type,
+        # Resize/pad both activity and attenuation together
+        act_torch = torch.from_numpy(activity_sino).unsqueeze(0).float() if act_resize_type else None
+        atten_torch = torch.from_numpy(atten_sino).unsqueeze(0).float() if atten_resize_type else None
+        
+        if act_resize_type or atten_resize_type:
+            # Use same resize type and parameters for both (can be customized if needed)
+            resize_type = act_resize_type or atten_resize_type
+            sino_size = act_vert_size if act_resize_type else atten_vert_size
+            pad_type = act_pad_type if act_resize_type else atten_pad_type
+            pool_size = act_pool_size if act_resize_type else atten_pool_size
+            
+            act_torch, atten_torch = resize_sino_data(
+                act_torch,
+                atten_torch,
+                sino_size=sino_size,
+                resize_sino=True,
+                sino_resize_type=resize_type,
+                sino_pad_type=pad_type,
+                vert_pool_size=1,
+                horiz_pool_size=pool_size,
+                bilinear_intermediate_size=None
             )
-            activity_sino = act_torch.squeeze().cpu().numpy()
-        elif act_resize_type == 'bilinear':
-            act_torch, _ = bilinear_resize_sino(
-                torch.from_numpy(activity_sino).unsqueeze(0).float(), None, act_vert_size
-            )
-            activity_sino = act_torch.squeeze().cpu().numpy()
-
-        # Resize/pad attenuation
-        if atten_resize_type == 'crop_pad':
-            _, atten_torch = crop_pad_sino(
-                None, torch.from_numpy(atten_sino).unsqueeze(0).float(),
-                vert_size=atten_vert_size,
-                target_width=atten_target_width,
-                pool_size=atten_pool_size,
-                pad_type=atten_pad_type,
-            )
-            atten_sino = atten_torch.squeeze().cpu().numpy()
-        elif atten_resize_type == 'bilinear':
-            _, atten_torch = bilinear_resize_sino(
-                None, torch.from_numpy(atten_sino).unsqueeze(0).float(), atten_vert_size
-            )
-            atten_sino = atten_torch.squeeze().cpu().numpy()
+        
+        activity_sino = act_torch.squeeze().cpu().numpy() if act_torch is not None else activity_sino
+        atten_sino = atten_torch.squeeze().cpu().numpy() if atten_torch is not None else atten_sino
 
         print(f"Example {idx} (after resize): activity_sino shape: {activity_sino.shape}, atten_sino shape: {atten_sino.shape}")
 
