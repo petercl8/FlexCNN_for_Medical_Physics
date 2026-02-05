@@ -48,7 +48,7 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
                         sino_resize_type = 'crop_pad',  # 'crop_pad' or 'bilinear'
                         sino_pad_type = 'zeros',  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
                         image_pad_type = 'zeros',  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
-                        cvert_pool_size = 1,  # Vertical pooling factor (1 = no pooling)
+                        vert_pool_size = 1,  # Vertical pooling factor (1 = no pooling)
                         horiz_pool_size = 1,  # Horizontal pooling factor (1 = no pooling)
                         bilinear_intermediate_size = 161,  # Intermediate size for bilinear resize before padding (None = resize directly to target)
     ):

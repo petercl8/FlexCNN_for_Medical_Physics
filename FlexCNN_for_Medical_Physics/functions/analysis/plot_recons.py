@@ -16,7 +16,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.config_materialize import mate
 
 def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths, indexes, device, settings,
                  sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='zeros',
-                 vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
+                 cvert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
     '''
     Return a dictionary of tensors for activity images/sinograms, attenuation images/sinograms, and reconstructions.
     Each tensor has shape (N, C, H, W), where N is the number of indexes provided (len(indexes)).
@@ -45,7 +45,7 @@ def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_na
             act_sino_array, act_image_array, atten_image_array, atten_sino_array, recon1_array, recon2_array,
             config, settings, augment=(None, False), index=idx, device=device,
             sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, image_pad_type=image_pad_type,
-            cvert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size, 
+            cvert_pool_size=cvert_pool_size, horiz_pool_size=horiz_pool_size, 
             bilinear_intermediate_size=bilinear_intermediate_size
         )
         act_sino_scaled, act_image_scaled = act_data
@@ -187,7 +187,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
                       act_image_array_name=None, act_sino_array_name=None, atten_image_array_name=None,
                       atten_sino_array_name=None, recon1_array_name=None, recon2_array_name=None,
                       sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='zeros',
-                      vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
+                      cvert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
     """
     Load data, reconstruct images using a trained CNN, and visualize results.
     
@@ -246,7 +246,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         Sinogram padding type: 'zeros' or 'sinogram' (mirror/flip). Default: 'zeros'.
     image_pad_type : str, optional
         Image padding type: 'zeros' or 'none' (bilinear resize). Default: 'zeros'.
-    vert_pool_size : int, optional
+    cvert_pool_size : int, optional
         Vertical pooling factor for sinograms (1 = no pooling). Default: 1.
     horiz_pool_size : int, optional
         Horizontal pooling factor for sinograms (1 = no pooling). Default: 1.
@@ -305,7 +305,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     tensors = BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name,
                            recon1_array_name, recon2_array_name, config, paths, indexes, device, settings,
                            sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, image_pad_type=image_pad_type,
-                           vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size,
+                           cvert_pool_size=cvert_pool_size, horiz_pool_size=horiz_pool_size,
                            bilinear_intermediate_size=bilinear_intermediate_size)
 
     # Choose input for reconstruction based on network_type
