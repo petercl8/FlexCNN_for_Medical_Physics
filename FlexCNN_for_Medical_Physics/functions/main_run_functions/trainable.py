@@ -137,13 +137,16 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     # SECTION 5: LOAD OR INITIALIZE CHECKPOINT AND WEIGHTS
     # ========================================================================================
+    print(f"[DEBUG] load_state={load_state}, checkpoint_path={checkpoint_path}")
     start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict = init_checkpoint_state(
         load_state, run_mode, checkpoint_path, num_epochs, device
     )
     if load_state:
+        print(f"[DEBUG] Loading checkpoint from epoch {start_epoch}")
         gen.load_state_dict(gen_state_dict)
         gen_opt.load_state_dict(gen_opt_state_dict)
     else:
+        print("[DEBUG] Initializing weights from scratch (load_state=False)")
         gen = gen.apply(weights_init_he)
 
     # Set to eval mode for test/visualize

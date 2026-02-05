@@ -11,7 +11,6 @@ from torch.utils.data import Dataset
 import numpy as np
 from .dataset_augment_data_recons import AugmentSinoImageDataRecons, AugmentImageImageDataRecons
 from .dataset_resizing import resize_image_data, resize_sino_data
-from FlexCNN_for_Medical_Physics.functions.helper.cache_paths import cache_dataset_paths
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 
@@ -53,10 +52,10 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     # SECTION 0: Resizing Parameters
     # ========================================================================================
     # Sinogram resizing parameters
-    sino_resize_type = 'bilinear'  # 'crop_pad' or 'bilinear'
+    sino_resize_type = 'crop_pad'  # 'crop_pad' or 'bilinear'
     sino_pad_type = 'zeros'  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
     vert_pool_size = 1  # Vertical pooling factor (1 = no pooling)
-    horiz_pool_size = 2  # Horizontal pooling factor (1 = no pooling)
+    horiz_pool_size = 1  # Horizontal pooling factor (1 = no pooling)
     bilinear_intermediate_size = 161  # Intermediate size for bilinear resize before padding (None = resize directly to target)
     
     # Image resizing parameters
@@ -297,25 +296,7 @@ class NpArrayDataSet(Dataset):
         # ========================================================================================
         # SUBSECTION: Load Data to Arrays
         # ========================================================================================
-        path_map = {
-            'act_sino_path': act_sino_path,
-            'act_image_path': act_image_path,
-            'atten_image_path': atten_image_path,
-            'atten_sino_path': atten_sino_path,
-            'act_recon1_path': act_recon1_path,
-            'act_recon2_path': act_recon2_path,
-        }
-        path_map = cache_dataset_paths(
-            path_map,
-            settings,
-            exclude_keys={'act_recon1_path', 'act_recon2_path'},
-        )
-        act_sino_path = path_map['act_sino_path']
-        act_image_path = path_map['act_image_path']
-        atten_image_path = path_map['atten_image_path']
-        atten_sino_path = path_map['atten_sino_path']
-        act_recon1_path = path_map['act_recon1_path']
-        act_recon2_path = path_map['act_recon2_path']
+        # Paths are used as-is (caching removed as unused feature)
 
         image_array = np.load(act_image_path, mmap_mode='r') if act_image_path is not None else None
         sino_array = np.load(act_sino_path, mmap_mode='r') if act_sino_path is not None else None

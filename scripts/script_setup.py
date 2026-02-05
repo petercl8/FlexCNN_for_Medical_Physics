@@ -269,11 +269,8 @@ def reload_package(repo_name: str = "FlexCNN_for_Medical_Physics", verbose: bool
         print(f"✅ Reload complete: {len(imported)} symbols updated.")
 
 
-def resolve_repo_root(base_repo_path=None):
+def resolve_repo_root():
     """Resolve repo root by searching for setup.py/pyproject.toml."""
-    if base_repo_path:
-        return base_repo_path
-
     try:
         start_dir = os.path.dirname(os.path.abspath(__file__))
     except NameError:
@@ -285,7 +282,7 @@ def resolve_repo_root(base_repo_path=None):
             return repo_root
         repo_root = os.path.dirname(repo_root)
 
-    raise FileNotFoundError("Could not locate repo root (setup.py or pyproject.toml). Set base_repo_path.")
+    raise FileNotFoundError("Could not locate repo root (setup.py or pyproject.toml).")
 
 
 def setup_colab_environment(
@@ -371,7 +368,6 @@ def setup_colab_environment(
 def setup_local_environment(
     repo_name: str = "FlexCNN_for_Medical_Physics",
     mode: str = "walk",
-    base_repo_path: str = None,
     verbose: bool = True):
     """
     Setup environment for local machine: install or walk package.
@@ -380,7 +376,7 @@ def setup_local_environment(
     if mode not in ("walk", "install"):
         raise ValueError(f"setup_mode must be 'walk' or 'install', got '{mode}'.")
 
-    package_root = resolve_repo_root(base_repo_path)
+    package_root = resolve_repo_root()
 
     if mode == "install":
         if verbose:

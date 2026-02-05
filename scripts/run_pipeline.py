@@ -10,6 +10,7 @@ Usage:
     
 To customize parameters, edit user_params.py before running this script.
 """
+skip_package_installation = True
 
 import os
 import sys
@@ -25,39 +26,6 @@ from script_setup import (
 # --- Sense environment ---
 IN_COLAB = sense_colab()
 
-# --- Setup Environment ---
-# Three setup modes:
-#   1. Colab: Install packages + clone/pull repo + walks modules
-#   2. Local + walk: Reload existing modules (fast, assumes packages installed)
-#   3. Local + install: Install packages via pip + set up package locally
-
-if IN_COLAB:
-    # Colab: install deps, then clone/pull and reload
-    install_packages(IN_COLAB, ray_version=params['ray_tune_version'])
-    setup_colab_environment(
-        github_username=params['github_username'],
-        repo_name=params['repo_name'],
-        skip_git_update=params['skip_colab_git_update']
-    )
-else:
-    # Local: optionally install deps, then reload or install package
-    if not params['skip_local_package_installs']:
-        # Local: install missing packages (full check)
-        install_packages(IN_COLAB, ray_version=params['ray_tune_version'])
-    else:
-        # Local with skip_local_package_installs=True: assume packages already installed
-        print("⏭️  Skipping package checks (skip_local_package_installs=True)")
-    
-    # Setup local environment using specified mode (walk or install)
-    setup_local_environment(
-        repo_name=params['repo_name'],
-        mode=params['setup_mode_type'],
-        base_repo_path=params['base_repo_path']
-    )
-
-# --- Test Resources ---
-list_compute_resources()
-
 # Import build_dicts after environment setup (depends on package being importable)
 from build_dicts import build_all_dicts
 # Import user parameters (no package dependencies)
@@ -65,6 +33,34 @@ from user_params import get_params
 
 # --- Get user parameters ---
 params = get_params()
+
+# --- Setup Environment ---
+# Three setup modes:
+#   1. Colab: Install packages + clone/pull repo + walks modules
+#   2. Local + walk: Reload existing modules (fast, assumes packages installed)
+#   3. Local + install: Install packages via pip + set up package locally
+
+if not skip_package_installation:
+    print("Installing packages...")
+    install_packages(IN_COLAB, ray_version=params['ray_tune_version'])
+else:
+    print("⚠️ Skipping package installation as per user parameters.")
+
+if IN_COLAB:
+    setup_colab_environment(
+        github_username=params['github_username'],
+        repo_name=params['repo_name'],
+        skip_git_update=params['skip_colab_git_update']
+    )
+else:
+    # Setup local environment using specified mode (walk or install)
+    setup_local_environment(
+        repo_name=params['repo_name'],
+        mode=params['setup_mode_type']
+    )
+
+# --- Test Resources ---
+list_compute_resources()
 
 # --- Configure Plotting ---
 configure_plotting(plot_mode=params['plot_mode'])

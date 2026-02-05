@@ -61,9 +61,6 @@ def build_all_dicts(params):
     common_settings = {
         'run_mode': params['run_mode'],
         'device': params['device_opt'],  # Note: this should be set to actual device before passing
-        'use_cache': params['use_cache'],
-        'cache_max_gb': params['cache_max_gb'],
-        'cache_dir': params['cache_dir'],
         'num_examples': params['num_examples'],
         'act_recon1_scale': params['act_recon1_scale'],
         'act_recon2_scale': params['act_recon2_scale'],
