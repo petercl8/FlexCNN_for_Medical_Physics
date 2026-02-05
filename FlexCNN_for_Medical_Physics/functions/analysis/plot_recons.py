@@ -7,7 +7,7 @@ import importlib
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataLoader
 from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
 from FlexCNN_for_Medical_Physics.functions.helper.setup_generators_optimizer import instantiate_dual_generators, load_dual_generator_checkpoints
-from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_unmatched_tensors
+from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_unmatched_tensors, show_single_unmatched_tensor
 from FlexCNN_for_Medical_Physics.functions.helper.config_materialize import materialize_config
 
 
@@ -325,5 +325,6 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     for key in outputs_to_plot:
         tensors_to_plot.extend(plot_map.get(key, []))
 
+    show_single_unmatched_tensor(cnn_output)
     show_multiple_unmatched_tensors(*tensors_to_plot, fig_size=fig_size)
     return tensors, cnn_output
