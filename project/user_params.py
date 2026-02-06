@@ -28,7 +28,7 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 
@@ -74,13 +74,13 @@ repo_name='FlexCNN_for_Medical_Physics'
 
 ## Directories ##
 project_colab_dirPath = '/content/drive/MyDrive/Colab/Working/'     # Directory, relative to which all other directories are specified (if working on Colab)
-project_local_dirPath = '../'  # Directory, relative to which all other directories are specified (if working Locally)
+project_local_dirPath = r"C:\Users\Peter Lindstrom\Desktop\FlexCNN_for_Medical_Physics\project\working"  # Directory, relative to which all other directories are specified (if working Locally)
 
 local_repo_dirPath =  r'C:\FlexCNN_cloned'
 
 # Data directory: Set to None to place data as subdirectory of project (backward compatible),
 # or set to an absolute path to keep data separate from project
-data_dirPath = r'C:\Users\Peter Lindstrom\My Drive (lindstrom.peter@gmail.com)\Colab\Working\dataset-sets'   # Example: r'D:\Medical_Imaging_Datasets\PET_Data' or '/mnt/data/pet_datasets'
+data_dirPath = r'C:\dataset-sets'   # Example: r'D:\Medical_Imaging_Datasets\PET_Data' or '/mnt/data/pet_datasets'
 data_dirName = 'dataset-sets'      # Dataset directory name (used only if data_dirPath is None. Else it's assumed to sit in your local project directory)
 plot_dirName=  'plots'             # Plots Directory, placed in project directory (above)
 checkpoint_dirName='checkpoints'   # If not using Ray Tune (not tuning), PyTorch saves and loads checkpoint file from here
@@ -96,10 +96,10 @@ num_examples=-1                    # Number of examples from dataset to load. Se
 ## Tuning ##
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
-tune_csv_file='frame-ACT-180-padZeros-tunedSSIM-' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-256-bilinear-widePadSinos-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='temp'
 
-tune_exp_name='search-ACT-180-padZeros-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-256-bilinear-widePadSinos-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
@@ -110,8 +110,8 @@ tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE',
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=10   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
 tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
-tune_grace_period=4          # Minimum number of reports before terminating a trial
-tune_max_t = 48              # Maximum number of reports before terminating a trial
+tune_grace_period=8          # Minimum number of reports before terminating a trial
+tune_max_t = 36              # Maximum number of reports before terminating a trial
                              # 24 is a good number for ASHA, 288x288 network. For FIFO, 12 is a good number. You can increase to 48for 180x180 network.
 tune_report_for='val'        # Set to 'val' to report IQA metrics using or cross-validation set. Set to 'qa' to use contrast recovery coefficients for QA phantoms.
 tune_eval_batch_size=64   # If tuning on validation or QA set, what is the batch size to evaluate?
@@ -123,7 +123,9 @@ tune_search_alg='optuna'     # 'optuna' or 'hyperopt'
 ## Tuning Files ##
 ## -------------- ##
 #tune_act_sino_file ='train-highCountSino-382x513.npy'
-tune_act_sino_file='train-highCountSino-320x257.npy'
+#tune_act_sino_file='train-highCountSino-320x257.npy'
+tune_act_sino_file='train-highCountSino-180x180.npy'
+
 #tune_act_sino_file='train-highCountImage.npy'
 #tune_act_sino_file='train-obliqueImage.npy'
 tune_act_image_file='train-actMap.npy'
@@ -141,7 +143,8 @@ tune_act_recon2_file=None
 ## Cross Validation Set ##
 ## -------------------- ##
 #tune_val_act_sino_file='val-highCountSino-382x513.npy'
-tune_val_act_sino_file='val-highCountSino-320x257.npy'
+#tune_val_act_sino_file='val-highCountSino-320x257.npy'
+tune_val_act_sino_file='val-highCountSino-180x180.npy'
 #tune_val_act_sino_file='val-highCountImage.npy'
 #tune_val_act_sino_file='val-obliqueImage.npy'
 tune_val_act_image_file='val-actMap.npy'
@@ -181,11 +184,11 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
 train_load_state=False    # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=False    # Save network weights to train_checkpoint_file file as it trains
+train_save_state=True    # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 100         # Number of training epochs.
 train_display_step=10      # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
-train_show_times=False     # Show calculation times during training?
+train_show_times=True     # Show calculation times during training?
 
 ## Data Files & Augmentations ##
 ## -------------------------- ##
@@ -194,8 +197,12 @@ train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II
 #train_augment=('II', True)
 
 #train_act_sino_file='train-highCountSino-382x513.npy'
-train_act_sino_file='train-highCountSino-320x257.npy'
+train_act_sino_file='train-highCountSino-180x180.npy'
+
+#train_act_sino_file='train-highCountSino-320x257.npy'
 #train_act_sino_file='train-highCountImage.npy'
+
+#330-430
 
 train_act_image_file='train-actMap.npy'
 #train_act_image_file='train-anniMap.npy'

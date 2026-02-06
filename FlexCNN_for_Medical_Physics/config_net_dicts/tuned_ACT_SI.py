@@ -74,7 +74,7 @@ config_ACT_SI = { # 288x288, tuned SSIM, pad_type='zeros', interemediate size = 
   "gen_image_size": 180,
   "gen_lr": 0.0024018267054557695,
   "gen_sino_channels": 3,
-  "gen_sino_size": 256, # 288
+  "gen_sino_size": 288, # 288
   "network_type": "ACT",
   "sup_base_criterion": "MSELoss",
   "train_SI": True
