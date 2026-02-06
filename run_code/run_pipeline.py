@@ -88,8 +88,8 @@ base_dirs = all_dicts['base_dirs']
 tune_opts = all_dicts['tune_opts']
 test_opts = all_dicts['test_opts']
 
-from pprint import pprint
-pprint(config)
+#from pprint import pprint
+#pprint(config)
 
 # --- Run Pipeline ---
 print(f"🚀 Running pipeline in '{params['run_mode']}' mode...")

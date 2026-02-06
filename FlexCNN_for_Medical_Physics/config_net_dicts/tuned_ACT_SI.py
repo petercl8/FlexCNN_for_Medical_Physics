@@ -14,7 +14,7 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-
+'''
 config_ACT_SI = { # 180x180, tuned SSIM, pad_type='zeros', bilinear_intermediate_size = 161, horiz_pool=2, vert_pool=1
   "SI_alpha_min": -1,
   "SI_dropout": False,
@@ -24,7 +24,7 @@ config_ACT_SI = { # 180x180, tuned SSIM, pad_type='zeros', bilinear_intermediate
   "SI_gen_final_activ": "LeakyReLU",
   "SI_gen_hidden_dim": 11,
   "SI_gen_mult": 2.0282722914428213,
-  "SI_gen_neck": "narrow",
+  "SI_gen_neck": "medium", # narrow
   "SI_gen_z_dim": 584,
   "SI_half_life_examples": -1,
   "SI_layer_norm": "instance",
@@ -38,10 +38,10 @@ config_ACT_SI = { # 180x180, tuned SSIM, pad_type='zeros', bilinear_intermediate
   "gen_b1": 0.4495215605123463,
   "gen_b2": 0.15053718115803394,
   "gen_image_channels": 1,
-  "gen_image_size": 180,
+  "gen_image_size": 180, # 180
   "gen_lr": 0.0003521542451328137,
   "gen_sino_channels": 3,
-  "gen_sino_size": 180,
+  "gen_sino_size": 256, # 256
   "network_type": "ACT",
   "sup_base_criterion": "MSELoss",
   "train_SI": True
@@ -57,10 +57,10 @@ config_ACT_SI = { # 288x288, tuned SSIM, pad_type='zeros', interemediate size = 
   "SI_gen_final_activ": "LeakyReLU",
   "SI_gen_hidden_dim": 10,
   "SI_gen_mult": 1.5012782419950113,
-  "SI_gen_neck": "narrow",
+  "SI_gen_neck": "narrow", # narrow
   "SI_gen_z_dim": 872,
   "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
+  "SI_layer_norm": "instance", # instance
   "SI_learnedScale_init": 7.305980552864529,
   "SI_normalize": False,
   "SI_output_scale_lr_mult": 1.6943444827125673,
@@ -79,7 +79,7 @@ config_ACT_SI = { # 288x288, tuned SSIM, pad_type='zeros', interemediate size = 
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-'''
+
 
 ###################
 

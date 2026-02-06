@@ -39,6 +39,23 @@ def create_generator(config: dict, device: str, **kwargs):
     
     # Instantiate and move to device
     gen = GeneratorClass(config=config, gen_SI=train_SI, **kwargs).to(device)
+    
+    # Debug output
+    print(f"[DEBUG] Generator instantiated: {gen.__class__.__name__}")
+    print(f"[DEBUG] Input size (gen_sino_size if train_SI else gen_image_size): {input_size}")
+    print(f"[DEBUG] train_SI: {train_SI}")
+    print(f"[DEBUG] SI_gen_neck: {config.get('SI_gen_neck', 'N/A')}")
+    print(f"[DEBUG] SI_layer_norm: {config.get('SI_layer_norm', 'N/A')}")
+    
+    # Inspect bottleneck norm layers
+    print(f"[DEBUG] Bottleneck modules:")
+    norm_count = 0
+    for i, module in enumerate(gen.neck.modules()):
+        if 'Norm' in module.__class__.__name__:
+            print(f"  Module {i}: {module.__class__.__name__}")
+            norm_count += 1
+    print(f"[DEBUG] Total norm layers in bottleneck: {norm_count}")
+    
     return gen
 
 

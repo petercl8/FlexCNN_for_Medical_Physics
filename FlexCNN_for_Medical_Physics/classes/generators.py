@@ -681,8 +681,6 @@ class Generator_288(nn.Module):
             }
         return output
 
-
-
 class Generator_256(nn.Module):
     def __init__(self, config, gen_SI=True, gen_skip_handling: str = '1x1Conv', gen_flow_mode: str = 'coflow', frozen_enc_channels=None, frozen_dec_channels=None, enable_encoder_mixer=True, enable_decoder_mixer=True, scaling_exp=0.7):
         '''
@@ -829,11 +827,11 @@ class Generator_256(nn.Module):
         dim_5 = int(hidden_dim * mult ** (5 ** self.scaling_exp))
         dim_6 = int(hidden_dim * mult ** (6 ** self.scaling_exp))
 
-        # Channel references for injection (128,32,8 scales)
+        # Channel references for mixing (128, 32, 8 scales)
         self.enc_stage_channels = (dim_0, dim_2, dim_4)
         # Decoder stages at resolutions 8 (pre first upsample), 32 (pre 32->128 upsample), 128 (pre final upsample)
         self.dec_stage_channels = (dim_0, dim_2, dim_4)
-        # Skip connection channels at 128, 64, 32 scales
+        # Skip connection channels at 128, 32, 8 scales
         self.dec_skip_channels = (dim_0, dim_2, dim_4)
 
         if input_size != 256:
@@ -935,7 +933,7 @@ class Generator_256(nn.Module):
     # ============================================================================
     # ARCHITECTURE BUILDERS
     # ============================================================================
-    
+
     def _build_neck(self, neck, dim_4, dim_5, dim_6, z_dim, pad, fill, norm, drop):
         """
         Build the bottleneck network architecture between encoder and decoder.
@@ -960,35 +958,38 @@ class Generator_256(nn.Module):
         Returns:
             nn.Sequential: Bottleneck network module
         """
-        # neck='narrow': 1x1 bottleneck
+        # neck='narrow': Narrowest bottleneck (1x1), upsamples back to 8x8 for skip merge
         if neck == 'narrow':
             return nn.Sequential(
-                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 8->4: floor((8+2-4)/2)+1=4
-                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->2: floor((4+2-3)/2)+1=2
-                contract_block(dim_6, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),     # 2->1
-                expand_block(z_dim, dim_6, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 1->2
+                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 8->4
+                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->2
+                contract_block(dim_6, z_dim, 2, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),        # 2->1
+                expand_block(z_dim, dim_6, 2, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 1->2
                 expand_block(dim_6, dim_5, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 2->4
                 expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 4->8
             )
-        # neck='medium': 4x4 bottleneck
+
+        # neck='medium': Medium bottleneck (4x4 spatial), constant-size convs; upsamples back to 8x8 for skip merge
         if neck == 'medium':
             return nn.Sequential(
-                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 8->4: floor((8+2-4)/2)+1=4
-                contract_block(dim_5, dim_5, 4, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
-                contract_block(dim_5, dim_5, 4, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
-                contract_block(dim_5, dim_5, 4, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
-                contract_block(dim_5, dim_5, 4, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
+                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 8->4
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
                 expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 4->8
             )
-        # neck='wide': 8x8 bottleneck
+
+        # neck='wide': Widest bottleneck (8x8 spatial), constant-size layers with kernel=5 for spatial information flow
         if neck == 'wide':
             return nn.Sequential(
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8 (constant)
             )
+
         raise ValueError('neck must be one of {narrow, medium, wide} for Generator_256')
 
     def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop, skip_handling):
@@ -1018,20 +1019,20 @@ class Generator_256(nn.Module):
         """
         # Expanding Path: 8 -> 16 -> 32 -> 64 -> 128 -> 256
         if exp_kernel == 3:
-            stage_params = [   # kernel, stride, padding, output_padding
-                (3, 2, 1, 1),  # 8->16
-                (3, 2, 1, 1),  # 16->32
-                (3, 2, 1, 1),  # 32->64
-                (3, 2, 1, 1),  # 64->128
-                (3, 2, 1, 1),  # 128->256
+            stage_params = [
+                (3, 2, 1, 1),  # 8 -> 16
+                (3, 2, 1, 1),  # 16 -> 32
+                (3, 2, 1, 1),  # 32 -> 64
+                (3, 2, 1, 1),  # 64 -> 128
+                (3, 2, 1, 1),  # 128 -> 256
             ]
         elif exp_kernel == 4:
             stage_params = [
-                (4, 2, 1, 0),  # 8->16
-                (4, 2, 1, 0),  # 16->32
-                (4, 2, 1, 0),  # 32->64
-                (4, 2, 1, 0),  # 64->128
-                (4, 2, 1, 0),  # 128->256
+                (4, 2, 1, 0),  # 8 -> 16
+                (4, 2, 1, 0),  # 16 -> 32
+                (4, 2, 1, 0),  # 32 -> 64
+                (4, 2, 1, 0),  # 64 -> 128
+                (4, 2, 1, 0),  # 128 -> 256
             ]
         else:
             raise ValueError('exp_kernel must be 3 or 4')
@@ -1040,7 +1041,7 @@ class Generator_256(nn.Module):
             """
             Calculate input channels for expand block.
             In classic mode with concat: doubles channels to accommodate skip connection
-            In 1x1Conv mode: base channels (merging handled by injectors)
+            In 1x1Conv mode: base channels (merging handled by mixers)
             """
             if skip_handling == '1x1Conv':
                 return base
@@ -1201,7 +1202,7 @@ class Generator_256(nn.Module):
             hidden = self._merge_classic(skip_tensor, hidden)
         
         return hidden, captured_feature
-    
+
     def _merge_classic(self, skip, x):
         """
         Merge skip connection with decoder output using configured skip_mode.
@@ -1235,7 +1236,7 @@ class Generator_256(nn.Module):
         # ================================================================================
         # SECTION 2: ENCODER (Contracting Path: 256 → 128 → 64 → 32 → 16 → 8)
         # ================================================================================
-        # Inject frozen features at three spatial scales during encoder:
+        # Mix frozen features at three spatial scales during encoder:
         # Scale 128 (idx=0), Scale 32 (idx=2), Scale 8 (idx=4)
         # Pattern: Concatenate frozen features → 1x1 conv projects back to base channels
         skips = []
@@ -1273,7 +1274,7 @@ class Generator_256(nn.Module):
         # ================================================================================
         # SECTION 4: DECODER (Expanding Path: 8 → 16 → 32 → 64 → 128 → 256)
         # ================================================================================
-        # Note: In '1x1Conv' mode, frozen features are injected at scales 8, 64, 128
+        # Note: In '1x1Conv' mode, frozen features are mixed at scales 8, 32, 128
         #       In 'classic' mode, skip connections merged at scales 8, 16, 32, 64, 128
 
         # --- Stage 1: Mix/merge at scale 8, then upsample to 16 ---
@@ -1309,7 +1310,7 @@ class Generator_256(nn.Module):
         hidden = self.expand_blocks[3](hidden)  # 64 → 128
 
         # --- Stage 5: Mix/merge at scale 128, then upsample to 256 ---
-        
+
         # Note: a 'classic' mode skip connection is not employed here because you don't want raw skips at final output scale
         routed_dec_feature128 = routed_dec_features[0] if routed_dec_features is not None else None
         hidden, decoder_feat_scale128 = self._inject_and_merge_at_decoder_stage(
@@ -1351,8 +1352,6 @@ class Generator_256(nn.Module):
                 'decoder': [decoder_feat_scale128, decoder_feat_scale32, decoder_feat_scale8],
             }
         return output
-
-
 
 class Generator_320(nn.Module):
     def __init__(self, config, gen_SI=True, gen_skip_handling: str = '1x1Conv', gen_flow_mode: str = 'coflow', frozen_enc_channels=None, frozen_dec_channels=None, enable_encoder_mixer=True, enable_decoder_mixer=True, scaling_exp=0.7):
@@ -1613,13 +1612,13 @@ class Generator_320(nn.Module):
         
         Controls information flow at the network's narrowest point. Three modes control
         spatial compression and capacity:
-        - 'narrow': 10→5→3→1→3→5→10 (aggressive compression, dense bottleneck)
-        - 'medium': 10→5→5→5→5→5→10 (moderate compression, constant 5x5 processing)
-        - 'wide': 10→10→10→10→10→10 (no compression, spatial information preserved)
+        - 'narrow': 8→4→2→1→2→4→8 (aggressive compression, dense bottleneck)
+        - 'medium': 8→4→4→4→4→4→8 (moderate compression, constant 4x4 processing)
+        - 'wide': 8→8→8→8→8→8 (no compression, spatial information preserved)
         
         Args:
             neck: Bottleneck mode {'narrow', 'medium', 'wide'}
-            dim_4: Channels at encoder output (scale 10)
+            dim_4: Channels at encoder output (scale 8)
             dim_5: Channels at intermediate bottleneck stage
             dim_6: Channels at deepest bottleneck stage
             z_dim: Channels at 1x1 spatial bottleneck (narrow mode only)
@@ -1631,40 +1630,39 @@ class Generator_320(nn.Module):
         Returns:
             nn.Sequential: Bottleneck network module
         """
-        # neck='narrow': Narrowest bottleneck (1x1), upsamples back to 10x10 for skip merge
+        # neck='narrow': Narrowest bottleneck (1x1), upsamples back to 8x8 for skip merge
         if neck == 'narrow':
-            # ConvTranspose2d formula: H_out = (H_in-1)*stride + kernel - 2*padding + output_padding
             return nn.Sequential(
-                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (10+2-4)/2+1 = 5
-                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+2-3)/2+1 = 3
-                contract_block(dim_6, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),     # H = (3+0-3)/1+1 = 1
-                expand_block(z_dim, dim_6, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (1-1)*2+3-0+0 = 3
-                expand_block(dim_6, dim_5, 4, stride=2, padding=2, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (3-1)*2+4-4+1 = 5
-                expand_block(dim_5, dim_4, 3, stride=2, padding=1, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-2+1 = 10
+                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 8->4
+                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->2
+                contract_block(dim_6, z_dim, 2, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),       # 2->1
+                expand_block(z_dim, dim_6, 2, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 1->2
+                expand_block(dim_6, dim_5, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 2->4
+                expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 4->8
             )
 
-        # neck='medium': Medium bottleneck (5x5 spatial), constant-size convs; upsamples back to 10x10 for skip merge
+        # neck='medium': Medium bottleneck (4x4 spatial), constant-size convs; upsamples back to 8x8 for skip merge
         if neck == 'medium':
             return nn.Sequential(
-                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (10+2-4)/2+1 = 5
-                contract_block(dim_5, dim_5, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
-                contract_block(dim_5, dim_5, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
-                contract_block(dim_5, dim_5, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
-                contract_block(dim_5, dim_5, 5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # H = (5+4-5)/1+1 = 5 (constant)
-                expand_block(dim_5, dim_4, 3, stride=2, padding=1, output_padding=1, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # H = (5-1)*2+3-2+1 = 10
+                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 8->4
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->4
+                expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 4->8
             )
 
-        # neck='wide': Widest bottleneck (10x10 spatial), constant-size layers with kernel=5 for spatial information flow
+        # neck='wide': Widest bottleneck (8x8 spatial), constant-size layers with kernel=5 for spatial information flow
         if neck == 'wide':
             return nn.Sequential(
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (10+4-5)/1+1 = 10 (constant)
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (10+4-5)/1+1 = 10 (constant)
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (10+4-5)/1+1 = 10 (constant)
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (10+4-5)/1+1 = 10 (constant)
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # H = (10+4-5)/1+1 = 10 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
             )
 
-        raise ValueError('neck must be one of {narrow, medium, wide} for Generator')
+        raise ValueError('neck must be one of {narrow, medium, wide} for Generator_256')
 
     def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop, skip_handling):
         """
@@ -2027,8 +2025,6 @@ class Generator_320(nn.Module):
                 'decoder': [decoder_feat_scale160, decoder_feat_scale40, decoder_feat_scale10],
             }
         return output
-
-
 
 class Generator_180(nn.Module):
     def __init__(self, config, gen_SI=True, gen_skip_handling: str = '1x1Conv', gen_flow_mode: str = 'coflow', frozen_enc_channels=None, frozen_dec_channels=None, enable_encoder_mixer=True, enable_decoder_mixer=True, scaling_exp=0.7):
@@ -2691,8 +2687,6 @@ class Generator_180(nn.Module):
                 'decoder': [decoder_feat_scale90, decoder_feat_scale23, decoder_feat_scale11],
             }
         return output
-
-
 
 
 
