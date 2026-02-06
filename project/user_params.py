@@ -28,7 +28,7 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 
@@ -180,15 +180,15 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 
 # Note: For dual network training, checkpoints are autmatically appended suffixes of -atten and -act.
 
-#train_checkpoint_file='checkpoint-ACT-180-padZeros-tunedSSIM-100epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='temp'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-256-largePadSino-tunedSSIM-100epochs'  # Checkpoint file to load or save to.
+#train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
 train_load_state=False    # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True    # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 100         # Number of training epochs.
-train_display_step=10      # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=50      # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
-train_show_times=True     # Show calculation times during training?
+train_show_times=False     # Show calculation times during training?
 
 ## Data Files & Augmentations ##
 ## -------------------------- ##
