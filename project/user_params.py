@@ -28,7 +28,7 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 
@@ -74,14 +74,14 @@ repo_name='FlexCNN_for_Medical_Physics'
 
 ## Directories ##
 project_colab_dirPath = '/content/drive/MyDrive/Colab/Working/'     # Directory, relative to which all other directories are specified (if working on Colab)
-project_local_dirPath = r'C:\Users\Peter Lindstrom\My Drive (lindstrom.peter@gmail.com)\Colab\Working'  # Directory, relative to which all other directories are specified (if working Locally)
+project_local_dirPath = '../'  # Directory, relative to which all other directories are specified (if working Locally)
 
 local_repo_dirPath =  r'C:\FlexCNN_cloned'
 
 # Data directory: Set to None to place data as subdirectory of project (backward compatible),
 # or set to an absolute path to keep data separate from project
-data_dirPath = None  # Example: r'D:\Medical_Imaging_Datasets\PET_Data' or '/mnt/data/pet_datasets'
-data_dirName = 'dataset-sets'      # Dataset directory name (used only if data_dirPath is None)
+data_dirPath = r'C:\Users\Peter Lindstrom\My Drive (lindstrom.peter@gmail.com)\Colab\Working\dataset-sets'   # Example: r'D:\Medical_Imaging_Datasets\PET_Data' or '/mnt/data/pet_datasets'
+data_dirName = 'dataset-sets'      # Dataset directory name (used only if data_dirPath is None. Else it's assumed to sit in your local project directory)
 plot_dirName=  'plots'             # Plots Directory, placed in project directory (above)
 checkpoint_dirName='checkpoints'   # If not using Ray Tune (not tuning), PyTorch saves and loads checkpoint file from here
                                    # All checkpoint files (for training, testing, visualizing) save the states for a particular network.
