@@ -78,7 +78,10 @@ project_local_dirPath = r'C:\Users\Peter Lindstrom\My Drive (lindstrom.peter@gma
 
 local_repo_dirPath =  r'C:\FlexCNN_cloned'
 
-data_dirName = 'dataset-sets'      # Dataset directory, placed in project directory (above)
+# Data directory: Set to None to place data as subdirectory of project (backward compatible),
+# or set to an absolute path to keep data separate from project
+data_dirPath = None  # Example: r'D:\Medical_Imaging_Datasets\PET_Data' or '/mnt/data/pet_datasets'
+data_dirName = 'dataset-sets'      # Dataset directory name (used only if data_dirPath is None)
 plot_dirName=  'plots'             # Plots Directory, placed in project directory (above)
 checkpoint_dirName='checkpoints'   # If not using Ray Tune (not tuning), PyTorch saves and loads checkpoint file from here
                                    # All checkpoint files (for training, testing, visualizing) save the states for a particular network.

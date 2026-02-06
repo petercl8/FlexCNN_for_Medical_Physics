@@ -186,7 +186,8 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     
     Args:
         base_dirs: dict with keys: project_dirPath, plot_dirName, checkpoint_dirName, tune_storage_dirName,
-                   tune_dataframe_dirName, test_dataframe_dirName, data_dirName
+                   tune_dataframe_dirName, test_dataframe_dirName, data_dirPath (optional absolute path), 
+                   data_dirName (fallback directory name)
         data_files: dict with keys:
             - tune_sino_file, tune_image_file, tune_recon1_file, tune_recon2_file,
               tune_atten_image_file, tune_atten_sino_file,
@@ -213,7 +214,12 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['tune_storage_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['tune_storage_dirName'])
     paths['tune_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['tune_dataframe_dirName'])
     paths['test_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['test_dataframe_dirName'])
-    paths['data_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['data_dirName'])
+    
+    # Data directory: Use absolute path if provided, otherwise place in project directory
+    if base_dirs.get('data_dirPath') is not None:
+        paths['data_dirPath'] = base_dirs['data_dirPath']
+    else:
+        paths['data_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['data_dirName'])
     
     # Mode-specific data file paths (activity domain renamed to act_*)
     paths['tune_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_sino_file'])
