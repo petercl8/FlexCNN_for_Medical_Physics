@@ -18,7 +18,7 @@ import sys
 # Import setup functions
 from FlexCNN_for_Medical_Physics.functions.helper.display_images import configure_plotting
 from FlexCNN_for_Medical_Physics.functions.setup_environment.list_compute_resources import setup_project_dirs
-from setup_functions.script_setup import (
+from script_setup import (
     sense_colab, sense_device, install_packages,
     setup_colab_environment, setup_local_environment
 )
@@ -27,7 +27,7 @@ from setup_functions.script_setup import (
 IN_COLAB = sense_colab()
 
 # Import build_dicts after environment setup (depends on package being importable)
-from setup_functions.build_dicts import build_all_dicts
+from build_dicts import build_all_dicts
 # Import user parameters (no package dependencies)
 from user_params import get_params
 
@@ -87,6 +87,9 @@ settings = all_dicts['settings']
 base_dirs = all_dicts['base_dirs']
 tune_opts = all_dicts['tune_opts']
 test_opts = all_dicts['test_opts']
+
+from pprint import pprint
+pprint(config)
 
 # --- Run Pipeline ---
 print(f"🚀 Running pipeline in '{params['run_mode']}' mode...")

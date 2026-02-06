@@ -683,6 +683,677 @@ class Generator_288(nn.Module):
 
 
 
+class Generator_256(nn.Module):
+    def __init__(self, config, gen_SI=True, gen_skip_handling: str = '1x1Conv', gen_flow_mode: str = 'coflow', frozen_enc_channels=None, frozen_dec_channels=None, enable_encoder_mixer=True, enable_decoder_mixer=True, scaling_exp=0.7):
+        '''
+        Encoder-decoder generator with optional skip connections, producing 256x256 output.
+        
+        Architecture:
+            Contracting path: 256→128→64→32→16→8
+            Bottleneck: 1x1, 4x4, or 8x8 spatial size (narrow/medium/wide)
+            Expanding path: 8→16→32→64→128→256
+        
+        Skip Handling Modes:
+            - 'classic': Standard U-Net skip connections (add/concat/none). No feature mixing.
+            - '1x1Conv': Advanced mode for frozen flow architectures. Skip connections and frozen
+                         features are concatenated, then mixed via 1x1 convolutions at decoder stages.
+                         Enables transfer learning from frozen backbone networks.
+        
+        Flow Modes (1x1Conv only):
+            - 'coflow': Frozen encoder features → generator encoder stages,
+                        Frozen decoder features → generator decoder stages
+            - 'counterflow': Frozen features are swapped (encoder↔decoder)
+        
+        Frozen Feature Dimensions:
+            Format: (channels_at_128, channels_at_32, channels_at_8)
+            Specifies expected channel counts from frozen backbone at each scale.
+            Set to None or (0,0,0) to disable frozen feature mixing at specific network.
+        
+        Args:
+            config: Dictionary with network hyperparameters and data dimensions:
+                - gen_sino_size, gen_sino_channels, gen_image_size, gen_image_channels
+                - {SI,IS}_gen_neck: 'narrow'/'medium'/'wide'
+                - {SI,IS}_exp_kernel: 3 or 4 (expand kernel size)
+                - {SI,IS}_gen_z_dim: Channels in narrowest bottleneck
+                - {SI,IS}_gen_hidden_dim: Base channel count
+                - {SI,IS}_gen_mult: Channel multiplication factor
+                - {SI,IS}_gen_fill: Constant-size conv layers per block (0-3)
+                - {SI,IS}_layer_norm: 'batch'/'instance'/'group'/'none'
+                - {SI,IS}_pad_mode: 'zeros'/'replicate'
+                - {SI,IS}_dropout: True/False
+                - {SI,IS}_skip_mode: 'none'/'add'/'concat'
+                - {SI,IS}_normalize: Normalize output to L1 norm
+                - {SI,IS}_fixedScale or {SI,IS}_learnedScale_init: Output scaling
+                - {SI,IS}_gen_final_activ: Final activation (nn.Tanh(), etc.)
+            gen_SI: True for sinogram→image, False for image→sinogram
+            gen_skip_handling: 'classic' or '1x1Conv'
+            gen_flow_mode: 'coflow' or 'counterflow' (only used with 1x1Conv)
+            frozen_enc_channels: Tuple (ch_128, ch_32, ch_8) for encoder frozen feature mixing
+            frozen_dec_channels: Tuple (ch_128, ch_32, ch_8) for decoder frozen feature mixing
+            enable_encoder_mixer: Whether to create encoder mixers (default True in 1x1Conv mode)
+            enable_decoder_mixer: Whether to create decoder mixers (default True in 1x1Conv mode)
+            scaling_exp: Root exponent used to soften channel growth across stages
+                         (e.g., channels scale by mult**(k**scaling_exp))
+        
+        Example Usage:
+            # Classic U-Net:
+            gen = Generator_256(config, gen_SI=True, gen_skip_handling='classic')
+            output = gen(input)
+            
+            # Frozen flow (receiving features from frozen backbone):
+            gen_trainable = Generator_256(config, gen_SI=True,
+                                         gen_skip_handling='1x1Conv',
+                                         gen_flow_mode='coflow',
+                                         frozen_enc_channels=(64, 128, 256),
+                                         frozen_dec_channels=(64, 128, 256))
+            output = gen_trainable(input, frozen_encoder_features=enc_feats,
+                                  frozen_decoder_features=dec_feats)
+        '''
+        super(Generator_256, self).__init__()
+
+        # ========================================================================
+        # PARSE DIRECTION-SPECIFIC CONFIGURATION (SI vs IS)
+        # ========================================================================
+        direction_config = self._parse_direction_config(config, gen_SI)
+
+        input_size = direction_config['input_size']
+        input_channels = direction_config['input_channels']
+        output_size = direction_config['output_size']
+        output_channels = direction_config['output_channels']
+        neck = direction_config['neck']
+        exp_kernel = direction_config['exp_kernel']
+        z_dim = direction_config['z_dim']
+        hidden_dim = direction_config['hidden_dim']
+        fill = direction_config['fill']
+        mult = direction_config['mult']
+        norm = direction_config['norm']
+        pad = direction_config['pad']
+        drop = direction_config['drop']
+        fixed_scale = direction_config['fixed_scale']
+        learned_scale_init = direction_config['learned_scale_init']
+        
+        self.final_activation = direction_config['final_activation']
+        self.normalize = direction_config['normalize']
+        self.skip_mode = direction_config['skip_mode']
+
+        # ========================================================================
+        # FEATURE MIXING CONFIGURATION (1x1Conv mode only)
+        # ========================================================================
+        self.skip_handling = gen_skip_handling
+        if self.skip_handling not in ('classic', '1x1Conv'):
+            raise ValueError('gen_skip_handling must be one of {classic, 1x1Conv}')
+
+        self.flow_mode = gen_flow_mode
+        if self.flow_mode not in ('coflow', 'counterflow'):
+            raise ValueError('gen_flow_mode must be one of {coflow, counterflow}')
+
+        # Normalize frozen feature channel tuples to (ch_128, ch_32, ch_8) format
+        self.frozen_enc_channels = self._normalize_injection_tuple(frozen_enc_channels)
+        self.frozen_dec_channels = self._normalize_injection_tuple(frozen_dec_channels)
+        
+        # Validate: mixing requires 1x1Conv mode
+        if self.skip_handling == 'classic' and (any(self.frozen_enc_channels) or any(self.frozen_dec_channels)):
+            raise ValueError('Frozen feature mixing requires gen_skip_handling="1x1Conv"')
+        
+        # Store mixer enablement flags (applies only in 1x1Conv mode)
+        self.enable_encoder_mixer = enable_encoder_mixer if self.skip_handling == '1x1Conv' else False
+        self.enable_decoder_mixer = enable_decoder_mixer if self.skip_handling == '1x1Conv' else False
+        
+        # ========================================================================
+        # OUTPUT SCALING CONFIGURATION
+        # ========================================================================
+        self.output_scale_learnable = not bool(self.normalize)
+        if self.output_scale_learnable:
+            init_scale = float(learned_scale_init if learned_scale_init is not None else fixed_scale)
+            self.log_output_scale = nn.Parameter(torch.log(torch.tensor(init_scale, dtype=torch.float32)))
+        else:
+            init_scale = float(fixed_scale)
+            self.register_buffer('fixed_output_scale', torch.tensor(init_scale, dtype=torch.float32))
+
+        self.output_channels = output_channels
+        self.output_size = output_size
+
+        in_chan = input_channels
+        out_chan = output_channels
+
+        # ========================================================================
+        # CHANNEL DIMENSION CALCULATION
+        # ========================================================================
+        # Root scaling with exponent 0.7 produces gentler channel growth than mult**k
+        self.scaling_exp = scaling_exp
+        dim_0 = int(hidden_dim * mult ** (0 ** self.scaling_exp))
+        dim_1 = int(hidden_dim * mult ** (1 ** self.scaling_exp))
+        dim_2 = int(hidden_dim * mult ** (2 ** self.scaling_exp))
+        dim_3 = int(hidden_dim * mult ** (3 ** self.scaling_exp))
+        dim_4 = int(hidden_dim * mult ** (4 ** self.scaling_exp))
+        dim_5 = int(hidden_dim * mult ** (5 ** self.scaling_exp))
+        dim_6 = int(hidden_dim * mult ** (6 ** self.scaling_exp))
+
+        # Channel references for injection (128,32,8 scales)
+        self.enc_stage_channels = (dim_0, dim_2, dim_4)
+        # Decoder stages at resolutions 8 (pre first upsample), 32 (pre 32->128 upsample), 128 (pre final upsample)
+        self.dec_stage_channels = (dim_0, dim_2, dim_4)
+        # Skip connection channels at 128, 64, 32 scales
+        self.dec_skip_channels = (dim_0, dim_2, dim_4)
+
+        if input_size != 256:
+            raise ValueError('This generator is configured for 256x256 inputs.')
+
+        # ========================================================================
+        # BUILD NETWORK ARCHITECTURE
+        # ========================================================================
+        # Contracting Path: 256 -> 128 -> 64 -> 32 -> 16 -> 8
+        self.contract_blocks = nn.ModuleList([
+            contract_block(in_chan, dim_0, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),   # 256->128
+            contract_block(dim_0, dim_1, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),     # 128->64
+            contract_block(dim_1, dim_2, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),     # 64->32
+            contract_block(dim_2, dim_3, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),     # 32->16
+            contract_block(dim_3, dim_4, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),     # 16->8
+        ])
+
+        self.neck = self._build_neck(neck, dim_4, dim_5, dim_6, z_dim, pad, fill, norm, drop)
+        self.expand_blocks = self._build_expand(exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop, self.skip_handling)
+
+        if self.skip_handling == '1x1Conv':
+            self._build_mixers()
+
+    # ============================================================================
+    # CONFIGURATION HELPERS
+    # ============================================================================
+    
+    def _parse_direction_config(self, config, gen_SI):
+        """
+        Extract direction-specific configuration (SI vs IS prefixed keys).
+        
+        Args:
+            config: Full configuration dictionary
+            gen_SI: True for sinogram→image, False for image→sinogram
+        
+        Returns:
+            Dictionary with normalized keys (without SI_/IS_ prefix)
+        """
+        if gen_SI:
+            return {
+                'input_size': config['gen_sino_size'],
+                'input_channels': config['gen_sino_channels'],
+                'output_size': config['gen_image_size'],
+                'output_channels': config['gen_image_channels'],
+                'neck': config['SI_gen_neck'],
+                'exp_kernel': config['SI_exp_kernel'],
+                'z_dim': config['SI_gen_z_dim'],
+                'hidden_dim': config['SI_gen_hidden_dim'],
+                'fill': config['SI_gen_fill'],
+                'mult': config['SI_gen_mult'],
+                'norm': config['SI_layer_norm'],
+                'pad': config['SI_pad_mode'],
+                'drop': config['SI_dropout'],
+                'final_activation': config['SI_gen_final_activ'],
+                'normalize': config['SI_normalize'],
+                'skip_mode': config.get('SI_skip_mode', 'none'),
+                'fixed_scale': config.get('SI_fixedScale', 1.0),
+                'learned_scale_init': config.get('SI_learnedScale_init'),
+            }
+        else:
+            return {
+                'input_size': config['gen_image_size'],
+                'input_channels': config['gen_image_channels'],
+                'output_size': config['gen_sino_size'],
+                'output_channels': config['gen_sino_channels'],
+                'neck': config['IS_gen_neck'],
+                'exp_kernel': config['IS_exp_kernel'],
+                'z_dim': config['IS_gen_z_dim'],
+                'hidden_dim': config['IS_gen_hidden_dim'],
+                'fill': config['IS_gen_fill'],
+                'mult': config['IS_gen_mult'],
+                'norm': config['IS_layer_norm'],
+                'pad': config['IS_pad_mode'],
+                'drop': config['IS_dropout'],
+                'final_activation': config['IS_gen_final_activ'],
+                'normalize': config['IS_normalize'],
+                'skip_mode': config['IS_skip_mode'],
+                'fixed_scale': config['IS_fixedScale'],
+                'learned_scale_init': config['IS_learnedScale_init'],
+            }
+    
+    def _normalize_injection_tuple(self, cfg):
+        """
+        Normalize injection channel tuple to (ch_128, ch_32, ch_8) format.
+        Ensures that if None is provided, it defaults to (0,0,0).
+        
+        Args:
+            cfg: None, or tuple/list of 3 integers
+        
+        Returns:
+            Tuple of 3 integers (0s if None provided)
+        """
+        if cfg is None:
+            return (0, 0, 0)
+        if len(cfg) != 3:
+            raise ValueError('Injection tuples must have three entries (128, 32, 8 scales).')
+        return tuple(int(x) for x in cfg)
+
+    # ============================================================================
+    # ARCHITECTURE BUILDERS
+    # ============================================================================
+    
+    def _build_neck(self, neck, dim_4, dim_5, dim_6, z_dim, pad, fill, norm, drop):
+        """
+        Build the bottleneck network architecture between encoder and decoder.
+        
+        Controls information flow at the network's narrowest point. Three modes control
+        spatial compression and capacity:
+        - 'narrow': 8→4→2→1→2→4→8 (aggressive compression, dense bottleneck)
+        - 'medium': 8→4→4→4→4→4→8 (moderate compression, constant 4x4 processing)
+        - 'wide': 8→8→8→8→8→8 (no compression, spatial information preserved)
+        
+        Args:
+            neck: Bottleneck mode {'narrow', 'medium', 'wide'}
+            dim_4: Channels at encoder output (scale 8)
+            dim_5: Channels at intermediate bottleneck stage
+            dim_6: Channels at deepest bottleneck stage
+            z_dim: Channels at 1x1 spatial bottleneck (narrow mode only)
+            pad: Padding mode for convolutions
+            fill: Number of constant-size conv layers per block
+            norm: Normalization type
+            drop: Whether to use dropout
+        
+        Returns:
+            nn.Sequential: Bottleneck network module
+        """
+        # neck='narrow': 1x1 bottleneck
+        if neck == 'narrow':
+            return nn.Sequential(
+                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 8->4: floor((8+2-4)/2)+1=4
+                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->2: floor((4+2-3)/2)+1=2
+                contract_block(dim_6, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),     # 2->1
+                expand_block(z_dim, dim_6, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 1->2
+                expand_block(dim_6, dim_5, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 2->4
+                expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 4->8
+            )
+        # neck='medium': 4x4 bottleneck
+        if neck == 'medium':
+            return nn.Sequential(
+                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 8->4: floor((8+2-4)/2)+1=4
+                contract_block(dim_5, dim_5, 4, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 4, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 4, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
+                contract_block(dim_5, dim_5, 4, stride=1, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),      # 4->4
+                expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm=norm, drop=drop),  # 4->8
+            )
+        # neck='wide': 8x8 bottleneck
+        if neck == 'wide':
+            return nn.Sequential(
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm=norm, drop=drop),  # 8->8
+            )
+        raise ValueError('neck must be one of {narrow, medium, wide} for Generator_256')
+
+    def _build_expand(self, exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop, skip_handling):
+        """
+        Build the decoder (expanding path) from bottleneck to output resolution.
+        
+        Creates 5 upsampling stages: 8→16→32→64→128→256. Each stage uses transposed
+        convolutions with optional fill layers. Input channels are adjusted based on
+        skip connection mode (doubled for concat mode in classic skip handling).
+        
+        Args:
+            exp_kernel: Kernel size for transposed convolutions {3, 4}
+            out_chan: Output channels (final image/sinogram channels)
+            dim_0: Channels at scale 128
+            dim_1: Channels at scale 64
+            dim_2: Channels at scale 32
+            dim_3: Channels at scale 16
+            dim_4: Channels at scale 8
+            pad: Padding mode (decoder uses 'replicate')
+            fill: Number of constant-size conv layers per block
+            norm: Normalization type
+            drop: Whether to use dropout
+            skip_handling: Skip connection mode {'classic', '1x1Conv'}
+        
+        Returns:
+            nn.ModuleList: List of 5 expand blocks for upsampling stages
+        """
+        # Expanding Path: 8 -> 16 -> 32 -> 64 -> 128 -> 256
+        if exp_kernel == 3:
+            stage_params = [   # kernel, stride, padding, output_padding
+                (3, 2, 1, 1),  # 8->16
+                (3, 2, 1, 1),  # 16->32
+                (3, 2, 1, 1),  # 32->64
+                (3, 2, 1, 1),  # 64->128
+                (3, 2, 1, 1),  # 128->256
+            ]
+        elif exp_kernel == 4:
+            stage_params = [
+                (4, 2, 1, 0),  # 8->16
+                (4, 2, 1, 0),  # 16->32
+                (4, 2, 1, 0),  # 32->64
+                (4, 2, 1, 0),  # 64->128
+                (4, 2, 1, 0),  # 128->256
+            ]
+        else:
+            raise ValueError('exp_kernel must be 3 or 4')
+
+        def in_ch(base):
+            """
+            Calculate input channels for expand block.
+            In classic mode with concat: doubles channels to accommodate skip connection
+            In 1x1Conv mode: base channels (merging handled by injectors)
+            """
+            if skip_handling == '1x1Conv':
+                return base
+            return base * 2 if self.skip_mode == 'concat' else base
+
+        blocks = nn.ModuleList()
+        blocks.append(expand_block(in_ch(dim_4), dim_3, stage_params[0][0], stage_params[0][1], stage_params[0][2], stage_params[0][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_3), dim_2, stage_params[1][0], stage_params[1][1], stage_params[1][2], stage_params[1][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_2), dim_1, stage_params[2][0], stage_params[2][1], stage_params[2][2], stage_params[2][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_1), dim_0, stage_params[3][0], stage_params[3][1], stage_params[3][2], stage_params[3][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop))
+        blocks.append(expand_block(in_ch(dim_0), out_chan, stage_params[4][0], stage_params[4][1], stage_params[4][2], stage_params[4][3], padding_mode='replicate', fill=fill, norm=norm, drop=drop, final_layer=True))
+        return blocks
+
+    def _build_mixers(self):
+        """
+        Build 1x1 convolutional projection layers for feature mixing in 1x1Conv mode.
+        
+        Creates two sets of mixers:
+        - Encoder mixers: Mix frozen encoder features at scales 128, 32, 8 (if enabled)
+        - Decoder mixers: Mix skip connections + frozen decoder features (always enabled in 1x1Conv)
+        
+        Each mixer concatenates multiple feature sources (base features + optional skip + optional frozen),
+        then projects back to base channel count via 1x1 conv. Always created when enabled.
+                
+        Returns:
+            None (creates self.enc_mixers and self.dec_mixers ModuleDicts)
+        """
+        def _make_proj(in_ch, out_ch):
+            return nn.Conv2d(in_ch, out_ch, kernel_size=1, stride=1, padding=0)
+
+        # Encoder mixers (created if enabled)
+        enc_keys = ['enc_128', 'enc_32', 'enc_8']
+        enc_chs = self.enc_stage_channels
+        self.enc_mixers = nn.ModuleDict()
+        if self.enable_encoder_mixer:
+            for key, base_ch, frozen_ch in zip(enc_keys, enc_chs, self.frozen_enc_channels):
+                # Mixer handles base channels + any frozen channels at this scale
+                self.enc_mixers[key] = _make_proj(base_ch + frozen_ch, base_ch)
+
+        # Decoder mixers (always created in 1x1Conv mode)
+        dec_keys = ['dec_128', 'dec_32', 'dec_8']
+        dec_chs = self.dec_stage_channels
+        skip_chs = self.dec_skip_channels
+        self.dec_mixers = nn.ModuleDict()
+        for key, base_ch, skip_ch, frozen_ch in zip(dec_keys, dec_chs, skip_chs, self.frozen_dec_channels):
+            total_in = base_ch + frozen_ch
+            if self.skip_mode != 'none':
+                total_in += skip_ch
+            self.dec_mixers[key] = _make_proj(total_in, base_ch)
+
+    # ============================================================================
+    # FORWARD PASS HELPERS
+    # ============================================================================
+    
+    def _validate_and_route_frozen_features(self, frozen_encoder_features, frozen_decoder_features):
+        """
+        Validate and route frozen features based on skip_handling and flow_mode.
+        
+        Args:
+            frozen_encoder_features: Encoder features from frozen network (or None)
+            frozen_decoder_features: Decoder features from frozen network (or None)
+        
+        Returns:
+            (routed_encoder_features, routed_decoder_features) as tuples or None
+        """
+
+        # Route features based on flow mode
+        routed_enc_features = frozen_encoder_features
+        routed_dec_features = frozen_decoder_features
+        if self.flow_mode == 'counterflow':
+            # Counterflow: swap encoder and decoder features
+            routed_enc_features, routed_dec_features = routed_dec_features, routed_enc_features
+
+        # Convert to tuples for indexing
+        routed_enc_features = tuple(routed_enc_features) if routed_enc_features is not None else None
+        routed_dec_features = tuple(routed_dec_features) if routed_dec_features is not None else None
+
+        # Validate: frozen encoder features require encoder mixer to be enabled
+        if routed_enc_features is not None and not self.enable_encoder_mixer:
+            raise ValueError('Frozen encoder features provided but enable_encoder_mixer=False')
+        
+        # Validate: frozen decoder features require decoder mixer to be enabled
+        if routed_dec_features is not None and not self.enable_decoder_mixer:
+            raise ValueError('Frozen decoder features provided but enable_decoder_mixer=False')
+
+        # Validate: classic mode cannot accept frozen features
+        if self.skip_handling == 'classic' and (frozen_encoder_features is not None or frozen_decoder_features is not None):
+            raise ValueError('Frozen features provided but gen_skip_handling is classic.')
+
+        return routed_enc_features, routed_dec_features
+    
+    def _validate_feature_shape(self, tensor, target_h, target_w, expected_c, label):
+        """
+        Validate that a feature tensor has expected spatial size and channel count.
+        
+        Args:
+            tensor: Feature tensor to validate
+            target_h: Expected height
+            target_w: Expected width
+            expected_c: Expected channel count
+            label: Descriptive label for error messages
+        
+        Raises:
+            ValueError: If shape doesn't match expectations
+        """
+        if tensor is None:
+            raise ValueError(f'Missing tensor for {label}')
+        h, w = tensor.shape[-2:]
+        if h != target_h or w != target_w:
+            raise ValueError(f'Shape mismatch for {label}: expected {target_h}x{target_w}, got {h}x{w}')
+        if tensor.shape[1] != expected_c:
+            raise ValueError(f'Channel mismatch for {label}: expected {expected_c}, got {tensor.shape[1]}')
+    
+    def _inject_and_merge_at_decoder_stage(self, hidden, skip_tensor, frozen_feature,
+                                           inject_idx, mixer_key, return_features):
+        """
+        Mix skip connection and frozen decoder features at a decoder stage.
+        
+        Handles both classic mode (simple merge) and 1x1Conv mode (concat + projection).
+        
+        Args:
+            hidden: Current decoder output tensor
+            skip_tensor: Skip connection from encoder (always passed, even if not used)
+            frozen_feature: Frozen feature to mix (or None)
+            inject_idx: Index into frozen_dec_channels (0, 1, or 2)
+            mixer_key: Key for dec_mixers ModuleDict
+            return_features: Whether to capture features for return
+        
+        Returns:
+            (updated_hidden, optional_captured_feature)
+        """
+        captured_feature = None
+        
+        if self.skip_handling == '1x1Conv':
+            # 1x1Conv mode: concatenate decoder output + optional skip + optional frozen feature
+            parts = [hidden]
+            if self.skip_mode != 'none':
+                parts.append(skip_tensor)
+
+            if self.frozen_dec_channels[inject_idx] > 0:
+                frozen_channels_expected = self.frozen_dec_channels[inject_idx]
+                self._validate_feature_shape(frozen_feature, skip_tensor.shape[-2],
+                                            skip_tensor.shape[-1], frozen_channels_expected,
+                                            f'decoder_mix_{mixer_key}')
+                parts.append(frozen_feature)
+
+            # Concatenate and project back to base channels
+            hidden = torch.cat(parts, dim=1)
+            hidden = self.dec_mixers[mixer_key](hidden)
+
+            # Capture features AFTER mixing
+            if return_features:
+                captured_feature = hidden
+        else:
+            # Classic mode: simple skip connection merge
+            if return_features:
+                captured_feature = hidden # Capture BEFORE merging because otherwise the channel number would be 2X larger
+            hidden = self._merge_classic(skip_tensor, hidden)
+        
+        return hidden, captured_feature
+    
+    def _merge_classic(self, skip, x):
+        """
+        Merge skip connection with decoder output using configured skip_mode.
+        Used in classic mode only; 1x1Conv mode uses _inject_and_merge_at_decoder_stage.
+        
+        Args:
+            skip: Skip connection tensor from encoder
+            x: Current decoder output tensor
+        
+        Returns:
+            Merged tensor (add, concat, or passthrough if skip_mode='none')
+        """
+        if self.skip_mode == 'none' or skip is None:
+            return x
+        if self.skip_mode == 'add':
+            return x + skip
+        if self.skip_mode == 'concat':
+            return torch.cat([x, skip], dim=1)
+        raise ValueError('skip_mode must be one of {none, add, concat}')
+
+    def forward(self, input, frozen_encoder_features=None, frozen_decoder_features=None, return_features: bool = False):
+        batch_size = len(input)
+
+        # ================================================================================
+        # SECTION 1: SETUP AND VALIDATION
+        # ================================================================================
+        routed_enc_features, routed_dec_features = self._validate_and_route_frozen_features(
+            frozen_encoder_features, frozen_decoder_features
+        ) # routed_enc_features: tuple or None; routed_dec_features: tuple or None
+
+        # ================================================================================
+        # SECTION 2: ENCODER (Contracting Path: 256 → 128 → 64 → 32 → 16 → 8)
+        # ================================================================================
+        # Inject frozen features at three spatial scales during encoder:
+        # Scale 128 (idx=0), Scale 32 (idx=2), Scale 8 (idx=4)
+        # Pattern: Concatenate frozen features → 1x1 conv projects back to base channels
+        skips = []
+        hidden = input
+        
+        for idx, block in enumerate(self.contract_blocks):
+            hidden = block(hidden)
+            
+            # Mix frozen encoder features at scales 128, 32, 8
+            if self.enable_encoder_mixer and idx in (0, 2, 4):
+                inj_idx = {0: 0, 2: 1, 4: 2}[idx]
+                key = ('enc_128', 'enc_32', 'enc_8')[inj_idx]
+                
+                # If frozen channels are configured for this scale, validate and concatenate
+                if self.frozen_enc_channels[inj_idx] > 0:
+                    frozen_feature = routed_enc_features[inj_idx]
+                    frozen_channels_expected = self.frozen_enc_channels[inj_idx]
+                    self._validate_feature_shape(frozen_feature, hidden.shape[-2], hidden.shape[-1],
+                                                frozen_channels_expected, f'encoder_mix_{inj_idx}')
+                    hidden = torch.cat([hidden, frozen_feature], dim=1)  # Concatenate along channel dimension
+                
+                # Always apply mixer (acts as channel mixer even when no frozen features)
+                hidden = self.enc_mixers[key](hidden)
+            
+            skips.append(hidden) # Skips are appended for every layer because in 'classic' mode we need all of them
+
+        if return_features:
+            encoder_feats = [skips[0], skips[2], skips[4]]  # Scales: 128, 32, 8
+
+        # ================================================================================
+        # SECTION 3: BOTTLENECK (Processing at smallest spatial scale)
+        # ================================================================================
+        hidden = self.neck(hidden)
+
+        # ================================================================================
+        # SECTION 4: DECODER (Expanding Path: 8 → 16 → 32 → 64 → 128 → 256)
+        # ================================================================================
+        # Note: In '1x1Conv' mode, frozen features are injected at scales 8, 64, 128
+        #       In 'classic' mode, skip connections merged at scales 8, 16, 32, 64, 128
+
+        # --- Stage 1: Mix/merge at scale 8, then upsample to 16 ---
+        routed_dec_feature8 = routed_dec_features[2] if routed_dec_features is not None else None
+        hidden, decoder_feat_scale8 = self._inject_and_merge_at_decoder_stage(
+            hidden, skips[4], routed_dec_feature8, inject_idx=2, mixer_key='dec_8', 
+            return_features=return_features
+        )
+        hidden = self.expand_blocks[0](hidden)  # 8 → 16
+
+        # --- Stage 2: Merge skip at 16x16 (classic only), then upsample to 32 ---
+        if self.skip_handling == 'classic':
+            hidden = self._merge_classic(skips[3], hidden)
+        hidden = self.expand_blocks[1](hidden)  # 16 → 32
+
+        # --- Stage 3: Mix/merge at scale 32, then upsample to 64 ---
+        if self.skip_handling == '1x1Conv':
+            routed_dec_feature32 = routed_dec_features[1] if routed_dec_features is not None else None
+            hidden, decoder_feat_scale32 = self._inject_and_merge_at_decoder_stage(
+                hidden, skips[2], routed_dec_feature32, inject_idx=1, mixer_key='dec_32',
+                return_features=return_features
+            )
+        else:
+            # Classic: merge skip before expand
+            hidden = self._merge_classic(skips[2], hidden)
+            if return_features:
+                decoder_feat_scale32 = hidden
+        hidden = self.expand_blocks[2](hidden)  # 32 → 64
+
+        # --- Stage 4: Upsample 64 → 128 (skip handled by classic mode only) ---
+        if self.skip_handling == 'classic':
+            hidden = self._merge_classic(skips[1], hidden)
+        hidden = self.expand_blocks[3](hidden)  # 64 → 128
+
+        # --- Stage 5: Mix/merge at scale 128, then upsample to 256 ---
+        
+        # Note: a 'classic' mode skip connection is not employed here because you don't want raw skips at final output scale
+        routed_dec_feature128 = routed_dec_features[0] if routed_dec_features is not None else None
+        hidden, decoder_feat_scale128 = self._inject_and_merge_at_decoder_stage(
+            hidden, skips[0], routed_dec_feature128, inject_idx=0, mixer_key='dec_128',
+            return_features=return_features
+        )
+        hidden = self.expand_blocks[4](hidden)  # 128 → 256
+
+        # ================================================================================
+        # SECTION 5: POST-PROCESSING (Activation, Normalization, Scaling)
+        # ================================================================================
+        # Center crop if output exceeds target size
+        if hidden.shape[-1] > self.output_size:
+            crop_size = self.output_size
+            margin = (hidden.shape[-1] - crop_size) // 2
+            hidden = hidden[:, :, margin:margin+crop_size, margin:margin+crop_size]
+
+        # Apply final activation (Tanh, Sigmoid, etc.)
+        if self.final_activation:
+            hidden = self.final_activation(hidden)
+
+        # L1 normalization across spatial dimensions (if enabled)
+        if self.normalize:
+            hidden = torch.reshape(hidden, (batch_size, self.output_channels, self.output_size**2))
+            hidden = nn.functional.normalize(hidden, p=1, dim=2)
+            hidden = torch.reshape(hidden, (batch_size, self.output_channels, self.output_size, self.output_size))
+
+        # Apply output scaling (learnable or fixed)
+        scale = torch.exp(self.log_output_scale) if self.output_scale_learnable else self.fixed_output_scale
+        output = hidden * scale
+
+        # ================================================================================
+        # SECTION 6: RETURN OUTPUT (with optional intermediate features)
+        # ================================================================================
+        if return_features:
+            return {
+                'output': output,
+                'encoder': [encoder_feats[0], encoder_feats[1], encoder_feats[2]],
+                'decoder': [decoder_feat_scale128, decoder_feat_scale32, decoder_feat_scale8],
+            }
+        return output
+
+
+
 class Generator_320(nn.Module):
     def __init__(self, config, gen_SI=True, gen_skip_handling: str = '1x1Conv', gen_flow_mode: str = 'coflow', frozen_enc_channels=None, frozen_dec_channels=None, enable_encoder_mixer=True, enable_decoder_mixer=True, scaling_exp=0.7):
         '''

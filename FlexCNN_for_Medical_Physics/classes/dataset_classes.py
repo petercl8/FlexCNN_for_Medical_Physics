@@ -42,15 +42,23 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 #   augment:             augmentation type: 'SI', 'II', None, or False
 #   index:               data sample index to extract
 #   device:              'cuda' or 'cpu'
+#   sino_resize_type:    sinogram resize method: 'pool' or 'bilinear' (default: 'pool')
+#   sino_pad_type:       sinogram padding type: 'zeros' or 'sinogram' (mirror/flip horizontal padding, default: 'zeros')
+#   image_pad_type:      image padding type: 'zeros' (pad with zeros) or 'none' (bilinear resize, default: 'zeros')
+#   vert_pool_size:      vertical pooling factor for sinograms (1 = no pooling, default: 1)
+#   horiz_pool_size:     horizontal pooling factor for sinograms (1 = no pooling, default: 1)
+#   bilinear_intermediate_size: intermediate size for bilinear resize before padding (None = resize directly to target, default: 161)
+#   sino_init_vert_cut:  symmetrically crop sinograms to this height before resizing (None = no initial crop, default: None)
 
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
                         config, settings, augment=False, index=0, device='cuda',
-                        sino_resize_type = 'crop_pad',  # 'crop_pad' or 'bilinear'
-                        sino_pad_type = 'zeros',  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
-                        image_pad_type = 'zeros',  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
-                        vert_pool_size = 1,  # Vertical pooling factor (1 = no pooling)
-                        horiz_pool_size = 1,  # Horizontal pooling factor (1 = no pooling)
-                        bilinear_intermediate_size = 161,  # Intermediate size for bilinear resize before padding (None = resize directly to target)
+                        sino_resize_type='pool',  # 'pool' or 'bilinear'
+                        sino_pad_type='zeros',  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
+                        image_pad_type='zeros',  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
+                        sino_init_vert_cut=None,  # Symmetrically crop sinograms to this height before resizing (None = no initial crop)
+                        vert_pool_size=1,  # Vertical pooling factor (1 = no pooling)
+                        horiz_pool_size=1,  # Horizontal pooling factor (1 = no pooling)
+                        bilinear_intermediate_size=161,  # Intermediate size for bilinear resize before padding (None = resize directly to target)
     ):
 
     global resize_warned
@@ -157,16 +165,16 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
         # Resize sinogram (like a Sinogram) - no horizontal pooling to preserve angular information
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
-            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, 
-            vert_pool_size=vert_pool_size, horiz_pool_size=1, bilinear_intermediate_size=bilinear_intermediate_size
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type,
+            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=1, bilinear_intermediate_size=bilinear_intermediate_size
         )
 
     if augment[0]=='II':
         # If doing image-like augmentations, first resize sinogram (like an Image). This way, rotations are not truncated.
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
-            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type='zeros', 
-            vert_pool_size=vert_pool_size, horiz_pool_size=1, bilinear_intermediate_size=bilinear_intermediate_size
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type='zeros',
+            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=1, bilinear_intermediate_size=bilinear_intermediate_size
         )
 
         # Augment data (with image-like augmentations)
@@ -177,8 +185,8 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     if augment[0] is None:
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
-            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, 
-            vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size, bilinear_intermediate_size=bilinear_intermediate_size
+            resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type,
+            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size, bilinear_intermediate_size=bilinear_intermediate_size
         )
 
     # Resize image data (only if needed)

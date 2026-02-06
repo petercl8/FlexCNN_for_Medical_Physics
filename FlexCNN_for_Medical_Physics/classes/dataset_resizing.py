@@ -8,8 +8,9 @@ def resize_sino_data(
     atten_sino_multChannel,
     sino_size,
     resize_sino=True,
-    sino_resize_type='crop_pad',
+    sino_resize_type='pool',
     sino_pad_type='sinogram',
+    sino_init_vert_cut=None,
     vert_pool_size=1,
     horiz_pool_size=2,
     bilinear_intermediate_size=None
@@ -19,17 +20,19 @@ def resize_sino_data(
     
     Two resize paths:
     1) 'bilinear': Bilinear interpolation to intermediate size (if specified) or final size, then pad
-    2) 'crop_pad': Pool (vertical/horizontal), crop/pad vertically, pad horizontally
+    2) 'pool': Pool (vertical/horizontal), crop/pad vertically, pad horizontally
 
     Args:
         act_sino_multChannel: Activity sinogram tensor of shape (C, H, W) or None
         atten_sino_multChannel: Attenuation sinogram tensor of shape (C, H, W) or None
         sino_size: Target sinogram size (int for square)
         resize_sino: Boolean flag to enable resizing
-        sino_resize_type: 'crop_pad' (default) or 'bilinear'
+        sino_resize_type: 'pool' (default) or 'bilinear'
         sino_pad_type: 'sinogram' (default) or 'zeros' for final horizontal padding
-        vert_pool_size: Vertical pooling factor for crop_pad path (default 1, no pooling)
-        horiz_pool_size: Horizontal pooling factor for crop_pad path (default 2)
+        sino_init_vert_cut: Symmetrically crop sinograms to this height before resizing (universal option).
+                            If None, no initial crop applied. Works with both 'pool' and 'bilinear' paths.
+        vert_pool_size: Vertical pooling factor for pool path (default 1, no pooling)
+        horiz_pool_size: Horizontal pooling factor for pool path (default 2)
         bilinear_intermediate_size: For bilinear path, resize to this size before padding.
                                      If None, resize directly to sino_size (no padding needed)
 
@@ -38,6 +41,11 @@ def resize_sino_data(
     """
     if resize_sino==False:
         return act_sino_multChannel, atten_sino_multChannel
+
+    # Step 0: Apply initial vertical crop (universal, applies before any resizing method)
+    act_sino_multChannel, atten_sino_multChannel = _vertical_crop_sino(
+        act_sino_multChannel, atten_sino_multChannel, sino_init_vert_cut
+    )
 
     # Step 1: Resize using selected method
     if sino_resize_type=='bilinear':
@@ -48,7 +56,7 @@ def resize_sino_data(
         act_sino_processed, atten_sino_processed = bilinear_resize_sino(
             act_sino_multChannel, atten_sino_multChannel, resize_target
         )
-    else:
+    elif sino_resize_type=='pool':
         # Pool path: apply vertical and horizontal pooling
         act_sino_processed, atten_sino_processed = pool_sino(
             act_sino_multChannel,
@@ -56,6 +64,8 @@ def resize_sino_data(
             vert_pool_size=vert_pool_size,
             horiz_pool_size=horiz_pool_size
         )
+    else:
+        raise ValueError(f"sino_resize_type must be 'bilinear' or 'pool', got '{sino_resize_type}'")
     
     # Step 2: Crop/pad to exact target dimensions (for both paths)
     return _crop_pad_sino_to_target(
@@ -65,6 +75,54 @@ def resize_sino_data(
         target_width=sino_size,
         pad_type=sino_pad_type
     )
+
+def _vertical_crop_sino(act_sino, atten_sino, target_height):
+    """
+    Symmetrically crop sinograms vertically to target height.
+    Applies identical transforms to both with efficient stacked processing when both present.
+    
+    Args:
+        act_sino: Activity sinogram tensor of shape (C, H, W) or None
+        atten_sino: Attenuation sinogram tensor of shape (C, H, W) or None
+        target_height: Final height after cropping. If None, no crop applied.
+    
+    Returns:
+        Tuple (act_sino_cropped, atten_sino_cropped)
+    """
+    if target_height is None:
+        return act_sino, atten_sino
+    
+    def _crop_sinogram_stack(sino_stack):
+        """Helper to apply vertical crop to sinogram stack [B, C, H, W]."""
+        B, C, H, W = sino_stack.shape
+        
+        if H <= target_height:
+            return sino_stack  # Smaller or equal, don't crop
+        
+        crop_total = H - target_height
+        crop_top = crop_total // 2
+        crop_bottom = crop_total - crop_top
+        
+        return sino_stack[:, :, crop_top:H - crop_bottom, :]
+    
+    # Use stacking for efficiency when both sinograms present
+    has_act = act_sino is not None
+    has_atten = atten_sino is not None
+    
+    if has_act and has_atten:
+        stacked = torch.stack([act_sino, atten_sino], dim=0)  # [2, C, H, W]
+        cropped_stack = _crop_sinogram_stack(stacked)  # [2, C, H, W]
+        act_sino, atten_sino = torch.unbind(cropped_stack, dim=0)
+    elif has_act:
+        stacked = act_sino.unsqueeze(0)  # [1, C, H, W]
+        cropped_stack = _crop_sinogram_stack(stacked)  # [1, C, H, W]
+        act_sino = cropped_stack.squeeze(0)  # [C, H, W]
+    elif has_atten:
+        stacked = atten_sino.unsqueeze(0)  # [1, C, H, W]
+        cropped_stack = _crop_sinogram_stack(stacked)  # [1, C, H, W]
+        atten_sino = cropped_stack.squeeze(0)  # [C, H, W]
+    
+    return act_sino, atten_sino
 
 def bilinear_resize_sino(act_sino_multChannel, atten_sino_multChannel, sino_size):
     """

@@ -5,9 +5,9 @@ import sys
 import importlib
 
 from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataLoader
-from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
+from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_256, Generator_288, Generator_320
 from FlexCNN_for_Medical_Physics.functions.helper.setup_generators_optimizer import instantiate_dual_generators, load_dual_generator_checkpoints
-from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_unmatched_tensors, show_single_unmatched_tensor
+from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_commonmap_tensors, show_multiple_unmatched_tensors, show_single_unmatched_tensor
 from FlexCNN_for_Medical_Physics.functions.helper.config_materialize import materialize_config
 
 
@@ -15,8 +15,8 @@ from FlexCNN_for_Medical_Physics.functions.helper.config_materialize import mate
 # Updated: BuildImageSinoTensors returns lists of all images and sinograms (activity, attenuation), and reconstructions if present
 
 def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths, indexes, device, settings,
-                 sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='zeros',
-                 vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
+                 sino_resize_type='pool', sino_pad_type='zeros', image_pad_type='zeros',
+                 sino_init_vert_cut=None, vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
     '''
     Return a dictionary of tensors for activity images/sinograms, attenuation images/sinograms, and reconstructions.
     Each tensor has shape (N, C, H, W), where N is the number of indexes provided (len(indexes)).
@@ -45,7 +45,7 @@ def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_na
             act_sino_array, act_image_array, atten_image_array, atten_sino_array, recon1_array, recon2_array,
             config, settings, augment=(None, False), index=idx, device=device,
             sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, image_pad_type=image_pad_type,
-            vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size, 
+            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size,
             bilinear_intermediate_size=bilinear_intermediate_size
         )
         act_sino_scaled, act_image_scaled = act_data
@@ -86,10 +86,11 @@ def cnn_reconstruct_single(input_tensor, config, paths, device, checkpoint_name)
     if 'FlexCNN_for_Medical_Physics.classes.generators' in sys.modules:
         generators_module = importlib.reload(sys.modules['FlexCNN_for_Medical_Physics.classes.generators'])
         Gen_180 = generators_module.Generator_180
+        Gen_256 = generators_module.Generator_256
         Gen_288 = generators_module.Generator_288
         Gen_320 = generators_module.Generator_320
     else:
-        from FlexCNN_for_Medical_Physics.classes.generators import Generator_180 as Gen_180, Generator_288 as Gen_288, Generator_320 as Gen_320
+        from FlexCNN_for_Medical_Physics.classes.generators import Generator_180 as Gen_180, Generator_256 as Gen_256, Generator_288 as Gen_288, Generator_320 as Gen_320
 
     checkpoint_path = os.path.join(paths['checkpoint_dirPath'], checkpoint_name)
     net_size = config['gen_sino_size']
@@ -98,12 +99,14 @@ def cnn_reconstruct_single(input_tensor, config, paths, device, checkpoint_name)
     
     if net_size == 180:
         gen = Gen_180(config=config, gen_SI=True).to(device)
+    elif net_size == 256:
+        gen = Gen_256(config=config, gen_SI=True).to(device)
     elif net_size == 288:
         gen = Gen_288(config=config, gen_SI=True).to(device)
     elif net_size == 320:
         gen = Gen_320(config=config, gen_SI=True).to(device)
     else:
-        raise ValueError(f"No Generator class available for gen_sino_size={net_size}. Supported sizes: 180, 288, 320")
+        raise ValueError(f"No Generator class available for gen_sino_size={net_size}. Supported sizes: 180, 256, 288, 320")
     
     checkpoint = torch.load(checkpoint_path, map_location=device)
     try:
@@ -186,8 +189,8 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
                       config, paths, fig_size, device, settings, outputs_to_plot,
                       act_image_array_name=None, act_sino_array_name=None, atten_image_array_name=None,
                       atten_sino_array_name=None, recon1_array_name=None, recon2_array_name=None,
-                      sino_resize_type='crop_pad', sino_pad_type='zeros', image_pad_type='zeros',
-                      vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
+                      sino_resize_type='pool', sino_pad_type='zeros', image_pad_type='zeros',
+                      sino_init_vert_cut=None, vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
     """
     Load data, reconstruct images using a trained CNN, and visualize results.
     
@@ -241,11 +244,14 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     recon2_array_name : str, optional
         Filename of second reconstruction reference array (.npy file).
     sino_resize_type : str, optional
-        Sinogram resize method: 'crop_pad' or 'bilinear'. Default: 'crop_pad'.
+        Sinogram resize method: 'pool' or 'bilinear'. Default: 'pool'.
     sino_pad_type : str, optional
         Sinogram padding type: 'zeros' or 'sinogram' (mirror/flip). Default: 'zeros'.
     image_pad_type : str, optional
         Image padding type: 'zeros' or 'none' (bilinear resize). Default: 'zeros'.
+    sino_init_vert_cut : int, optional
+        Symmetrically crop sinograms to this height before resizing. If None, no initial crop applied.
+        Works with both 'pool' and 'bilinear' paths. Default: None.
     vert_pool_size : int, optional
         Vertical pooling factor for sinograms (1 = no pooling). Default: 1.
     horiz_pool_size : int, optional
@@ -305,7 +311,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     tensors = BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name,
                            recon1_array_name, recon2_array_name, config, paths, indexes, device, settings,
                            sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, image_pad_type=image_pad_type,
-                           vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size,
+                           sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size,
                            bilinear_intermediate_size=bilinear_intermediate_size)
 
     # Choose input for reconstruction based on network_type
@@ -348,4 +354,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         tensors_to_plot.extend(plot_map.get(key, []))
 
     show_multiple_unmatched_tensors(*tensors_to_plot, fig_size=fig_size)
+
+    show_multiple_commonmap_tensors(*tensors_to_plot)
+
     return tensors, cnn_output

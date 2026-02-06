@@ -11,7 +11,7 @@ import time
 import torch
 import logging
 
-from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
+from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_256, Generator_288, Generator_320
 from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
 from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric, reconstruct_images_and_update_test_dataframe
 from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, patchwise_moment_metric

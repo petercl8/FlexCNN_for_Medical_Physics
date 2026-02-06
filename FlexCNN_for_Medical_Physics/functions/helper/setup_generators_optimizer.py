@@ -1,7 +1,7 @@
 import os
 import torch
 from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
-from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_288, Generator_320
+from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_256, Generator_288, Generator_320
 
 def create_generator(config: dict, device: str, **kwargs):
     """
@@ -13,10 +13,10 @@ def create_generator(config: dict, device: str, **kwargs):
         **kwargs: Additional keyword arguments passed to Generator constructor (e.g., gen_skip_handling, frozen_enc_channels).
     
     Returns:
-        Generator instance (Generator_180, Generator_288, or Generator_320) on specified device.
+        Generator instance (Generator_180, Generator_256, Generator_288, or Generator_320) on specified device.
     
     Raises:
-        ValueError if input_size is not 180, 288, or 320.
+        ValueError if input_size is not 180, 256, 288, or 320.
     """
     train_SI = config['train_SI']
     gen_image_size = config['gen_image_size']
@@ -28,12 +28,14 @@ def create_generator(config: dict, device: str, **kwargs):
     # Select appropriate Generator class
     if input_size == 180:
         GeneratorClass = Generator_180
+    elif input_size == 256:
+        GeneratorClass = Generator_256
     elif input_size == 288:
         GeneratorClass = Generator_288
     elif input_size == 320:
         GeneratorClass = Generator_320
     else:
-        raise ValueError(f"No Generator class available for input_size={input_size}. Supported sizes: 180, 288, 320")
+        raise ValueError(f"No Generator class available for input_size={input_size}. Supported sizes: 180, 256, 288, 320")
     
     # Instantiate and move to device
     gen = GeneratorClass(config=config, gen_SI=train_SI, **kwargs).to(device)

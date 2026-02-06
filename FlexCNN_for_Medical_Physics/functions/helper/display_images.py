@@ -354,3 +354,5 @@ def show_multiple_commonmap_tensors(*image_tensors, cmap='inferno'):
     im = ax.imshow(image_grid, cmap=cmap)
     fig.colorbar(im, ax=ax)
     smart_show()
+    plt.close(figure)
+    plt.close(fig)
