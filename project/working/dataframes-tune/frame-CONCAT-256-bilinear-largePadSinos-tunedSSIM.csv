@@ -1,0 +1,2 @@
+SI_dropout,SI_exp_kernel,SI_gen_fill,SI_gen_hidden_dim,SI_gen_neck,SI_layer_norm,SI_normalize,SI_pad_mode,batch_size,gen_lr,num_params,SSIM
+0.0,4.0,0.0,34.0,medium,instance,0.0,replicate,32.0,0.000614422493298528,8552705.0,0.7460295520722866

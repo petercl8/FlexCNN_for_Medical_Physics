@@ -1,0 +1,191 @@
+from ast import If
+from torch import nn
+from ray import tune
+from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
+
+# Data-driven initialization bounds (from compute_average_activity_per_image analysis)
+MEAN_ACTIVITY = 144617
+MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalized scaling
+
+# Variance-weighted MSE parameter
+COUNTS_PER_BQ=60.0  # Counts per bequerel for variance-weighted MSE. If tuning/training using activity maps, set to 60 (our dataset = 59.999435). 
+                    # If using annihilation maps, set to 1.
+
+# Parameters for PatchwiseMomentLoss (used in config_RAY_SUP)
+patch_size=8  # 8
+stride=4      # 4
+max_moment=3  # 3
+scale='mean'  # 'mean' or 'std'
+
+
+
+#################################################################################################################################################################
+## (config_RAY_SI OR config_RAY_IS) gets combined with (config_RAY_SUP or config_RAY_GAN) to form a single hyperparameter space for searching a single network ##
+#################################################################################################################################################################
+
+## Note: For the Coursera CycleGAN:
+# gen_adv_criterion = disc_adv_criterion = nn.MSELoss()
+# cycle_criterion = ident_criterion = nn.L1Loss()
+# for notes on momentum, see: https://distill.pub/2017/momentum/
+
+# --- Begin replacement for config_RAY_SI (flattened, dependent choices) ---
+config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
+    # Generator Network
+    'SI_gen_mult': tune.uniform(1.1, 3),                        # Factor by which to multiply channels/block as one moves twowards the center of the network
+    'SI_gen_fill': tune.choice([0,1]),                        # Number of constant-sized Conv2d layers/block
+    'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
+    'SI_gen_z_dim': tune.lograndint(512, 2000),                  # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
+    'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type
+    'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
+    'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
+    'SI_gen_hidden_dim': tune.lograndint(10, 30),                # Generator channel scaling factor. Larger numbers give more total channels.
+    'SI_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
+                                                                # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
+
+    # Statistical Regularization (SI-specific)
+    'SI_stats_criterion': -1, # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    'SI_alpha_min': -1,# tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
+    'SI_half_life_examples': -1, # tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
+
+    # Discriminator Network
+    'SI_disc_hidden_dim': tune.lograndint(10, 40),              # Discriminator channel scaling factor
+    'SI_disc_patchGAN': tune.choice([True, False]),             # Use PatchGAN or not
+    # Discriminator Optimizer
+    'SI_disc_lr': tune.loguniform(1e-4,1e-2),
+    'SI_disc_b1': tune.loguniform(0.1, 0.999),
+    'SI_disc_b2': tune.loguniform(0.1, 0.999),
+    'SI_disc_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]), # Possible options: tune.choice([nn.MSELoss(), nn.KLDivLoss(), nn.BCEWithLogitsLoss()]),
+}
+
+config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
+    ## Data Loading ##
+    'SI_normalize': False,
+    'SI_fixedScale': 1,                                          # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
+    'SI_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
+    'SI_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
+    'SI_layer_norm': tune.choice(['none', 'instance', 'group']),
+    'SI_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
+}
+
+config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
+    'SI_normalize': True,
+    'SI_fixedScale': 1,
+    'SI_output_scale_lr_mult:' : 1.0,  # No learnable output scale
+    'SI_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
+    'SI_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
+}
+
+config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
+    # Generator Network
+    'IS_gen_mult': tune.uniform(1.1, 3),
+    'IS_gen_fill': tune.choice([0,1]),
+    'IS_gen_neck': tune.choice(['narrow','medium','wide']),
+    'IS_gen_z_dim': tune.lograndint(512, 2000),
+    'IS_pad_mode': tune.choice(['zeros', 'replicate']),
+    'IS_dropout': tune.choice([True,False]),
+    'IS_exp_kernel': tune.choice([3,4]),
+    'IS_gen_hidden_dim': tune.lograndint(10, 30),
+    'IS_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
+                                                                # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
+
+    # Statistical Regularization (IS-specific)
+    'IS_stats_criterion': -1, # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    'IS_alpha_min': -1, # tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
+    'IS_half_life_examples': -1, # tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
+
+    # Discriminator Network
+    'IS_disc_hidden_dim': tune.lograndint(10, 30),
+    'IS_disc_patchGAN': tune.choice([True, False]),
+    # Discriminator Optimizer
+    'IS_disc_lr': tune.loguniform(1e-4,1e-2),
+    'IS_disc_b1': tune.loguniform(0.1, 0.999),
+    'IS_disc_b2': tune.loguniform(0.1, 0.999),
+    'IS_disc_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]),
+}
+
+config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
+    ## Data Loading ##
+    'IS_normalize': False,
+    'IS_fixedScale': 1,        
+    'IS_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
+    'IS_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
+    'IS_layer_norm': tune.choice(['none', 'instance', 'group']),
+    'IS_gen_final_activ': tune.choice([None, nn.LeakyReLU(), nn.ELU(), nn.Sigmoid(), nn.Tanh()]),
+}
+
+config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
+    'IS_normalize': True,
+    'IS_fixedScale': 1,
+    'IS_output_scale_lr_mult:' : 1.0,  # No learnable output scale
+    'IS_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
+    'IS_gen_final_activ': tune.choice([None, nn.Tanh(), nn.Sigmoid(), nn.ReLU()]),
+}
+config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning
+    # NEW: New parameters added to config_RAY_SI (related to generator optimizer)
+    'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128)
+    'gen_lr': tune.loguniform(1e-4,1e-2),
+    'gen_b1': tune.loguniform(0.1, 0.999),
+    'gen_b2': tune.loguniform(0.1, 0.999),
+    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]), # Could also include nn.KLDivLoss(reduction='batchmean'). Not prefixed with SI or IS because this is used for both.
+    # OVERWRITES: overwrites values from config_RAY_SI or config_RAY_IS. This is done so time isn't wasted looking for unused hyperparameters.
+    'SI_disc_hidden_dim': 1,
+    'SI_disc_patchGAN': 1,
+    'SI_disc_lr': 1,
+    'SI_disc_b1': 1,
+    'SI_disc_b2': 1,
+    'SI_disc_adv_criterion': 1,
+    'IS_disc_hidden_dim': 1,
+    'IS_disc_patchGAN': 1,
+    'IS_disc_lr': 1,
+    'IS_disc_b1': 1,
+    'IS_disc_b2': 1,
+    'IS_disc_adv_criterion': 1,
+    }
+
+config_RAY_SUP_FROZEN = {} # Frozen-specific hyperparameters merged with config_RAY_SUP for frozen backbone networks. Currently empty.
+
+####################
+# Currently Unused #
+####################
+
+config_RAY_SUP_SIMULT= { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent, partially supervised network.
+    # SHARED HYPERPARAMETERS
+    'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128)
+    'gen_lr': tune.loguniform(0.5e-4,1e-2),
+    'gen_b1': tune.loguniform(0.1, 0.999), # DCGan uses 0.5, https://distill.pub/2017/momentum/
+    'gen_b2': tune.loguniform(0.1, 0.999),
+    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    # SPECIFICALLY FOR SSIMULTANEOUS TRAINING
+    'gen_lr_scalar': tune.loguniform(0.1,10),  # learning rate mixing: gen_lr * gen_lr_scalar for one generator, gen_lr / gen_lr_scalar for the other
+    'cycle_criterion': None,
+    'lambda_adv': 0,
+    'lambda_sup': 1,
+    'lambda_cycle': 0,
+    }
+
+config_RAY_GAN = { # This is MERGED with either config_RAY_IS or config_RAY_SI to form a single dictionary for a generative adversarial network.
+    # NEW
+    'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128)
+    'gen_lr': tune.loguniform(1e-4,1e-2),
+    'gen_b1': tune.loguniform(0.1, 0.999),
+    'gen_b2': 0.999, #tune.loguniform(0.1, 0.999),
+
+    'gen_adv_criterion': tune.choice([nn.MSELoss(), nn.BCEWithLogitsLoss()]),
+    }
+
+config_RAY_GAN_CYCLE = { # Mixed New/Overwrites (when combined with config_SI/config_IS) to form a single dictionary for a cycle-consistent generative adversarial network.
+    # NEW
+    'cycle_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    'sup_base_criterion': tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    'lambda_adv': 1,
+    'lambda_sup': 0,
+    'lambda_cycle': 1,
+    # OVERWRITES
+    'gen_adv_criterion': nn.MSELoss(), #tune.choice([nn.MSELoss(), nn.L1Loss(), VarWeightedMSE(k=COUNTS_PER_BQ)]),
+    'IS_disc_lr': tune.loguniform(1e-4,1e-2),
+    'SI_disc_lr': tune.loguniform(1e-4,1e-2),
+    'batch_base2_exponent': tune.randint(5, 9),  # Exponent for batch_size = 2^exponent (5->32, 6->64, 7->128)
+    'gen_lr': tune.loguniform(0.5e-4,1e-2),
+    'gen_b1': tune.loguniform(0.1, 0.999),
+    'gen_b2': 0.999, #tune.loguniform(0.1, 0.999),
+    }

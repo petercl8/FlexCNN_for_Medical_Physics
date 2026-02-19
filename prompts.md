@@ -1,0 +1,167 @@
+I already have an existing PyTorch class called Generator that builds a configurable encoder–decoder CNN (U-Net–like) from a configuration dictionary called config. You may find that in #generators.py.
+The Generator:
+
+Builds encoder, bottleneck, and decoder stages entirely from config
+
+Already supports skip connections, channel distributions, dropout, etc.
+
+Accepts an input tensor of shape C x 288 x 288
+
+Produces an output tensor of shape C x 180 x 180 (cropped from a final 288 x 288 layer)
+
+Is already used to train a sinogram -> activity image reconstruction network
+
+I want to reuse this exact Generator class with minimal code changes.
+
+Goal:
+Train an attenuation map -> attenuation sinogram network using the same Generator and training code. After training, freeze its weights and inject its intermediate feature maps into a second Generator that performs sinogram -> activity reconstruction.
+
+Important constraints:
+
+Do not change Generator internals if possible
+
+Assume spatial feature map sizes always match; if they do not, that is an error
+
+Minimize new code and architectural changes
+
+Gradients must never flow into the attenuation network
+
+Architecture plan:
+
+After tuning/training the attenuation nettwork, we instantiate two Generator objects:
+
+atten_gen: attenuation map -> attenuation sinogram (frozen), loaded from checkpoint.
+
+recon_gen: sinogram -> activity image (tunable/trainable)
+
+Both generators are built using their own config dictionaries
+
+Feature injection:
+
+Capture intermediate feature maps from atten_gen during its forward pass
+
+Inject those features into recon_gen at three locations:
+
+Bottleneck -> bottleneck (always included)
+
+Attenuation decoder -> reconstruction encoder (mid-level, may be toggled on or off)
+
+Attenuation encoder -> reconstruction decoder (mid-level, may be toggled on or off)
+
+Feature injection is done by concatenation along the channel dimension
+
+Scaling:
+
+Each injected feature tensor must be multiplied by a trainable per-channel scaling factor
+
+Scaling parameter shape should be (C, 1, 1)
+
+Initialize scaling factors to a small value (e.g. 0.1)
+
+Scaling parameters belong to the reconstruction network only
+
+Implementation guidance:
+
+Other than feature injection (and the attendent change in channels at those locations), the reconstruction Generator should work exactly as before (as if feature injection were disabled)
+
+Minimal, well-commented code for lateral feature injection
+
+No unnecessary refactoring or architectural changes
+
+Objective:
+This implements a frozen-backbone, teacher–student style architecture where structural features learned from attenuation maps softly guide the sinogram -> image reconstruction without co-adaptation.
+
+For our plan:
+
+Let's discuss the specifics of how this will be implemented. ChatGPT had some suggestions:
+
+a) Use forward hooks or minimal wrapper logic to extract intermediate features
+
+b) A lightweight wrapper or subclass that connects two Generator instances
+
+My current (tentative thought) is to divide this task into a number of stages that we can complete one at a time:
+
+Stage 0: Simplify #codebase (in particular, #run_supervisory.py) so that it makes use of more code contained in functions and is easier to understand.
+
+Stage 1: Update code (#dataset_classes.py, #stitching_notebook.ipynb, #run_supervisory.py, etc.) to allow for the optional loading of attenuation maps.
+
+Stage 2: If loading attenuation maps, we also need to "load" their sinogram pairs. I figure the best way to do this (to avoid storing unnecessary data) is to create the sinograms on the fly. The attenuation maps can be transformed in real time using a radon transform to create the attenuation sinograms. I already have some code written which does forward projection (in #reconstruction_projection). We need to update that code to create these sinograms that are of approximately the same dimensions as the activity sihnograms. We could then call that code from the dataloader to load sinograms and return them (along with everything else) to the trainable. That would keep code generation nicely siloed.
+
+Stage 3: Update code to allow for tuning/training of the atten_map->atten_sinogram network ("attenuation network"). Checkpoint code could remain mostly as it currently stands.
+
+Stage 4: Update code to allow for loading two networks (attenuation and activity) from checkpoints. Do we need to save network weights in separate files for the two networks?
+
+Stage 5: Update code to allow for simultaneous training (of activity network), inference only (of attenuation network), and feature transfer. Here, we also need to include introduction of learnable scaling parameters for injected features. There should also be options to turn off one or more of those feature injections for albation.
+
+
+----
+
+Further Considerations:
+
+1) Only the smallest layer post-activation features in the neck need to be injected. If a neck has multiple layers of the same size, the last one before upsampling should be chosen.
+2) I need to understand these options more. Are you proposing A) one dict/one checkpoint file B) two dicts/two checkpoint files?
+3) We'd only be using one optimizer at a time. config_RAY_DUAL dictionary could be merged in #file:construct_dictionaries.py  with the other dicts to create a single search space.
+
+
+----
+
+A) You seem to have made the decision already to checkpoint with separate files. I still need to be convinced that's the best option. It's certainly easier for me to uncomment one dictionary than to keep track of two when switching between experiments in scientific code.
+B) There is one complication we still need to deal with. One of the hyperparameters ('SI_gen_neck' or 'IS_gen_neck') controls neck size. For the attenuation-->sinogram network, we should pick the smallest neck. That way, no matter what the neck size of the sinogram->activity network, we will have features that can be injected at the appropriate sizes. We can discuss this more when it's time to implement.
+C) We should do everything for the 288x288 network first.
+D) Do the stages I propose make sense to you? If not, please propose new ones. I would like to go stage by stage in our plan. For each stage, please break up the stage into multiple steps. These steps should each allow for distinct code edits where the code can be tested after each step.
+
+---
+
+1) For workflow, I anticipate tuning/training the attenuation network once. Then, I can do many experiments with the activity portion. Therefore, it makes sense to split the saved weight values into two files. However, keeping all hyperparameters in a single dict simplifies things. Does this make sense to you?
+
+2) Let's simplify this drastically. We can tune/train the attenuation network at medium neck size (5x5). Then we can simply inject outside the neck to the activity network (which can have any neck size). Here are the proposed connections: 9x9 attenuation encoder side -> 9x9 activity decoder side. 9x9 attenuation decoder side --> 9x9 activity encoder side. Same pattern but with 9x9 attenuation encoder side -> 9x9 activity decoder side. 9x9 attenuation decoder side --> 9x9     activity encoder side. And then same pattern but with 36x36 and 144x144 layers.
+
+3) Agree, let's defer the others.
+
+
+=============
+A) The encoder feature list shouls be 144, 72, 9 (encoder side) and 9, 72, 144 (decoder side). I'd like the neck to be left alone to simplify things.
+B) For checkpointing, we need two load paths (for two networks) and two save path. To keep things simple, I say we just append a suffix to our already established checkpoint file, which would be used for activity. So if, for example, paths['checkpoint_path']='path_to_dir/sample_checkpoint_file', checkpoint_act='path_to_dir/sample_checkpoint_file-act'.
+
+For tuning, you'd only need to load the first checkpoint file. For training, you'd load the first (if starting from scratch) or both if picking up training partway through. You'd save to only the 2nd (since the first is frozen). Do you understand?
+
+Alternatively, I suppose we could pipe a 2nd checkpoint path all the way through, which might be clearer. What do you think? Do you have any other ideas?
+
+For feature concatenation, you'll need to be more specific. Do we send features to gen_act: CNN_output = gen_act(act_sino_scaled, extracted_features) ?
+================
+1) Your loading logic requires some correction:
+
+# Tuning: load only attenuation network (regardless of load_state because trials are started from scratch)
+gen_act.load_state_dict(torch.load(checkpoint_path + '-atten'))
+
+# Training: load both if they exist
+if load_state and run_mode == 'train':
+    if os.path.exists(checkpoint_path + '-atten'):
+        gen_atten.load_state_dict(torch.load(checkpoint_path + '-atten'))
+    if os.path.exists(checkpoint_path + '-act'):
+        gen_act.load_state_dict(torch.load(checkpoint_path + '-act'))
+
+# Saving: only activity (frozen network never changes)
+if save_state:
+    torch.save(gen_act.state_dict(), checkpoint_path + '-act')
+
+2) Option 2 (wrapper/helper function) sounds good. I would add an argument, however, which indicates coflow vs. counterflow. Then we can use this wrapper for both.
+
+
+==================
+REGARDING GROUP NORMALIZATION BEFORE CONCATENATION
+
+ Ideally, before concatenation, the extracted attenuation features should be normalized using the same normalization type as that employed in the activity network (which is tunable). That way, both features have the same normalization before concatenation. I propose using GroupNorm for this. Therefore, the outputs from like-sized blocks (for both networks) can be normlized using GroupNorm, concatenated, then reduced the the proper number of channels (to be fed into the next block) by 1x1 conv. The scheme would go something like this:
+
+A ∈ ℝ[B, C_A, H, W]  # attenuation features
+X ∈ ℝ[B, C_X, H, W]  # activity features
+
+Â = GN_A(A)  # GroupNorm(num_channels=C_A, groups=G_A)
+X̂ = GN_X(X)  # GroupNorm(num_channels=C_X, groups=G_X)
+
+Z = concat([X̂, Â], dim=channel)
+Y = Conv1×1(Z) → ℝ[B, C_X, H, W]
+
+Please do not do any formal planning. We are just talking here and I want to know if you understand what I'm driving at?
+
+=================

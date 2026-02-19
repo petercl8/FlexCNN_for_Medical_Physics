@@ -1,0 +1,39 @@
+Phantom Splits
+==============
+TRAIN SET:
+male_pt96, male_pt108, male_pt118, male_pt139, male_pt141, male_pt144, male_pt145, male_pt155, male_pt157, male_pt163, male_pt164, male_pt167, male_pt169, male_pt171, male_pt178, male_pt180, male_pt184, male_pt196, male_pt200, male_pt168, female_pt71, female_pt76, female_pt86, female_pt89, female_pt98, female_pt99, female_pt117, female_pt152, female_pt153, female_pt166, female_pt175, female_pt176, female_pt182, female_pt170
+
+VALIDATION SET:
+male_pt93, male_pt128, male_pt159, male_pt201, female_pt106, female_pt147, female_pt149
+
+TEST SET:
+male_pt77, male_pt80, male_pt92, male_pt150, male_pt154, male_pt173, female_pt140, female_pt142, female_pt143, female_pt151, female_pt162
+
+
+Resizing Operations
+===================
+On the fly
+----------
+Documented in visualizations.ipynb
+
+Pre-computed resizing
+---------------------
+## Resizing Data to 180x180
+if resize_180:
+    sample_trim_resize_local(
+        input_dir=r'C:\dataset-sets',
+        input_file='test-highCountSino-382x513.npy',
+        output_dir=r'C:\dataset-resized',
+        output_file='test-highCountSino-180x180.npy',
+        sample_division=1,
+        remove_n=0,
+        crop_h=300,
+        crop_w=None,
+        new_height=180,
+        new_width=180,
+        pool_h_factor=None,
+        pool_w_factor=None,
+        seed=0,                # default seed for reproducibility
+        log_file="log-SampleTrimResize.txt",
+        skip_if_exists_vm=False
+    )

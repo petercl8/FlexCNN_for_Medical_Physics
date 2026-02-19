@@ -1,0 +1,189 @@
+
+def patchwise_moment_metric(batch_pred,
+                            batch_target,
+                            moments=[1,2],
+                            moment_weights={1:2, 2:1.0, 3:1.0},   # dict, e.g., {2:1.0, 3:0.001}
+                            patch_size=8,
+                            stride=4,
+                            eps=0.1,
+                            patch_weighting='scaled',  # 'scaled', 'energy', 'mean', 'none'
+                            patch_weight_min=0.33,
+                            patch_weight_max=1.0,
+                            return_per_moment=False):
+    """
+    Patchwise moment metric with improved patch weighting handling.
+    """
+    B, C, H, W = batch_pred.shape
+    p, s = patch_size, stride
+
+    # Only full patches
+    num_patches_h = (H - p) // s + 1
+    num_patches_w = (W - p) // s + 1
+    if num_patches_h <= 0 or num_patches_w <= 0:
+        raise ValueError("Patch size larger than image dimensions.")
+    max_h = s * (num_patches_h - 1) + p
+    max_w = s * (num_patches_w - 1) + p
+    batch_pred = batch_pred[:, :, :max_h, :max_w]
+    batch_target = batch_target[:, :, :max_h, :max_w]
+
+    # Extract patches
+    pred_patches = batch_pred.unfold(2, p, s).unfold(3, p, s)
+    target_patches = batch_target.unfold(2, p, s).unfold(3, p, s)
+    num_patches = num_patches_h * num_patches_w
+    pred_patches = pred_patches.contiguous().view(B, C, num_patches, -1)
+    target_patches = target_patches.contiguous().view(B, C, num_patches, -1)
+
+    # -------------------
+    # Patch weighting
+    # -------------------
+    patch_mean = target_patches.mean(dim=-1)
+    patch_min = patch_mean.min(dim=-1, keepdim=True)[0]
+    patch_max = patch_mean.max(dim=-1, keepdim=True)[0]
+
+    if patch_weighting == 'scaled':
+        # Scale between patch_weight_min and patch_weight_max per image
+        patch_weights = patch_weight_min + (patch_mean - patch_min) / (patch_max - patch_min + eps) * (patch_weight_max - patch_weight_min)
+        # Do NOT renormalize; already bounded
+    elif patch_weighting == 'energy':
+        patch_energy = (target_patches**2).mean(dim=-1)
+        patch_weights = patch_energy / (patch_energy.sum(dim=-1, keepdim=True) + eps)
+    elif patch_weighting == 'mean':
+        patch_weights = patch_mean / (patch_mean.sum(dim=-1, keepdim=True) + eps)
+    else:
+        patch_weights = torch.ones_like(patch_mean)
+
+    # -------------------
+    # Moment computation
+    # -------------------
+    per_moment_dict = {}
+    total_metric = 0.0
+    if moment_weights is None:
+        moment_weights = {k:1.0 for k in moments}
+
+    for k in moments:
+        if k == 1:
+            target_m = patch_mean
+            pred_m = pred_patches.mean(dim=-1)
+        else:
+            target_mean = target_patches.mean(dim=-1, keepdim=True)
+            pred_mean = pred_patches.mean(dim=-1, keepdim=True)
+            target_c = target_patches - target_mean
+            pred_c = pred_patches - pred_mean
+            target_m = (target_c**k).mean(dim=-1)
+            pred_m = (pred_c**k).mean(dim=-1)
+
+            # Optional compression for higher moments
+            if k == 2:
+                target_m = torch.sqrt(target_m + eps)
+                pred_m = torch.sqrt(pred_m + eps)
+            elif k == 3:
+                target_m = torch.sign(target_m) * torch.abs(target_m)**(1/3)
+                pred_m = torch.sign(pred_m) * torch.abs(pred_m)**(1/3)
+
+        # Relative difference
+        rel_diff = torch.abs(pred_m - target_m) / (torch.abs(target_m) + eps)  # UPDATE SO DENOMINATOR IS SQRT(MEAN)
+
+        # Weighted by patch weights
+        weighted_patch_diff = (rel_diff * patch_weights).sum(dim=-1).mean(dim=[0,1])
+
+        # Apply moment weight
+        weighted_moment_diff = weighted_patch_diff * moment_weights.get(k, 1.0)
+
+        total_metric += weighted_moment_diff
+        per_moment_dict[k] = weighted_moment_diff.cpu().item()
+
+    # Normalize by sum of moment weights
+    total_metric = total_metric / sum(moment_weights.get(k,1.0) for k in moments)
+
+    if return_per_moment:
+        return total_metric.cpu().item(), per_moment_dict
+    else:
+        return total_metric.cpu().item()
+
+
+
+def calculate_moments(batch_A, batch_B, window_size = 5, stride=2, dataframe=False):
+    '''
+    Function to return the three statistical moment scores for two image tensors.
+    '''
+    ## Nested Functions ##
+
+    def compare_moments(win_A, win_B, moment):
+        def compute_moment(win, moment, axis=1):
+            mean_value = np.mean(win, axis=axis)
+            if moment == 1:
+                return mean_value
+            else:
+                mean_array = np.array([mean_value] * win.shape[1]).T  # The square brackets in win.shape[1] mean the value is repeated spatially
+                moment = np.mean((win - mean_array)**moment, axis=1)
+                return moment
+
+        batch_size = win_A.shape[0]
+
+
+        reshape_A = (torch.reshape(win_A, (batch_size, -1))).detach().cpu().numpy()
+        reshape_B = (torch.reshape(win_B, (batch_size, -1))).detach().cpu().numpy()
+
+        moment_A = compute_moment(reshape_A, moment=moment)
+        moment_B = compute_moment(reshape_B, moment=moment)
+        moment_score = np.mean(np.absolute(moment_A-moment_B)/(np.absolute(moment_A)+0.1))
+
+        '''
+        print('===============================')
+        print('MOMENT: ', moment)
+        print('moment_A shape: ', moment_A.shape)
+        print('moment_A mean: ', np.mean(moment_A))
+        print('moment_B shape: ', moment_B.shape)
+        print('moment_B mean: ', np.mean(moment_B))
+        print('moment_score, |moment_A-moment_B|/(moment_A+0.1) : ', moment_score)
+        '''
+        return moment_score
+
+    ## Code ##
+    image_size = batch_A.shape[2]
+
+    num_windows = int((image_size)/stride) # Maximum number of windows occurs when: stride = window_size.
+    while (num_windows-1)*stride + window_size > image_size: # Solve for the number of windows (crops)
+        num_windows += -1
+
+    moment_1_running_score = 0
+    moment_2_running_score = 0
+    moment_3_running_score = 0
+
+    for i in range(0, num_windows):
+        for j in range(0, num_windows):
+            corner = (i*stride, j*stride)
+
+            win_A = crop_image_tensor_with_corner(batch_A, window_size, corner)
+            win_B = crop_image_tensor_with_corner(batch_B, window_size, corner)
+
+            moment_1_score = compare_moments(win_A, win_B, moment=1)
+            moment_2_score = compare_moments(win_A, win_B, moment=2)
+            moment_3_score = compare_moments(win_A, win_B, moment=3)
+
+            moment_1_running_score += moment_1_score
+            moment_2_running_score += moment_2_score
+            moment_3_running_score += moment_3_score
+
+    return moment_1_running_score, moment_2_running_score, moment_3_running_score
+
+def LDM(batch_A, batch_B):
+    '''
+    Calculate the local distributions metric (LDM) for two batches of images
+    '''
+
+    score_1, score_2, score_3 = calculate_moments(batch_A, batch_B, window_size=5, stride=5)
+
+    score_1 = score_1*1
+    score_2 = score_2*1
+    score_3 = score_3*1
+
+    '''
+    print('Scores')
+    print('====================')
+    print(score_1)
+    print(score_2)
+    print(score_3)
+    '''
+
+    return score_1+score_2+score_3

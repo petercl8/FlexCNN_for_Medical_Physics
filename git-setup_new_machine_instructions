@@ -1,0 +1,47 @@
+ONE-TIME MACHINE SETUP FOR GIT + SSH
+
+1. Install Git:
+   - Download Git for Windows: https://git-scm.com/download/win
+   - During installation, choose OpenSSH as the SSH client.
+
+2. Set global Git identity:
+   git config --global user.name "Peter Lindstrom"
+   git config --global user.email "your.email@example.com"
+
+3. Generate SSH key (if missing):
+   ssh-keygen -t ed25519 -f "$HOME\.ssh\id_ed25519" -N ""
+   - -t ed25519 specifies the type of key
+   - -N "" creates the key without a passphrase (optional)
+
+4. Upload public key to GitHub:
+   - Copy the key: type "$HOME\.ssh\id_ed25519.pub"
+   - Go to GitHub → Settings → SSH and GPG keys → New SSH key
+   - Paste the key and save
+   - ✅ Use Account Settings, not repository settings
+
+5. Test SSH connection:
+   ssh -T git@github.com
+   - Expected message: "Hi petercl8! You've successfully authenticated, but GitHub does not provide shell access."
+
+6. Create or prepare a repository:
+
+   Option A: Start from existing local folder:
+     git init
+     git add -A         # stage all changes including deleted files
+     git commit -m "Initial commit"
+     git remote add origin git@github.com:petercl8/modules-FNA.git
+     git branch -M main
+     git push -u origin main
+
+   Option B: Clone existing GitHub repository:
+     git clone git@github.com:petercl8/modules-FNA.git
+
+7. Daily workflow:
+   - Automatic quick update: run update_small.bat to stage, commit, and push automatically
+   - End-of-session update: run close_session.bat for optional final commit and push
+
+8. Notes & tips:
+   - Keep local repo outside temporary folders if using Google Drive to avoid sync issues
+   - git add -A includes deleted files; git add . does not
+   - Using SSH avoids entering passwords for each push/pull
+   - Batch files can run fully unattended for quick updates
