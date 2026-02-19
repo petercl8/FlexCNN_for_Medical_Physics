@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from skimage.metrics import structural_similarity
-from .cropping import crop_image_tensor_with_corner
+from ..image_processing.cropping import crop_image_tensor_with_corner
 
 ######################
 ## Metric Functions ##

@@ -1,8 +1,8 @@
 import torch
 import pandas as pd
 from .metrics import MSE, SSIM, custom_metric
-from .reconstruction_projection import reconstruct
-from .cropping import crop_image_tensor_by_factor
+from ..image_processing.reconstruction_projection import reconstruct
+from ..image_processing.cropping import crop_image_tensor_by_factor
 
 
 ##################################################
