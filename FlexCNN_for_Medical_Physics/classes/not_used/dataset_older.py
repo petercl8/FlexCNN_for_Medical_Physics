@@ -1,4 +1,4 @@
-from .dataset_classes import *
+from ..dataset.dataset_classes import *
 
 resize_warned = False  # Module-level flag to ensure warning is printed only once
 

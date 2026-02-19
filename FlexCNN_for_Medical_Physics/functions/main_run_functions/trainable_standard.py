@@ -4,20 +4,20 @@ import pandas as pd
 import logging
 from torch.utils.data import DataLoader
 
-from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
+from FlexCNN_for_Medical_Physics.classes.dataset.dataset_classes import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.classes.losses import HybridLoss
-from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
+from FlexCNN_for_Medical_Physics.functions.helper.utilities.timing import display_times
 
-from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import (
+from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics_wrappers import (
     calculate_metric,
 )
 
-from FlexCNN_for_Medical_Physics.functions.helper.metrics import (
+from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics import (
     SSIM,
     MSE,
 )
-from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
-from FlexCNN_for_Medical_Physics.functions.helper.displays_and_reports import (
+from FlexCNN_for_Medical_Physics.functions.helper.model_setup.weights_init import weights_init_he
+from FlexCNN_for_Medical_Physics.functions.helper.utilities.displays_and_reports import (
     compute_display_step,
     get_tune_session
 )
@@ -38,11 +38,11 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.cross_validation import report_tune_metrics
 
-from FlexCNN_for_Medical_Physics.functions.helper.setup_generators_optimizer import (
+from FlexCNN_for_Medical_Physics.functions.helper.model_setup.setup_generators_optimizer import (
     create_generator,
     create_optimizer,
 )
-from FlexCNN_for_Medical_Physics.functions.helper.config_materialize import materialize_config
+from FlexCNN_for_Medical_Physics.functions.helper.model_setup.config_materialize import materialize_config
 
 
 # Module logger for optional Tune debug output

@@ -6,7 +6,7 @@ This script performs tuning, training, testing, or visualization of CNNs
 for PET image reconstruction from sinograms.
 
 Usage:
-    python run_pipeline.py
+    python run_pipeline.py  
 To customize parameters, edit user_params.py before running this script.
 """
 skip_package_installation = True
@@ -15,7 +15,7 @@ import os
 import sys
 
 # Import setup functions
-from FlexCNN_for_Medical_Physics.functions.helper.display_images import configure_plotting
+from FlexCNN_for_Medical_Physics.functions.helper.image_processing.display_images import configure_plotting
 from FlexCNN_for_Medical_Physics.functions.setup_environment.list_compute_resources import setup_project_dirs
 from script_setup import (
     sense_colab, sense_device, install_packages,

@@ -3,9 +3,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
-from FlexCNN_for_Medical_Physics.functions.helper.reconstruction_projection import reconstruct
-from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_multiple_matched_tensors
+from FlexCNN_for_Medical_Physics.classes.dataset.dataset_classes import NpArrayDataSet
+from FlexCNN_for_Medical_Physics.functions.helper.image_processing.reconstruction_projection import reconstruct
+from FlexCNN_for_Medical_Physics.functions.helper.image_processing.display_images import show_multiple_matched_tensors
 
 
 def sort_DataSet(

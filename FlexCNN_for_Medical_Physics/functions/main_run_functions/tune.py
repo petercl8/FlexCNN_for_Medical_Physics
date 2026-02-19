@@ -7,7 +7,7 @@ from ray.tune.search.hyperopt import HyperOptSearch
 from ray.tune.search.optuna import OptunaSearch
 from ray.tune.result_grid import ResultGrid
 
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_standard import run_trainable
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_frozen_flow import run_trainable_frozen_flow
 
 def tune_exp():

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from ray import tune
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_standard import run_trainable
 import os
 
 

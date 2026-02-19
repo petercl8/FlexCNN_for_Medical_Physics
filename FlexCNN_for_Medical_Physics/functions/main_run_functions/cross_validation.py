@@ -19,12 +19,12 @@ import numpy as np
 import torch
 from ray.tune import report
 
-from FlexCNN_for_Medical_Physics.classes.dataset_classes import NpArrayDataSet
-from FlexCNN_for_Medical_Physics.functions.helper.metrics import SSIM, MSE, custom_metric
-from FlexCNN_for_Medical_Physics.functions.helper.metrics_wrappers import calculate_metric, update_tune_dataframe
-from FlexCNN_for_Medical_Physics.functions.helper.roi import ROI_simple_phantom, ROI_NEMA_hot, ROI_NEMA_cold
-from FlexCNN_for_Medical_Physics.functions.helper.timing import display_times
-from FlexCNN_for_Medical_Physics.functions.helper.display_images import show_single_unmatched_tensor
+from FlexCNN_for_Medical_Physics.classes.dataset.dataset_classes import NpArrayDataSet
+from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics import SSIM, MSE, custom_metric
+from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics_wrappers import calculate_metric, update_tune_dataframe
+from FlexCNN_for_Medical_Physics.functions.helper.metrics.roi import ROI_simple_phantom, ROI_NEMA_hot, ROI_NEMA_cold
+from FlexCNN_for_Medical_Physics.functions.helper.utilities.timing import display_times
+from FlexCNN_for_Medical_Physics.functions.helper.image_processing.display_images import show_single_unmatched_tensor
 
 # Module-level caches: persistent for the lifetime of the Ray worker process
 _val_dataset = None

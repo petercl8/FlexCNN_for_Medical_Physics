@@ -1,6 +1,6 @@
 import os
 import torch
-from FlexCNN_for_Medical_Physics.functions.helper.weights_init import weights_init_he
+from FlexCNN_for_Medical_Physics.functions.helper.model_setup.weights_init import weights_init_he
 from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_256, Generator_288, Generator_320
 
 def create_generator(config: dict, device: str, **kwargs):

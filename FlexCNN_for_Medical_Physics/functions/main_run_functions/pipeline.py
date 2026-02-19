@@ -1,10 +1,10 @@
 import time
 
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable import run_trainable
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_standard import run_trainable
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.trainable_frozen_flow import run_trainable_frozen_flow
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.tune import tune_networks
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.test_by_chunks import test_by_chunks
-from FlexCNN_for_Medical_Physics.functions.helper.power_management import prevent_sleep, allow_sleep
+from FlexCNN_for_Medical_Physics.functions.helper.utilities.power_management import prevent_sleep, allow_sleep
 
 def run_pipeline(
     config,

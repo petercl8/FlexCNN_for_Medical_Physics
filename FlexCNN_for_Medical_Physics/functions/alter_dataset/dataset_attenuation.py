@@ -5,8 +5,8 @@ from skimage.transform import radon, resize
 import os
 import sys
 
-from ..helper.display_images import show_multiple_matched_tensors, show_multiple_unmatched_tensors
-from ...classes.dataset_resizing import resize_sino_data
+from ..helper.image_processing.display_images import show_multiple_matched_tensors, show_multiple_unmatched_tensors
+from ...classes.dataset.dataset_resizing import resize_sino_data
 
 
 def project_attenuation(atten_image, sino_height, circle=False, theta=None):
