@@ -73,6 +73,7 @@ def build_all_dicts(params):
     base_dirs = {
         'project_dirPath': params.get('project_dirPath'),  # Set by caller
         'plot_dirName': params['plot_dirName'],
+        'checkpoint_dirPath': params.get('checkpoint_dirPath'),  # Absolute path to checkpoint directory (or None)
         'checkpoint_dirName': params['checkpoint_dirName'],
         'tune_storage_dirName': params['tune_storage_dirName'],
         'tune_dataframe_dirName': params['tune_dataframe_dirName'],

@@ -185,7 +185,8 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     Build all path-related configuration.
     
     Args:
-        base_dirs: dict with keys: project_dirPath, plot_dirName, checkpoint_dirName, tune_storage_dirName,
+        base_dirs: dict with keys: project_dirPath, plot_dirName, checkpoint_dirPath (optional absolute path),
+                   checkpoint_dirName (fallback directory name), tune_storage_dirName,
                    tune_dataframe_dirName, test_dataframe_dirName, data_dirPath (optional absolute path), 
                    data_dirName (fallback directory name)
         data_files: dict with keys:
@@ -210,10 +211,15 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     
     # Base directories
     paths['plot_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['plot_dirName'])
-    paths['checkpoint_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['checkpoint_dirName'])
     paths['tune_storage_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['tune_storage_dirName'])
     paths['tune_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['tune_dataframe_dirName'])
     paths['test_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['test_dataframe_dirName'])
+    
+    # Checkpoint directory: Use absolute path if provided, otherwise place in project directory
+    if base_dirs.get('checkpoint_dirPath') is not None:
+        paths['checkpoint_dirPath'] = base_dirs['checkpoint_dirPath']
+    else:
+        paths['checkpoint_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['checkpoint_dirName'])
     
     # Data directory: Use absolute path if provided, otherwise place in project directory
     if base_dirs.get('data_dirPath') is not None:

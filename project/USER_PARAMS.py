@@ -65,6 +65,7 @@ CPUs_per_trial=2
 GPUs_per_trial=1
 
 device_opt='cuda' # Options: 'sense', cuda', 'cpu'. Set to 'sense' to set to 'cpu' if available, else 'cpu'.
+num_examples=-1                    # Number of examples from dataset to load. Set to -1 to use all examples (this is the default)
 
 ray_tune_version=None # Optional: Pin Ray Tune to specific version (e.g., '2.9.0'). Set to None to use latest.
 skip_colab_git_update=False # Colab only: Skip git pull when setting up repository. Useful if you have uncommitted changes or git operations fail.
@@ -75,23 +76,33 @@ github_username='petercl8'
 repo_name='FlexCNN_for_Medical_Physics'
 
 ## Directories ##
-project_colab_dirPath = '/content/drive/MyDrive/Colab/Working/'     # Directory, relative to which all other directories are specified (if working on Colab)
+project_colab_dirPath = '/content/drive/MyDrive/Colab/Working/'     # Directory on Colab VM, relative to which all other directories are specified (if working on Colab)
 project_local_dirPath = r"C:\Users\Peter Lindstrom\Desktop\FlexCNN_for_Medical_Physics\project\working"  # Directory, relative to which all other directories are specified (if working Locally)
 
-local_repo_dirPath =  r'C:\FlexCNN_cloned'
+local_repo_dirPath =  r'C:\FlexCNN_cloned' # If running in a Jupyter notebook, the repository can be cloned to this path (from Github).
 
 # Data directory: Set to None to place data as subdirectory of project (backward compatible),
 # or set to an absolute path to keep data separate from project
 data_dirPath = r'C:\dataset-sets'   # Example: r'D:\Medical_Imaging_Datasets\PET_Data' or '/mnt/data/pet_datasets'
 data_dirName = 'dataset-sets'      # Dataset directory name (used only if data_dirPath is None. Else it's assumed to sit in your local project directory)
-plot_dirName=  'plots'             # Plots Directory, placed in project directory (above)
-checkpoint_dirName='checkpoints'   # If not using Ray Tune (not tuning), PyTorch saves and loads checkpoint file from here
+
+# Checkpoint directory: Set to None to place checkpoints as subdirectory of project (backward compatible),
+# or set to an absolute path to keep checkpoints separate from project
+
+checkpoint_dirPath = r'C:\Users\Peter Lindstrom\My Drive (lindstrom.peter@gmail.com)\Colab\Working\checkpoints' # If None, uses checkpoint_dirName in project directory.
+checkpoint_dirName='checkpoints'   # Checkpoint directory name (used only if checkpoint_dirPath is None)
+                                   # If not using Ray Tune (not tuning), PyTorch saves and loads checkpoint file from here
                                    # All checkpoint files (for training, testing, visualizing) save the states for a particular network.
                                    # Therefore, the hyperparameters for the loaded CNN must match the data in the checkpoint file.
-num_examples=-1                    # Number of examples from dataset to load. Set to -1 to use all examples (this is the default)
 
+plot_dirName=  'plots'             # Plots Directory, placed in project directory (above)
 
-# NOTE: The concatenation network type introduces a fundamental problem: the sinogram input to the generator has channel numbers not corresponding to either the attenuation or the activity sinogram. My solution is to let the dataloader handle its own business (detect data structure sizes, since it has access to them) but let the user determine the number ofgenerator channels, since the generator does not see the data until after it has been instantiated. Also, the user only determines channels for currently trained network. Any frozen networks are always an attenuation network, so I hardcode channel information for dataloader and generator accordingly. Conclusion: sino_channels and image_channels represent the input and output channels for the generator for the currently trained network only.
+# NOTE: The concatenation network type introduces a fundamental problem: the sinogram input to the generator has channel numbers not corresponding 
+# to either the attenuation or the activity sinogram. My solution is to let the dataloader handle its own business (detect data structure sizes, 
+# since it has access to them) but let the user determine the number of generator channels, since the generator does not see the data until after 
+# it has been instantiated. Also, the user only determines channels for currently trained network. Any frozen networks are always an attenuation network, 
+# so I hardcode channel information for dataloader and generator accordingly. 
+# CONCLUSION: sino_channels and image_channels represent the input and output channels for the generator for the currently trained network only.
 
 
 ############
@@ -193,9 +204,9 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
-train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
+train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
-train_epochs = 300        # Number of training epochs.
+train_epochs = 100        # Number of training epochs.
 train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
