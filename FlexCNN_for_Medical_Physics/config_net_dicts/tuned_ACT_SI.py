@@ -1,6 +1,5 @@
 from sympy import false
 from torch import nn
-from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
 
 ## Supervisory
 '''

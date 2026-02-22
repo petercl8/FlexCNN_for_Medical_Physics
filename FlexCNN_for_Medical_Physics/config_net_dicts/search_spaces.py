@@ -1,22 +1,9 @@
 from ast import If
 from ray import tune
-from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
 
 # Data-driven initialization bounds (from compute_average_activity_per_image analysis)
 MEAN_ACTIVITY = 144617
 MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalized scaling
-
-# Variance-weighted MSE parameter
-COUNTS_PER_BQ=60.0  # Counts per bequerel for variance-weighted MSE. If tuning/training using activity maps, set to 60 (our dataset = 59.999435). 
-                    # If using annihilation maps, set to 1.
-
-# Parameters for PatchwiseMomentLoss (used in config_RAY_SUP)
-patch_size=8  # 8
-stride=4      # 4
-max_moment=2  # 3
-scale='mean'  # 'mean' or 'std'
-
-
 
 #################################################################################################################################################################
 ## (config_RAY_SI OR config_RAY_IS) gets combined with (config_RAY_SUP or config_RAY_GAN) to form a single hyperparameter space for searching a single network ##
@@ -44,7 +31,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     # Statistical Regularization (SI-specific)
 
     # SI_stats_criterion can e set to -1 to disable the statistical regularization loss.If enabled, the stats criterion (loss) is added to the base criterion with weighting determined by SI_alpha_min and SI_half_life_examples.
-    'SI_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    'SI_stats_criterion': 'PatchwiseMomentLoss',  # Materialized by config_materialize.py; uses defaults from losses/defaults.py
     # SI_alpha_min can be set to -1 to disable the statistical regularization loss. If enabled, this determines the minimum weighting of the stats loss (relative to the base loss) as the number of seen examples goes to infinity. For example, if SI_alpha_min = 0.3, then as the number of seen examples goes to infinity, the total loss becomes 0.3*L_base + 0.7*C*L_stats, where C is the running estimate of the gradient scale ratio between base and stats loss.
     'SI_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
     # SI_half_life_examples can be set to -1 to disable the statistical regularization loss. If enabled, this determines the number of seen examples at which the weighting of the stats loss (relative to the base loss) reaches halfway between 1.0 and SI_alpha_min. For example, if SI_half_life_examples = 1000 and SI_alpha_min = 0.3, then when 1000 examples have been seen, alpha = 0.65, and the total loss is 0.65*L_base + 0.35*C*L_stats.

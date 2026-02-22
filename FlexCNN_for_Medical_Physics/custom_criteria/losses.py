@@ -1,6 +1,18 @@
-﻿# Test comment: added by Copilot (2026-01-08)
+"""
+Custom loss functions for medical image reconstruction.
+
+This module contains all custom loss functions including hybrid loss with gradient
+normalization, patchwise moment matching for statistical regularization, and 
+variance-weighted MSE for Poisson-distributed data.
+"""
+
 import torch
 import torch.nn as nn
+from typing import Callable
+
+from . import defaults
+from .core import _compute_patchwise_moments
+
 
 class HybridLoss(nn.Module):
     """
@@ -32,17 +44,17 @@ class HybridLoss(nn.Module):
         The primary loss function (e.g., nn.MSELoss(), nn.L1Loss()).
     stats_loss : nn.Module
         The statistics-based loss function (e.g., PatchwiseMomentLoss).
-    alpha_min : float, default=0.2
+    alpha_min : float
         Minimum value for alpha scheduling. Training converges to this mixing ratio.
         Set to -1 to disable hybrid behavior and use only base_loss.
-    half_life_examples : int, default=2000
+    half_life_examples : int
         Number of examples for alpha to decay by half from initial value to alpha_min.
         Controls how quickly the stats loss is introduced.
-    epsilon : float, default=1e-8
+    epsilon : float, default=defaults.HYBRID_EPSILON
         Small constant to prevent division by zero in gradient normalization.
-    show_components : bool, default=True
+    show_components : bool, default=defaults.HYBRID_SHOW_COMPONENTS
         If True, prints gradient norms and scaling factors during training for monitoring.
-    C_momentum : float, default=0.05
+    C_momentum : float, default=defaults.HYBRID_C_MOMENTUM
         EMA momentum for updating the gradient scale coefficient C.
         Higher values adapt faster to changing gradient magnitudes.
     C_momentum_schedule : callable or None, default=None
@@ -59,7 +71,7 @@ class HybridLoss(nn.Module):
     Examples
     --------
     >>> base = nn.MSELoss()
-    >>> stats = PatchwiseMomentLoss(patch_size=8, max_moment=2)
+    >>> stats = PatchwiseMomentLoss()
     >>> loss_fn = HybridLoss(base, stats, alpha_min=0.3, half_life_examples=1000)
     >>> pred = torch.randn(4, 1, 128, 128)
     >>> target = torch.randn(4, 1, 128, 128)
@@ -71,18 +83,19 @@ class HybridLoss(nn.Module):
     - The gradient normalization requires computing gradients internally, which adds
       computational overhead but ensures stable training.
     - Buffers (C and examples_seen) are automatically saved/loaded with model state.
+        - alpha_min and half_life_examples are required inputs and are set in trainables.
     """
 
     def __init__(
         self,
         base_loss: nn.Module,
         stats_loss: nn.Module,
-        alpha_min: float = 0.2,
-        half_life_examples: int = 2000,
-        epsilon: float = 1e-8,
-        show_components: bool = True,
-        C_momentum: float = 0.05,
-        C_momentum_schedule: callable = None,  # optional: function(examples_seen) -> momentum
+        alpha_min: float,
+        half_life_examples: int,
+        epsilon: float = defaults.HYBRID_EPSILON,
+        show_components: bool = defaults.HYBRID_SHOW_COMPONENTS,
+        C_momentum: float = defaults.HYBRID_C_MOMENTUM,
+        C_momentum_schedule: Callable[[int], float] | None = None,
     ):
         super().__init__()
         self.base_loss = base_loss
@@ -181,257 +194,6 @@ class HybridLoss(nn.Module):
         return total_loss
 
 
-###############################################
-## Shared Patchwise Moment Computation Core ##
-###############################################
-
-def _compute_patchwise_moments(
-    pred: torch.Tensor,
-    target: torch.Tensor,
-    moments: list = [1, 2],
-    moment_weights: dict | None = None,
-    patch_size: int = 8,
-    stride: int = 4,
-    eps: float = 1e-6,
-    patch_weighting: str = 'scaled',
-    patch_weight_min: float = 0.33,
-    patch_weight_max: float = 1.0,
-    max_patch_masked: float = 0,
-    use_poisson_normalization: bool = True,
-    scale: str = 'mean'
-):
-    """
-    Core patchwise moment computation for both training (loss) and evaluation (metric).
-    
-    This function extracts overlapping patches from predicted and target images, computes
-    statistical moments for each patch, and returns the weighted difference. Supports both 
-    physics-informed Poisson normalization for PET reconstruction and generic moment matching 
-    for arbitrary moment orders.
-    
-    Parameters
-    ----------
-    pred : torch.Tensor
-        Predicted batch, shape [B, C, H, W]
-    target : torch.Tensor
-        Target batch, same shape as pred
-    moments : list of int, default=[1, 2]
-        Which moments to compute. 1=mean, 2=variance/std, 3=skewness, 4=kurtosis, etc.
-    moment_weights : dict or None, default=None
-        Relative importance of each moment. Keys must match values in moments list.
-        If None, all moments weighted equally (1.0 for each).
-    patch_size : int, default=8
-        Side length of square patches to extract (in pixels).
-    stride : int, default=4
-        Stride for patch extraction. Smaller values create more overlapping patches.
-    eps : float, default=1e-6
-        Small constant for numerical stability in divisions.
-    patch_weighting : str, default='scaled'
-        How to weight patches based on activity level:
-        - 'scaled': Linear scaling between patch_weight_min and patch_weight_max
-        - 'energy': Weight by patch energy (L2 norm squared)
-        - 'mean': Weight by patch mean activity
-        - 'none': Uniform weighting (all patches equal)
-    patch_weight_min : float, default=0.33
-        Minimum weight when using 'scaled' weighting mode.
-    patch_weight_max : float, default=1.0
-        Maximum weight when using 'scaled' weighting mode.
-    max_patch_masked : float, default=0
-        Mask (ignore) patches with mean activity ≤ this threshold.
-        Default of 0 masks only exactly-zero patches.
-    use_poisson_normalization : bool, default=True
-        If True, uses physics-informed Poisson normalization (PET-specific):
-        - Moment 1 (mean): normalized by patch mean (fractional bias)
-        - Moment 2 (std): normalized by sqrt(patch mean) (Poisson noise scale)
-        - Requires moments to contain only values ≤ 2.
-        If False, uses generic normalization by mean^k or std^k based on 'scale' parameter.
-    scale : str, default='mean'
-        Normalization method when use_poisson_normalization=False.
-        - 'mean': normalize moment k by mean^k
-        - 'std': normalize moment k by std^k
-    
-    Returns
-    -------
-    total_loss : torch.Tensor
-        Scalar loss tensor (differentiable for backprop).
-    per_moment_dict : dict
-        Dictionary mapping moment order to its contribution: {1: value, 2: value, ...}
-        Values are already detached and converted to Python floats.
-    
-    Raises
-    ------
-    ValueError
-        If use_poisson_normalization=True but moments contains values > 2.
-        If moment_weights keys don't match values in moments list.
-        If patch_size is larger than image dimensions.
-    
-    Examples
-    --------
-    >>> # PET-specific mode (Poisson normalization)
-    >>> pred = torch.randn(4, 1, 128, 128)
-    >>> target = torch.randn(4, 1, 128, 128)
-    >>> loss, breakdown = _compute_patchwise_moments(pred, target, 
-    ...                                                moments=[1, 2],
-    ...                                                use_poisson_normalization=True)
-    
-    >>> # Generic mode (arbitrary moments)
-    >>> loss, breakdown = _compute_patchwise_moments(pred, target,
-    ...                                                moments=[1, 2, 3, 4],
-    ...                                                use_poisson_normalization=False,
-    ...                                                scale='mean')
-    
-    Notes
-    -----
-    - This function is the single source of truth for patchwise moment computation.
-    - Returns tensors for training (differentiable) and per-moment dict for analysis.
-    - Patch weighting and masking are applied before aggregating moment differences.
-    - PET mode is recommended for photon-counting imaging (PET, SPECT, CT).
-    - Generic mode supports arbitrary moment orders for general texture matching.
-    """
-    # Validation
-    if use_poisson_normalization and max(moments) > 2:
-        raise ValueError(
-            f"Poisson normalization mode requires moments ≤ 2, but got moments={moments}. "
-            f"Either set use_poisson_normalization=False or use only moments [1, 2]."
-        )
-    
-    if moment_weights is not None:
-        invalid_keys = set(moment_weights.keys()) - set(moments)
-        if invalid_keys:
-            raise ValueError(
-                f"moment_weights contains keys {invalid_keys} not present in moments={moments}"
-            )
-    
-    # Default weights: all moments weighted equally
-    if moment_weights is None:
-        moment_weights = {k: 1.0 for k in moments}
-    
-    B, C, H, W = pred.shape
-    p, s = patch_size, stride
-    
-    # -------------------
-    # Crop to full patches only
-    # -------------------
-    num_patches_h = (H - p) // s + 1
-    num_patches_w = (W - p) // s + 1
-    if num_patches_h <= 0 or num_patches_w <= 0:
-        raise ValueError(
-            f"Patch size ({patch_size}) larger than image dimensions ({H}x{W}). "
-            f"Reduce patch_size or check input shape."
-        )
-    max_h = s * (num_patches_h - 1) + p
-    max_w = s * (num_patches_w - 1) + p
-    pred = pred[:, :, :max_h, :max_w]
-    target = target[:, :, :max_h, :max_w]
-    
-    # -------------------
-    # Extract patches
-    # Shape: [B, C, num_patches, patch_size^2]
-    # -------------------
-    pred_patches = pred.unfold(2, p, s).unfold(3, p, s)
-    target_patches = target.unfold(2, p, s).unfold(3, p, s)
-    num_patches = num_patches_h * num_patches_w
-    pred_patches = pred_patches.contiguous().view(B, C, num_patches, -1)
-    target_patches = target_patches.contiguous().view(B, C, num_patches, -1)
-    
-    # -------------------
-    # Compute patch mean (needed for weighting and masking)
-    # -------------------
-    patch_mean = target_patches.mean(dim=-1)  # [B, C, num_patches]
-    
-    # -------------------
-    # Compute patch weights (importance)
-    # -------------------
-    patch_min = patch_mean.min(dim=-1, keepdim=True)[0]
-    patch_max = patch_mean.max(dim=-1, keepdim=True)[0]
-    
-    if patch_weighting == 'scaled':
-        # Scale between patch_weight_min and patch_weight_max per image
-        patch_weights = patch_weight_min + \
-                        (patch_mean - patch_min) / (patch_max - patch_min + eps) * \
-                        (patch_weight_max - patch_weight_min)
-    elif patch_weighting == 'energy':
-        patch_energy = (target_patches ** 2).mean(dim=-1)
-        patch_weights = patch_energy / (patch_energy.sum(dim=-1, keepdim=True) + eps)
-    elif patch_weighting == 'mean':
-        patch_weights = patch_mean / (patch_mean.sum(dim=-1, keepdim=True) + eps)
-    else:  # 'none' or any other value
-        patch_weights = torch.ones_like(patch_mean)
-    
-    # -------------------
-    # Mask low-activity patches
-    # -------------------
-    patch_mask = (patch_mean > max_patch_masked).float()
-    patch_weights = patch_weights * patch_mask  # zero out masked patches
-    
-    # -------------------
-    # Precompute centered deviations (needed for moment 2 and higher)
-    # -------------------
-    target_mean_centered = target_patches - patch_mean.unsqueeze(-1)
-    pred_mean_centered = pred_patches - pred_patches.mean(dim=-1, keepdim=True)
-    
-    # -------------------
-    # Moment computation
-    # -------------------
-    per_moment_dict = {}
-    total_loss = 0.0
-    
-    for k in moments:
-        if use_poisson_normalization:
-            # PET-specific physics-informed normalization
-            if k == 1:
-                # Mean: normalize by patch mean (fractional bias)
-                target_m = patch_mean
-                pred_m = pred_patches.mean(dim=-1)
-                denom = target_m + eps
-            elif k == 2:
-                # Std: normalize by sqrt(patch mean) (Poisson scaling)
-                target_var = (target_mean_centered ** 2).mean(dim=-1)
-                pred_var = (pred_mean_centered ** 2).mean(dim=-1)
-                target_m = torch.sqrt(target_var + eps)
-                pred_m = torch.sqrt(pred_var + eps)
-                denom = torch.sqrt(patch_mean + eps)
-            else:
-                # Should never reach here due to validation
-                raise RuntimeError(f"Unexpected moment {k} in Poisson mode")
-        else:
-            # Generic normalization for arbitrary moments
-            if k == 1:
-                # First moment: mean
-                target_m = patch_mean
-                pred_m = pred_patches.mean(dim=-1)
-                denom = torch.ones_like(target_m)  # No normalization for mean
-            else:
-                # Higher moments: central moments
-                pred_c = pred_patches - pred_patches.mean(dim=-1, keepdim=True)
-                target_c = target_patches - patch_mean.unsqueeze(-1)
-                pred_m = (pred_c ** k).mean(dim=-1)
-                target_m = (target_c ** k).mean(dim=-1)
-                
-                if scale == 'std':
-                    sigma = torch.sqrt((target_c**2).mean(dim=-1) + eps)
-                    denom = sigma**k + eps
-                elif scale == 'mean':
-                    denom = (patch_mean**k) + eps
-                else:
-                    denom = torch.ones_like(target_m)
-        
-        # Relative difference per patch
-        rel_diff = torch.abs(pred_m - target_m) / (denom + eps)
-        
-        # Aggregate weighted by patch importance
-        weighted_patch_diff = (rel_diff * patch_weights).sum(dim=-1).mean(dim=[0, 1])
-        
-        # Apply moment weight/scale
-        weighted_moment_diff = weighted_patch_diff * moment_weights.get(k, 1.0)
-        total_loss += weighted_moment_diff
-        per_moment_dict[k] = weighted_moment_diff.detach().cpu().item()
-    
-    # Normalize by sum of moment weights
-    total_loss = total_loss / sum(moment_weights.get(k, 1.0) for k in moments)
-    
-    return total_loss, per_moment_dict
-
-
 class PatchwiseMomentLoss(nn.Module):
     """
     Patchwise statistical moment matching loss for texture and local statistics preservation.
@@ -453,33 +215,33 @@ class PatchwiseMomentLoss(nn.Module):
     
     Parameters
     ----------
-    patch_size : int, default=8
+    patch_size : int, default=defaults.PATCH_SIZE
         Side length of square patches to extract (in pixels).
-    stride : int, default=4
+    stride : int, default=defaults.STRIDE
         Stride for patch extraction. Smaller values create more overlapping patches.
-    moments : list of int, default=[1, 2]
+    moments : list of int, default=defaults.MOMENTS
         Which moments to compute. 1=mean, 2=variance/std, 3=skewness, 4=kurtosis, etc.
-    moment_weights : dict or None, default=None
+    moment_weights : dict or None, default=defaults.MOMENT_WEIGHTS
         Relative importance of each moment. Keys must match values in moments list.
         Example: {1: 0.5, 2: 1.0} weights std twice as much as mean.
         If None, all moments weighted equally (1.0).
-    eps : float, default=1e-6
+    eps : float, default=defaults.EPS
         Small constant for numerical stability.
-    patch_weighting : str, default='scaled'
+    patch_weighting : str, default=defaults.PATCH_WEIGHTING
         Patch importance weighting scheme:
         - 'scaled': Linear between patch_weight_min/max based on activity
         - 'energy': Weight by patch L2 energy
         - 'mean': Weight by patch mean activity
         - 'none': Uniform weighting
-    patch_weight_min : float, default=0.33
+    patch_weight_min : float, default=defaults.PATCH_WEIGHT_MIN
         Minimum weight for 'scaled' mode.
-    patch_weight_max : float, default=1.0
+    patch_weight_max : float, default=defaults.PATCH_WEIGHT_MAX
         Maximum weight for 'scaled' mode.
-    max_patch_masked : float, default=0
+    max_patch_masked : float, default=defaults.MAX_PATCH_MASKED
         Mask patches with mean ≤ this threshold. Default 0 masks zero-activity patches.
-    use_poisson_normalization : bool, default=True
+    use_poisson_normalization : bool, default=defaults.USE_POISSON_NORMALIZATION
         Enable PET-specific Poisson normalization (requires moments ≤ 2).
-    scale : str, default='mean'
+    scale : str, default=defaults.SCALE
         Normalization for generic mode (use_poisson_normalization=False):
         - 'mean': normalize moment k by mean^k
         - 'std': normalize moment k by std^k
@@ -487,7 +249,7 @@ class PatchwiseMomentLoss(nn.Module):
     Examples
     --------
     >>> # PET reconstruction (default, optimized for Poisson noise)
-    >>> loss_fn = PatchwiseMomentLoss(patch_size=8, stride=4)
+    >>> loss_fn = PatchwiseMomentLoss()
     >>> pred = torch.randn(4, 1, 128, 128)
     >>> target = torch.randn(4, 1, 128, 128)
     >>> loss = loss_fn(pred, target)
@@ -496,8 +258,7 @@ class PatchwiseMomentLoss(nn.Module):
     >>> loss_fn = PatchwiseMomentLoss(
     ...     moments=[1, 2],
     ...     moment_weights={1: 0.3, 2: 0.7},
-    ...     patch_weighting='energy',
-    ...     use_poisson_normalization=True
+    ...     patch_weighting='energy'
     ... )
     
     >>> # Generic texture matching with higher-order moments
@@ -524,17 +285,17 @@ class PatchwiseMomentLoss(nn.Module):
     
     def __init__(
         self,
-        patch_size: int = 8,
-        stride: int = 4,
-        moments: list = [1, 2],
-        moment_weights: dict | None = None,
-        eps: float = 1e-6,
-        patch_weighting: str = 'scaled',
-        patch_weight_min: float = 0.33,
-        patch_weight_max: float = 1.0,
-        max_patch_masked: float = 0,
-        use_poisson_normalization: bool = True,
-        scale: str = 'mean'
+        patch_size: int = defaults.PATCH_SIZE,
+        stride: int = defaults.STRIDE,
+        moments: list = defaults.MOMENTS,
+        moment_weights: dict | None = defaults.MOMENT_WEIGHTS,
+        eps: float = defaults.EPS,
+        patch_weighting: str = defaults.PATCH_WEIGHTING,
+        patch_weight_min: float = defaults.PATCH_WEIGHT_MIN,
+        patch_weight_max: float = defaults.PATCH_WEIGHT_MAX,
+        max_patch_masked: float = defaults.MAX_PATCH_MASKED,
+        use_poisson_normalization: bool = defaults.USE_POISSON_NORMALIZATION,
+        scale: str = defaults.SCALE
     ):
         super().__init__()
         self.patch_size = patch_size
@@ -581,7 +342,7 @@ class PatchwiseMomentLoss(nn.Module):
             scale=self.scale
         )
         return loss
-    
+
 
 class VarWeightedMSE(nn.Module):
     """
@@ -601,11 +362,12 @@ class VarWeightedMSE(nn.Module):
     
     Parameters
     ----------
-    k : float, default=1.0
+    k : float, default=defaults.COUNTS_PER_BQ
         Scaling constant to convert activity values (target) to photon counts.
         For properly scaled data where target represents counts directly, use k=1.0.
         For normalized activity, set k to approximate counts per activity unit.
-    epsilon : float, default=1e-8
+        Default is 60.0 for PET activity maps.
+    epsilon : float, default=defaults.VAR_WEIGHTED_EPSILON
         Small constant added to denominator to prevent division by zero in
         zero-activity regions.
     
@@ -616,14 +378,17 @@ class VarWeightedMSE(nn.Module):
     
     Examples
     --------
-    >>> # Standard usage with activity values
-    >>> loss_fn = VarWeightedMSE(k=1.0, epsilon=1e-8)
-    >>> pred = torch.rand(4, 1, 128, 128) * 100  # activity values
+    >>> # Standard usage with default PET parameters
+    >>> loss_fn = VarWeightedMSE()
+    >>> pred = torch.rand(4, 1, 128, 128) * 100
     >>> target = torch.rand(4, 1, 128, 128) * 100
     >>> loss = loss_fn(pred, target)
     
+    >>> # For annihilation maps (counts represent actual photons)
+    >>> loss_fn = VarWeightedMSE(k=1.0)
+    
     >>> # For normalized data with known count scaling
-    >>> loss_fn = VarWeightedMSE(k=1e5, epsilon=1e-8)  # ~100k counts per unit
+    >>> loss_fn = VarWeightedMSE(k=1e5)  # ~100k counts per unit
     
     Notes
     -----
@@ -639,30 +404,31 @@ class VarWeightedMSE(nn.Module):
     Related to weighted least squares and maximum likelihood estimation for Poisson data.
     """
 
-    def __init__(self, k=1.0, epsilon=1e-8):
-        """
-        Parameters
-        ----------
-        k : float
-            Scaling constant to convert activity (target) to counts
-        epsilon : float
-            Small constant to avoid divide-by-zero
-        """
+    def __init__(
+        self,
+        k: float = defaults.COUNTS_PER_BQ,
+        epsilon: float = defaults.VAR_WEIGHTED_EPSILON
+    ):
         super().__init__()
         self.k = k
         self.epsilon = epsilon
 
-    def forward(self, pred: torch.Tensor, target: torch.Tensor):
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
+        Compute variance-weighted MSE.
+        
         Parameters
         ----------
         pred : torch.Tensor
             Predicted activity, shape [B, C, H, W] or similar
         target : torch.Tensor
             Ground truth activity, same shape as pred
+        
+        Returns
+        -------
+        torch.Tensor
+            Scalar loss value
         """
         counts = self.k * target
         loss = ((pred - target) ** 2 / (counts + self.epsilon)).mean()
         return loss
-
-

@@ -5,7 +5,7 @@ import logging
 from torch.utils.data import DataLoader
 
 from FlexCNN_for_Medical_Physics.classes.dataset.dataset_classes import NpArrayDataSet
-from FlexCNN_for_Medical_Physics.classes.losses import HybridLoss
+from FlexCNN_for_Medical_Physics.custom_criteria import HybridLoss
 from FlexCNN_for_Medical_Physics.functions.helper.utilities.timing import display_times
 
 from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics_wrappers import (

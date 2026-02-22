@@ -6,27 +6,14 @@ then materialize them to actual objects before training.
 """
 
 from torch import nn
-from FlexCNN_for_Medical_Physics.classes.losses import PatchwiseMomentLoss, VarWeightedMSE
-
-# Constants for loss creation (from search_spaces.py)
-PATCH_SIZE = 8
-STRIDE = 4
-MAX_MOMENT = 3
-SCALE = 'mean'
-COUNTS_PER_BQ = 60.0
+from FlexCNN_for_Medical_Physics.custom_criteria import PatchwiseMomentLoss, VarWeightedMSE
 
 # Custom losses that need special constructors
 CUSTOM_LOSSES = {
-    'VarWeightedMSE': lambda: VarWeightedMSE(k=COUNTS_PER_BQ),
-    'PatchwiseMomentLoss': lambda: PatchwiseMomentLoss(
-        patch_size=PATCH_SIZE,
-        stride=STRIDE,
-        max_moment=MAX_MOMENT,
-        scale=SCALE,
-        weights=None
-    ),
+    # Both losses use defaults from losses/defaults.py (single source of truth)
+    'VarWeightedMSE': lambda: VarWeightedMSE(),
+    'PatchwiseMomentLoss': lambda: PatchwiseMomentLoss(),
 }
-
 
 def materialize_config(config):
     """
