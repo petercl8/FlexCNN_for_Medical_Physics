@@ -327,7 +327,7 @@ def show_single_commonmap_tensor(image_tensor, nrow=15, figsize=(27,18), cmap='i
     #fig.colorbar(im, ax=ax)
     smart_show()
 
-def show_multiple_commonmap_tensors(*image_tensors, cmap='inferno'):
+def show_multiple_commonmap_tensors(*image_tensors, cmap='inferno', fig_scale=1):
     '''
     Function for visualizing images from multiple tensors, all of which will be plotted with the same scaled colormap. Only works with single-channel image tensors.
 
@@ -348,7 +348,7 @@ def show_multiple_commonmap_tensors(*image_tensors, cmap='inferno'):
 
     # Determine figure size #
     print('num_rows:', num_rows)
-    fig, ax = plt.subplots(1,1, figsize=(30,1*num_rows))
+    fig, ax = plt.subplots(1,1, figsize=(30*fig_scale,1*num_rows*fig_scale))
     #fig, ax = plt.subplots(1,1, figsize=(30,7))
 
     ax.axis('off')

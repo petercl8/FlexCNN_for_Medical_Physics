@@ -33,7 +33,7 @@ network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNT
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 
 ## See note below for info about these options ##
-#gen_sino_channels=1       # Number of sinogram channels for network currently being trained. (usually 1 or 3)
+#gen_sino_channels=1       # Number of sinogram channels for network currently being trained.
 gen_sino_channels=3
 
 gen_image_channels=1      # Number of image channels for network currently being trained (generally 1)
