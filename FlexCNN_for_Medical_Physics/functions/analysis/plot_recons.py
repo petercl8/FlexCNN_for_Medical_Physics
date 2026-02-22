@@ -353,6 +353,6 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
 
     show_multiple_unmatched_tensors(*tensors_to_plot, fig_size=fig_size)
 
-    show_multiple_commonmap_tensors(*tensors_to_plot)
+    show_multiple_commonmap_tensors(*tensors_to_plot, fig_scale=1.5)
 
     return tensors, cnn_output
