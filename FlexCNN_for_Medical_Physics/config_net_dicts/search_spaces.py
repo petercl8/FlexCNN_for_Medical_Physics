@@ -13,7 +13,7 @@ COUNTS_PER_BQ=60.0  # Counts per bequerel for variance-weighted MSE. If tuning/t
 # Parameters for PatchwiseMomentLoss (used in config_RAY_SUP)
 patch_size=8  # 8
 stride=4      # 4
-max_moment=3  # 3
+max_moment=2  # 3
 scale='mean'  # 'mean' or 'std'
 
 
@@ -42,9 +42,13 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
                                                                 # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
     # Statistical Regularization (SI-specific)
-    'SI_stats_criterion': -1, # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
-    'SI_alpha_min': -1,# tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
-    'SI_half_life_examples': -1, # tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
+
+    # SI_stats_criterion can e set to -1 to disable the statistical regularization loss.If enabled, the stats criterion (loss) is added to the base criterion with weighting determined by SI_alpha_min and SI_half_life_examples.
+    'SI_stats_criterion': PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
+    # SI_alpha_min can be set to -1 to disable the statistical regularization loss. If enabled, this determines the minimum weighting of the stats loss (relative to the base loss) as the number of seen examples goes to infinity. For example, if SI_alpha_min = 0.3, then as the number of seen examples goes to infinity, the total loss becomes 0.3*L_base + 0.7*C*L_stats, where C is the running estimate of the gradient scale ratio between base and stats loss.
+    'SI_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
+    # SI_half_life_examples can be set to -1 to disable the statistical regularization loss. If enabled, this determines the number of seen examples at which the weighting of the stats loss (relative to the base loss) reaches halfway between 1.0 and SI_alpha_min. For example, if SI_half_life_examples = 1000 and SI_alpha_min = 0.3, then when 1000 examples have been seen, alpha = 0.65, and the total loss is 0.65*L_base + 0.35*C*L_stats.
+    'SI_half_life_examples': tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
 
     # Discriminator Network
     'SI_disc_hidden_dim': tune.lograndint(10, 40),              # Discriminator channel scaling factor

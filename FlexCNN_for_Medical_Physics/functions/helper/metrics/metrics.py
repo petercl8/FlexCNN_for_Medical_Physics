@@ -74,7 +74,7 @@ def MAE(image_A, image_B):
 def patchwise_moment_metric(batch_pred,
                             batch_target,
                             moments=[1,2],                    # 1=mean, 2=std
-                            moment_weights={1:2.0, 2:1.0},    # relative importance of each moment
+                            moment_weights={1:1.0, 2:1.0},    # relative importance of each moment
                             patch_size=8,
                             stride=4,
                             eps=1e-6,

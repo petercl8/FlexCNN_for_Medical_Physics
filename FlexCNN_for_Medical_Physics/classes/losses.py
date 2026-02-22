@@ -4,11 +4,73 @@ import torch.nn as nn
 
 class HybridLoss(nn.Module):
     """
-    Hybrid loss with:
-      - gradient-scale normalization (C) using EMA
-      - exponential scheduling of stats contribution
+    Hybrid loss combining a base loss and a statistics-based loss with dynamic weighting
+    and gradient-scale normalization.
+    
+    This loss adaptively balances two loss components:
+    - A base loss (typically pixel-wise, e.g., MSE or MAE)
+    - A statistics loss (e.g., moment matching or perceptual loss)
+    
+    The combination uses two key mechanisms:
+    1. **Gradient-scale normalization**: An EMA-tracked coefficient C that equalizes
+       gradient magnitudes between the two losses, preventing one from dominating.
+    2. **Exponential scheduling**: The mixing weight alpha(n) starts near 1.0 (favoring
+       base loss early in training) and exponentially decays toward alpha_min, gradually
+       incorporating the statistics loss.
+    
+    Formula
+    -------
     L_total = alpha(n) * L_base + (1 - alpha(n)) * C * L_stats
-    where alpha(n) = alpha_min + (1 - alpha_min) * 2^(-n / half_life_examples)
+    
+    where:
+        alpha(n) = alpha_min + (1 - alpha_min) * 2^(-n / half_life_examples)
+        C = EMA of ||grad_L_base|| / ||grad_L_stats||
+    
+    Parameters
+    ----------
+    base_loss : nn.Module
+        The primary loss function (e.g., nn.MSELoss(), nn.L1Loss()).
+    stats_loss : nn.Module
+        The statistics-based loss function (e.g., PatchwiseMomentLoss).
+    alpha_min : float, default=0.2
+        Minimum value for alpha scheduling. Training converges to this mixing ratio.
+        Set to -1 to disable hybrid behavior and use only base_loss.
+    half_life_examples : int, default=2000
+        Number of examples for alpha to decay by half from initial value to alpha_min.
+        Controls how quickly the stats loss is introduced.
+    epsilon : float, default=1e-8
+        Small constant to prevent division by zero in gradient normalization.
+    show_components : bool, default=True
+        If True, prints gradient norms and scaling factors during training for monitoring.
+    C_momentum : float, default=0.05
+        EMA momentum for updating the gradient scale coefficient C.
+        Higher values adapt faster to changing gradient magnitudes.
+    C_momentum_schedule : callable or None, default=None
+        Optional function that takes examples_seen and returns a momentum value,
+        allowing dynamic adjustment of EMA rate during training.
+    
+    Attributes
+    ----------
+    C : torch.Tensor
+        EMA-tracked gradient scale normalization coefficient (buffer).
+    examples_seen : torch.Tensor
+        Counter for total examples processed, used for scheduling (buffer).
+    
+    Examples
+    --------
+    >>> base = nn.MSELoss()
+    >>> stats = PatchwiseMomentLoss(patch_size=8, max_moment=2)
+    >>> loss_fn = HybridLoss(base, stats, alpha_min=0.3, half_life_examples=1000)
+    >>> pred = torch.randn(4, 1, 128, 128)
+    >>> target = torch.randn(4, 1, 128, 128)
+    >>> loss = loss_fn(pred, target)
+    
+    Notes
+    -----
+    - Setting alpha_min=-1 disables the hybrid mechanism and returns only base_loss.
+    - The gradient normalization requires computing gradients internally, which adds
+      computational overhead but ensures stable training.
+    - Buffers (C and examples_seen) are automatically saved/loaded with model state.
     """
 
     def __init__(
@@ -122,10 +184,63 @@ class HybridLoss(nn.Module):
 
 
 class PatchwiseMomentLoss(nn.Module):
-    '''
-    Implement by adding the following to appropriate loss entires in the search dicts:
-        PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale)  
-    '''
+    """
+    Patchwise statistical moment matching loss for texture and local statistics preservation.
+    
+    This loss extracts overlapping patches from predicted and target images, then computes
+    and compares statistical moments (mean, variance, skewness, kurtosis, etc.) for each
+    patch. It's particularly useful for preserving local texture characteristics beyond
+    simple pixel-wise metrics.
+    
+    The loss computes central moments normalized by either mean or standard deviation to
+    make them scale-invariant, then takes the absolute difference between predicted and
+    target moments across all patches.
+    
+    Parameters
+    ----------
+    patch_size : int, default=8
+        Side length of square patches to extract (in pixels).
+    stride : int, default=4
+        Stride for patch extraction. Smaller values create more overlapping patches.
+    max_moment : int, default=3
+        Maximum moment order to compute. Computes moments 1 through max_moment:
+        - 1st moment: mean
+        - 2nd moment: variance
+        - 3rd moment: skewness
+        - 4th moment: kurtosis, etc.
+    scale : {'mean', 'std'}, default='mean'
+        Normalization method for moments order k > 1:
+        - 'mean': normalize by mean^k
+        - 'std': normalize by std^k
+    eps : float, default=1e-6
+        Small constant to prevent division by zero in normalization.
+    weights : list of float or None, default=None
+        Weights for each moment order. If None, all moments weighted equally (1.0).
+        Should have length equal to max_moment.
+    
+    Returns
+    -------
+    torch.Tensor
+        Scalar loss value averaged over all patches, channels, and moment orders.
+    
+    Examples
+    --------
+    >>> # Match mean and variance in 8x8 patches
+    >>> loss_fn = PatchwiseMomentLoss(patch_size=8, stride=4, max_moment=2)
+    >>> pred = torch.randn(4, 1, 128, 128)
+    >>> target = torch.randn(4, 1, 128, 128)
+    >>> loss = loss_fn(pred, target)
+    
+    >>> # Emphasize higher-order moments with custom weights
+    >>> loss_fn = PatchwiseMomentLoss(max_moment=4, weights=[0.5, 1.0, 1.5, 2.0])
+    
+    Notes
+    -----
+    - Larger patch_size captures more global statistics, smaller captures fine texture.
+    - Smaller stride increases computational cost but provides more patch samples.
+    - Higher-order moments (3rd, 4th) capture skewness and tail behavior.
+    - This loss is complementary to pixel-wise losses and perceptual losses.
+    """
     def __init__(self, patch_size=8, stride=4, max_moment=3, 
                  scale='mean', eps=1e-6, weights=None):
         super().__init__()
@@ -177,10 +292,58 @@ class PatchwiseMomentLoss(nn.Module):
 
 class VarWeightedMSE(nn.Module):
     """
-    Variance-weighted MSE for Poisson-distributed targets.
-    Supports batched multi-channel inputs.
+    Variance-weighted mean squared error for Poisson-distributed data.
     
+    This loss function accounts for the signal-dependent (heteroscedastic) noise inherent
+    in photon-counting processes such as PET, SPECT, CT, and other medical imaging modalities.
+    For Poisson statistics, variance equals the mean, so high-activity regions have higher
+    noise variance. This loss weights errors inversely by the expected variance, giving
+    more importance to low-noise (low-activity) regions.
+    
+    Formula
+    -------
     Loss = mean( (pred - target)^2 / (k * target + epsilon) )
+    
+    where k converts activity units to photon counts.
+    
+    Parameters
+    ----------
+    k : float, default=1.0
+        Scaling constant to convert activity values (target) to photon counts.
+        For properly scaled data where target represents counts directly, use k=1.0.
+        For normalized activity, set k to approximate counts per activity unit.
+    epsilon : float, default=1e-8
+        Small constant added to denominator to prevent division by zero in
+        zero-activity regions.
+    
+    Returns
+    -------
+    torch.Tensor
+        Scalar loss value averaged over all elements.
+    
+    Examples
+    --------
+    >>> # Standard usage with activity values
+    >>> loss_fn = VarWeightedMSE(k=1.0, epsilon=1e-8)
+    >>> pred = torch.rand(4, 1, 128, 128) * 100  # activity values
+    >>> target = torch.rand(4, 1, 128, 128) * 100
+    >>> loss = loss_fn(pred, target)
+    
+    >>> # For normalized data with known count scaling
+    >>> loss_fn = VarWeightedMSE(k=1e5, epsilon=1e-8)  # ~100k counts per unit
+    
+    Notes
+    -----
+    - This loss is theoretically optimal for Poisson-distributed data under the assumption
+      of maximum likelihood estimation.
+    - Low-activity regions receive higher relative weight, which can be desirable for
+      detecting small lesions but may amplify background artifacts.
+    - Supports arbitrary-shaped tensors but expects pred and target to have the same shape.
+    - The weighting is applied element-wise, so spatial structure is preserved.
+    
+    References
+    ----------
+    Related to weighted least squares and maximum likelihood estimation for Poisson data.
     """
 
     def __init__(self, k=1.0, epsilon=1e-8):

@@ -110,17 +110,17 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
 #tune_csv_file='frame-CONCAT-256-bilinear-largePadSinos-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='frame-ACT-256-bilinear-largePadSinos-fill_1-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-256-bilinear-largePadSinos-tunedHybrid' # .csv file to save tuning dataframe to
 #tune_csv_file='temp'
 
-tune_exp_name='search-ACT-256-bilinear-largePadSinos-fill_1-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-256-bilinear-largePadSinos-tunedHybrid'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
 tune_restore=False           # Resume a terminated run (loads tune_exp_name from tune_storage_dirPath). If False, deletes any existing tune_exp_name folder and starts fresh.
-tune_minutes = 12*60           # How long to run RayTune. 240 minutes is good for a 288x288 network.
-tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'
+tune_minutes = 5*60           # How long to run RayTune. 240 minutes is good for a simple 256x256 network.
+tune_metric = 'CUSTOM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=15   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
 tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
@@ -138,16 +138,17 @@ tune_search_alg='optuna'     # 'optuna' or 'hyperopt'
 
 ## Tuning Files ##
 ## -------------- ##
-tune_act_sino_file ='train-highCountSino-382x513.npy'
+#tune_act_sino_file ='train-highCountSino-382x513.npy'
 #tune_act_sino_file='train-highCountSino-320x257.npy'
-#tune_act_sino_file='train-highCountSino-180x180.npy'
+tune_act_sino_file='train-highCountSino-180x180.npy'
 #tune_act_sino_file='train-highCountImage.npy'
 #tune_act_sino_file='train-obliqueImage.npy'
 
 tune_act_image_file='train-actMap.npy'
 
 #tune_atten_sino_file='train-attenSino-382x513.npy'
-tune_atten_sino_file='train-attenSino-180x180.npy'
+#tune_atten_sino_file='train-attenSino-180x180.npy'
+tune_atten_sino_file=None
 
 tune_atten_image_file=None
 
@@ -166,10 +167,12 @@ tune_val_act_sino_file='val-highCountSino-180x180.npy'
 
 tune_val_act_image_file='val-actMap.npy'
 
-tune_val_atten_sino_file='val-attenSino-180x180.npy'
 
+tune_val_atten_sino_file='val-attenSino-180x180.npy'
 #tune_val_act_sino_file='val-highCountImage.npy'
 #tune_val_act_sino_file='val-obliqueImage.npy'
+tune_val_atten_sino_file=None
+
 tune_val_atten_image_file=None
 
 # QA Phantoms #
@@ -184,8 +187,6 @@ tune_qa_hotMask_file='QA-NEMA-hotMask_17mm.npy'
 tune_qa_hotBackgroundMask_file='QA-NEMA-backMask_17mm.npy'
 tune_qa_coldMask_file=None #'QA-NEMA-coldMask_37mm.npy'
 tune_qa_coldBackgroundMask_file=None #'QA-NEMA-backMask_37mm.npy'
-
-
 
 ## Unlikely to Change ##
 tune_storage_dirName='searches'     # Create tuning folders (one for each experiment, each of which contains multiple trials) in this directory. Leave blank ('') to place search files in project directory
