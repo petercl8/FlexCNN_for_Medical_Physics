@@ -29,7 +29,6 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
                                                                 # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
     # Statistical Regularization (SI-specific)
-
     # SI_stats_criterion can be set to -1 to disable the statistical regularization loss.If enabled, the stats criterion (loss) is added to the base criterion with weighting determined by SI_alpha_min and SI_half_life_examples.
     'SI_stats_criterion': 'PatchwiseMomentLoss',  # Materialized by config_materialize.py; uses defaults from losses/defaults.py
     'SI_moment_1_fraction': tune.uniform(0.0, 1.0),  # Stats loss mix: moment1=f, moment2=1-f
@@ -81,7 +80,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
 
     # Statistical Regularization (IS-specific)
     'IS_stats_criterion': -1, # PatchwiseMomentLoss(patch_size=patch_size, stride=stride, max_moment=max_moment, scale=scale, weights=None),
-    'IS_moment_1_fraction': tune.uniform(0.0, 1.0),  # Stats loss mix: moment1=f, moment2=1-f
+    'IS_moment_1_fraction': -1,  # Stats loss mix: moment1=f, moment2=1-f
     'IS_alpha_min': -1, # tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
     'IS_half_life_examples': -1, # tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
 

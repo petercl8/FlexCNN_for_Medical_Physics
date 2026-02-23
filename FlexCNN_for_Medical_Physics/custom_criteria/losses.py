@@ -247,6 +247,11 @@ class PatchwiseMomentLoss(nn.Module):
         - 'std': normalize moment k by std^k
     counts_per_bq : float, default=defaults.COUNTS_PER_BQ
         Counts-per-activity scale for Poisson normalization.
+    pathological_penalty : float, default=defaults.PATHOLOGICAL_PENALTY
+        Large penalty value returned when predictions are pathological (NaN,
+        negative mean activity, or all patches masked). Signals poor trial
+        performance to Ray Tune without crashing, allowing scheduler to
+        naturally deprioritize failing trials.
     
     Examples
     --------
@@ -298,7 +303,8 @@ class PatchwiseMomentLoss(nn.Module):
         max_patch_masked: float = defaults.MAX_PATCH_MASKED,
         use_poisson_normalization: bool = defaults.USE_POISSON_NORMALIZATION,
         scale: str = defaults.SCALE,
-        counts_per_bq: float = defaults.COUNTS_PER_BQ
+        counts_per_bq: float = defaults.COUNTS_PER_BQ,
+        pathological_penalty: float = defaults.PATHOLOGICAL_PENALTY
     ):
         super().__init__()
         self.patch_size = patch_size
@@ -313,6 +319,7 @@ class PatchwiseMomentLoss(nn.Module):
         self.use_poisson_normalization = use_poisson_normalization
         self.scale = scale
         self.counts_per_bq = counts_per_bq
+        self.pathological_penalty = pathological_penalty
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
@@ -344,7 +351,9 @@ class PatchwiseMomentLoss(nn.Module):
             max_patch_masked=self.max_patch_masked,
             use_poisson_normalization=self.use_poisson_normalization,
             scale=self.scale,
-            counts_per_bq=self.counts_per_bq
+            counts_per_bq=self.counts_per_bq,
+            pathological_penalty=self.pathological_penalty,
+            return_penalty_for_pathological=False  # Loss needs real gradients, not penalty
         )
         return loss
 

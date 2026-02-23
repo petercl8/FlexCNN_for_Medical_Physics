@@ -24,6 +24,7 @@ def patchwise_moment_metric(
     use_poisson_normalization=defaults.USE_POISSON_NORMALIZATION,
     scale=defaults.SCALE,
     counts_per_bq=defaults.COUNTS_PER_BQ,
+    pathological_penalty=defaults.PATHOLOGICAL_PENALTY,
     return_per_moment=False
 ):
     """
@@ -72,6 +73,9 @@ def patchwise_moment_metric(
         - 'std': normalize moment k by std^k
     counts_per_bq : float, default=defaults.COUNTS_PER_BQ
         Counts-per-activity scale for Poisson normalization.
+    pathological_penalty : float, default=defaults.PATHOLOGICAL_PENALTY
+        Large penalty value returned when predictions are pathological (NaN,
+        negative mean, or all patches masked). Signals poor trial performance.
     return_per_moment : bool, default=False
         If True, also return per-moment contributions
 
@@ -123,7 +127,9 @@ def patchwise_moment_metric(
         max_patch_masked=max_patch_masked,
         use_poisson_normalization=use_poisson_normalization,
         scale=scale,
-        counts_per_bq=counts_per_bq
+        counts_per_bq=counts_per_bq,
+        pathological_penalty=pathological_penalty,
+        return_penalty_for_pathological=True  # Metric returns penalty for bad predictions
     )
     
     # Convert tensor to scalar for metric output

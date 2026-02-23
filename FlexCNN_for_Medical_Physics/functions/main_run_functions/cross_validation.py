@@ -297,9 +297,12 @@ def evaluate_val(generators, batch, device, train_SI, network_type, tune_metric=
     
     # Compute metrics based on eval mode
     if tune_report_for == 'val':
-        # Validation mode: use specified metric
+        # Validation mode: always compute MSE for diagnostics, plus the tuning metric
+        mse_val = calculate_metric(eval_target, eval_output, MSE)
+        
+        # Compute tuning metric
         if tune_metric == 'MSE':
-            metric_val = calculate_metric(eval_target, eval_output, MSE)
+            metric_val = mse_val
         elif tune_metric == 'SSIM':
             metric_val = calculate_metric(eval_target, eval_output, SSIM)
         elif tune_metric == 'CUSTOM':
@@ -307,10 +310,16 @@ def evaluate_val(generators, batch, device, train_SI, network_type, tune_metric=
         else:
             raise ValueError(f"Unknown tune_metric='{tune_metric}'")
         
+        # Report MSE and tuning metric (skip SSIM to keep reporting fast)
+        metrics = {
+            'MSE': mse_val,
+            tune_metric: metric_val
+        }
+        
         # Explicit cleanup
         del eval_input, eval_target, eval_output
         
-        return {tune_metric: metric_val}
+        return metrics
     
     elif tune_report_for == 'qa-simple':
         # QA mode (simple): use ROI_simple_phantom
@@ -414,9 +423,12 @@ def evaluate_val_frozen(generators, batch, device, flow_mode, tune_metric='SSIM'
     
     # Compute metrics based on eval mode
     if tune_report_for == 'val':
-        # Validation mode: use specified metric
+        # Validation mode: always compute MSE for diagnostics, plus the tuning metric
+        mse_val = calculate_metric(eval_target, eval_output, MSE)
+        
+        # Compute tuning metric
         if tune_metric == 'MSE':
-            metric_val = calculate_metric(eval_target, eval_output, MSE)
+            metric_val = mse_val
         elif tune_metric == 'SSIM':
             metric_val = calculate_metric(eval_target, eval_output, SSIM)
         elif tune_metric == 'CUSTOM':
@@ -424,10 +436,16 @@ def evaluate_val_frozen(generators, batch, device, flow_mode, tune_metric='SSIM'
         else:
             raise ValueError(f"Unknown tune_metric='{tune_metric}'")
         
+        # Report MSE and tuning metric (skip SSIM to keep reporting fast)
+        metrics = {
+            'MSE': mse_val,
+            tune_metric: metric_val
+        }
+        
         # Explicit cleanup
         del eval_act_sino, eval_act_image, atten_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output
         
-        return {tune_metric: metric_val}
+        return metrics
     
     elif tune_report_for == 'qa-simple':
         # QA mode (simple): use ROI_simple_phantom

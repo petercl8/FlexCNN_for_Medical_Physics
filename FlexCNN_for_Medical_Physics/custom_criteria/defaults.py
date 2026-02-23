@@ -20,7 +20,7 @@ STRIDE = 4
 MOMENTS = [1, 2]
 """Default moments to compute: 1=mean, 2=standard deviation."""
 
-MOMENT_WEIGHTS = {1: 10.0, 2: 1.0}
+MOMENT_WEIGHTS = {1: 0.9, 2: 0.1}
 """Default moment weighting (None = equal weights for all moments)."""
 
 EPS = 1e-6
@@ -40,6 +40,10 @@ PATCH_WEIGHT_MAX = 1.0
 MAX_PATCH_MASKED = 0
 """Default threshold for masking low-activity patches (0 = only zero patches)."""
 
+PATHOLOGICAL_PENALTY = 10000.0
+"""Penalty value returned when predictions are pathological (NaN, negative mean, or all masked).
+Should be much larger than typical metric values to signal poor trial performance to Ray Tune."""
+
 # Normalization parameters
 USE_POISSON_NORMALIZATION = True
 """Default: use physics-informed Poisson normalization (PET-optimized)."""
@@ -54,7 +58,7 @@ SCALE = 'mean'
 HYBRID_EPSILON = 1e-8
 """Default epsilon for HybridLoss gradient normalization."""
 
-HYBRID_SHOW_COMPONENTS = True
+HYBRID_SHOW_COMPONENTS = False
 """Default: print HybridLoss component diagnostics during training."""
 
 HYBRID_C_MOMENTUM = 0.05
