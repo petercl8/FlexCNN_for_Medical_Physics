@@ -1,6 +1,7 @@
 import torch
 import pandas as pd
-from .metrics import MSE, SSIM, custom_metric
+from .metrics import MSE, SSIM
+from FlexCNN_for_Medical_Physics.custom_criteria import custom_metric
 from ..image_processing.reconstruction_projection import reconstruct
 from ..image_processing.cropping import crop_image_tensor_by_factor
 

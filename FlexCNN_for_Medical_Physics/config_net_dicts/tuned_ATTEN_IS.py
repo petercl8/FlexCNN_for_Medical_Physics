@@ -17,6 +17,7 @@ config_ATTEN_IS= { # SAMPLE
   "IS_pad_mode": "zeros",
   "IS_skip_mode": "none",
   "IS_stats_criterion": -1,
+  "IS_moment_1_fraction": -1,
   "batch_base2_exponent": 6,
   "gen_b1": 0.17828464968859092,
   "gen_b2": 0.22254220083596676,

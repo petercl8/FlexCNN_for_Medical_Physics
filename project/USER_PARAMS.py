@@ -110,10 +110,10 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
 #tune_csv_file='frame-CONCAT-256-bilinear-largePadSinos-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='frame-ACT-256-bilinear-largePadSinos-tunedHybrid' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-256-bilinear-largePadSinos-tunedStats' # .csv file to save tuning dataframe to
 #tune_csv_file='temp'
 
-tune_exp_name='search-ACT-256-bilinear-largePadSinos-tunedHybrid'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-256-bilinear-largePadSinos-tunedStats'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
@@ -202,13 +202,15 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 
 #train_checkpoint_file='checkpoint-ATTEN_SI-256-largePadSino-untuned-25epochs'
 #train_checkpoint_file='checkpoint-FROZEN_COUNTERFLOW-256-untuned-100epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
+#train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_0-tunedStats-100epochs'  # Checkpoint file to load or save to.
+
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
-train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
+train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 100        # Number of training epochs.
-train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=10     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_report_eval=False    # If True, evaluate on tune_report_for ('val', 'qa-simple', or 'qa-nema') each display_step without Ray reporting.

@@ -23,6 +23,7 @@ def patchwise_moment_metric(
     max_patch_masked=defaults.MAX_PATCH_MASKED,
     use_poisson_normalization=defaults.USE_POISSON_NORMALIZATION,
     scale=defaults.SCALE,
+    counts_per_bq=defaults.COUNTS_PER_BQ,
     return_per_moment=False
 ):
     """
@@ -69,6 +70,8 @@ def patchwise_moment_metric(
         Normalization for generic mode (use_poisson_normalization=False):
         - 'mean': normalize moment k by mean^k
         - 'std': normalize moment k by std^k
+    counts_per_bq : float, default=defaults.COUNTS_PER_BQ
+        Counts-per-activity scale for Poisson normalization.
     return_per_moment : bool, default=False
         If True, also return per-moment contributions
 
@@ -119,7 +122,8 @@ def patchwise_moment_metric(
         patch_weight_max=patch_weight_max,
         max_patch_masked=max_patch_masked,
         use_poisson_normalization=use_poisson_normalization,
-        scale=scale
+        scale=scale,
+        counts_per_bq=counts_per_bq
     )
     
     # Convert tensor to scalar for metric output

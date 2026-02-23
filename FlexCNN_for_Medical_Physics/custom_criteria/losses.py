@@ -245,6 +245,8 @@ class PatchwiseMomentLoss(nn.Module):
         Normalization for generic mode (use_poisson_normalization=False):
         - 'mean': normalize moment k by mean^k
         - 'std': normalize moment k by std^k
+    counts_per_bq : float, default=defaults.COUNTS_PER_BQ
+        Counts-per-activity scale for Poisson normalization.
     
     Examples
     --------
@@ -295,7 +297,8 @@ class PatchwiseMomentLoss(nn.Module):
         patch_weight_max: float = defaults.PATCH_WEIGHT_MAX,
         max_patch_masked: float = defaults.MAX_PATCH_MASKED,
         use_poisson_normalization: bool = defaults.USE_POISSON_NORMALIZATION,
-        scale: str = defaults.SCALE
+        scale: str = defaults.SCALE,
+        counts_per_bq: float = defaults.COUNTS_PER_BQ
     ):
         super().__init__()
         self.patch_size = patch_size
@@ -309,6 +312,7 @@ class PatchwiseMomentLoss(nn.Module):
         self.max_patch_masked = max_patch_masked
         self.use_poisson_normalization = use_poisson_normalization
         self.scale = scale
+        self.counts_per_bq = counts_per_bq
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
@@ -339,7 +343,8 @@ class PatchwiseMomentLoss(nn.Module):
             patch_weight_max=self.patch_weight_max,
             max_patch_masked=self.max_patch_masked,
             use_poisson_normalization=self.use_poisson_normalization,
-            scale=self.scale
+            scale=self.scale,
+            counts_per_bq=self.counts_per_bq
         )
         return loss
 

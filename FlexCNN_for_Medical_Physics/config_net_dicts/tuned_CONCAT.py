@@ -17,6 +17,7 @@ config_CONCAT = {
   "SI_pad_mode": "zeros",
   "SI_skip_mode": "none",
   "SI_stats_criterion": -1,
+  "SI_moment_1_fraction": -1,
   "batch_base2_exponent": 5,
   "gen_b1": 0.3706466944358945,
   "gen_b2": 0.4364991709587488,

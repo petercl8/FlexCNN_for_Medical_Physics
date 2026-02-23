@@ -20,7 +20,7 @@ STRIDE = 4
 MOMENTS = [1, 2]
 """Default moments to compute: 1=mean, 2=standard deviation."""
 
-MOMENT_WEIGHTS = None
+MOMENT_WEIGHTS = {1: 10.0, 2: 1.0}
 """Default moment weighting (None = equal weights for all moments)."""
 
 EPS = 1e-6

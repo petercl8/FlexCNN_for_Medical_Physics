@@ -29,11 +29,11 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     visualize_train,
     visualize_test,
     visualize_visualize,
-    visualize_visualize,
     route_batch_inputs,
     generate_reconstructions_for_visualization,
     compute_test_metrics,
     init_checkpoint_state,
+    compute_and_validate_moment_weights,
 )
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.cross_validation import report_tune_metrics
@@ -162,6 +162,12 @@ def run_trainable(config, paths, settings):
     stats_criterion = config[f'{prefix}_stats_criterion']
     alpha_min = config[f'{prefix}_alpha_min']
     half_life_examples = config[f'{prefix}_half_life_examples']
+    
+    # Compute and explicitly set moment weights if stats loss is enabled
+    moment_weights = compute_and_validate_moment_weights(stats_criterion, config, prefix)
+    if moment_weights is not None:
+        stats_criterion.moment_weights = moment_weights
+    
     hybrid_loss = HybridLoss(
         base_loss=base_criterion,
         stats_loss=stats_criterion,

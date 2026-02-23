@@ -46,6 +46,7 @@ config_FROZEN_COUNTERFLOW= { # SAMPLE
   "SI_pad_mode": "zeros",
   "SI_skip_mode": "none",
   "SI_stats_criterion": -1,
+  "SI_moment_1_fraction": -1,
   "batch_base2_exponent": 6, #6
   "gen_b1": 0.17828464968859092,
   "gen_b2": 0.22254220083596676,

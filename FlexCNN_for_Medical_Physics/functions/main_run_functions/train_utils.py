@@ -7,21 +7,86 @@ visualization functions, batch collation, and shared utilities for training pipe
 Cross-validation (tuning metrics reporting) has been moved to cross_validation module.
 """
 import os
-import time
 import torch
 import logging
 
-from FlexCNN_for_Medical_Physics.classes.generators import Generator_180, Generator_256, Generator_288, Generator_320
-from FlexCNN_for_Medical_Physics.functions.helper.utilities.timing import display_times
 from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics_wrappers import calculate_metric, reconstruct_images_and_update_test_dataframe
 from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics import SSIM, MSE
-from FlexCNN_for_Medical_Physics.custom_criteria import patchwise_moment_metric
+from FlexCNN_for_Medical_Physics.custom_criteria import patchwise_moment_metric, PatchwiseMomentLoss
 from FlexCNN_for_Medical_Physics.functions.helper.image_processing.display_images import show_single_unmatched_tensor, show_multiple_matched_tensors
 from FlexCNN_for_Medical_Physics.functions.helper.image_processing.reconstruction_projection import reconstruct
 
 
 # Module logger for optional Tune debug output
 logger = logging.getLogger(__name__)
+
+
+def compute_and_validate_moment_weights(stats_criterion, config, prefix):
+    """Compute and validate moment weights from moment_1_fraction config.
+    
+    This function checks that when PatchwiseMomentLoss is enabled with moment_1_fraction,
+    all required conditions are met: valid fraction range, Poisson normalization enabled,
+    and exactly moments [1, 2] specified. Returns the computed weights dictionary.
+    
+    Parameters
+    ----------
+    stats_criterion : PatchwiseMomentLoss or -1
+        The stats loss criterion instance (or -1 if disabled)
+    config : dict
+        Configuration dictionary containing moment_1_fraction
+    prefix : str
+        Prefix for config keys ('SI' or 'IS')
+    
+    Returns
+    -------
+    dict or None
+        Dictionary {1: moment_1_fraction, 2: 1-moment_1_fraction} if stats_criterion is enabled,
+        None if stats_criterion is disabled or not a PatchwiseMomentLoss
+    
+    Raises
+    ------
+    ValueError
+        If validation constraints are not met:
+        - Missing moment_1_fraction key
+        - moment_1_fraction == -1 when stats_criterion is enabled
+        - moment_1_fraction outside [0, 1]
+        - use_poisson_normalization is False
+        - moments != [1, 2]
+    """
+    if stats_criterion != -1 and isinstance(stats_criterion, PatchwiseMomentLoss):
+        moment_1_fraction_key = f'{prefix}_moment_1_fraction'
+        
+        if moment_1_fraction_key not in config:
+            raise ValueError(f"Missing required config key: '{moment_1_fraction_key}'")
+        
+        moment_1_fraction = config[moment_1_fraction_key]
+        
+        if moment_1_fraction == -1:
+            raise ValueError(
+                f"{moment_1_fraction_key} must be set when {prefix}_stats_criterion is enabled"
+            )
+        
+        if not (0.0 <= moment_1_fraction <= 1.0):
+            raise ValueError(
+                f"{moment_1_fraction_key} must be in [0, 1], got {moment_1_fraction}"
+            )
+        
+        if not stats_criterion.use_poisson_normalization:
+            raise ValueError(
+                f"{moment_1_fraction_key} requires use_poisson_normalization=True"
+            )
+        
+        if stats_criterion.moments != [1, 2]:
+            raise ValueError(
+                f"{moment_1_fraction_key} requires moments [1, 2], got {stats_criterion.moments}"
+            )
+        
+        return {
+            1: moment_1_fraction,
+            2: 1.0 - moment_1_fraction
+        }
+    
+    return None
 
 
 def collate_nested(batch):
@@ -214,8 +279,13 @@ def visualize_train(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM
     print(f'mean_gen_loss: {mean_gen_loss}')
     print(f'current_CNN_MSE : {current_CNN_MSE}')
     print(f'current_CNN_SSIM: {current_CNN_SSIM}')
-    print('===========================================')
+    print('================States=====================')
+    print("pred min:", CNN_output.min().item())
+    print("pred max:", CNN_output.max().item())
+    print("target mean:", target.mean().item())
+    print("target max:", target.max().item())
     print('Current Batch LDM: ', patchwise_moment_metric(target, CNN_output, return_per_moment=True))
+    print('===========================================')
 
     print(input_.shape)
     print('TARGET/OUTPUT:')

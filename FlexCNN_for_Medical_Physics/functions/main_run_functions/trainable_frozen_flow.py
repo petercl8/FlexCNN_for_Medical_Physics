@@ -29,6 +29,7 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     generate_reconstructions_for_visualization,
     compute_test_metrics,
     init_checkpoint_state,
+    compute_and_validate_moment_weights,
 )
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.cross_validation import report_tune_metrics
@@ -158,6 +159,12 @@ def run_trainable_frozen_flow(config, paths, settings):
     stats_criterion = config['SI_stats_criterion']
     alpha_min = config['SI_alpha_min']
     half_life_examples = config['SI_half_life_examples']
+    
+    # Compute and explicitly set moment weights if stats loss is enabled
+    moment_weights = compute_and_validate_moment_weights(stats_criterion, config, 'SI')
+    if moment_weights is not None:
+        stats_criterion.moment_weights = moment_weights
+    
     hybrid_loss = HybridLoss(
         base_loss=base_criterion,
         stats_loss=stats_criterion,

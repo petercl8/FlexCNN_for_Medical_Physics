@@ -22,7 +22,8 @@ def _compute_patchwise_moments(
     patch_weight_max: float,
     max_patch_masked: float,
     use_poisson_normalization: bool,
-    scale: str
+    scale: str,
+    counts_per_bq: float
 ):
     """
     Core patchwise moment computation for both training (loss) and evaluation (metric).
@@ -74,6 +75,9 @@ def _compute_patchwise_moments(
         Normalization method when use_poisson_normalization=False.
         - 'mean': normalize moment k by mean^k
         - 'std': normalize moment k by std^k
+    counts_per_bq : float
+        Counts-per-activity scale used to convert patches to counts when
+        use_poisson_normalization=True.
     
     Returns
     -------
@@ -144,6 +148,11 @@ def _compute_patchwise_moments(
     pred_patches = pred_patches.contiguous().view(B, C, num_patches, -1)
     target_patches = target_patches.contiguous().view(B, C, num_patches, -1)
     
+    # Convert to counts for Poisson normalization
+    if use_poisson_normalization:
+        pred_patches = pred_patches * counts_per_bq
+        target_patches = target_patches * counts_per_bq
+
     # -------------------
     # Compute patch mean (needed for weighting and masking)
     # -------------------
@@ -200,7 +209,8 @@ def _compute_patchwise_moments(
                 pred_var = (pred_mean_centered ** 2).mean(dim=-1)
                 target_m = torch.sqrt(target_var + eps)
                 pred_m = torch.sqrt(pred_var + eps)
-                denom = torch.sqrt(patch_mean + eps)
+                # Clamp patch_mean to prevent sqrt of negative values
+                denom = torch.sqrt(torch.clamp(patch_mean, min=0.0) + eps)
             else:
                 # Should never reach here due to validation
                 raise RuntimeError(f"Unexpected moment {k} in Poisson mode")
