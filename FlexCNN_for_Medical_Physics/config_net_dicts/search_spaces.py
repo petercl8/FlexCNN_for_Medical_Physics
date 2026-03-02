@@ -17,25 +17,25 @@ MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalize
 # --- Begin replacement for config_RAY_SI (flattened, dependent choices) ---
 config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     # Generator Network
-    'SI_gen_mult': tune.uniform(1.1, 3.5),                        # Factor by which to multiply channels/block as one moves twowards the center of the network
-    'SI_gen_fill': 1, #tune.choice([0,2]),                        # Number of constant-sized Conv2d layers/block
+    'SI_gen_mult': tune.uniform(1.1, 3.5),                      # Factor by which to multiply channels/block as one moves twowards the center of the network
+    'SI_gen_fill': tune.choice([0,2]),                        # Number of constant-sized Conv2d layers/block
     'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
-    'SI_gen_z_dim': tune.lograndint(512, 2000),                  # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
+    'SI_gen_z_dim': tune.lograndint(512, 2000),                 # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
     'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type
     'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
-    'SI_gen_hidden_dim': tune.lograndint(10, 35),                # Generator channel scaling factor. Larger numbers give more total channels.
-    'SI_skip_mode': 'none', # tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
+    'SI_gen_hidden_dim': tune.lograndint(10, 35),               # Generator channel scaling factor. Larger numbers give more total channels.
+    'SI_skip_mode': tune.choice(['none','conv']),     # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
                                                                 # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
     # Statistical Regularization (SI-specific)
-    # SI_stats_criterion can be set to -1 to disable the statistical regularization loss.If enabled, the stats criterion (loss) is added to the base criterion with weighting determined by SI_alpha_min and SI_half_life_examples.
-    'SI_stats_criterion': 'PatchwiseMomentLoss',  # Materialized by config_materialize.py; uses defaults from losses/defaults.py
-    'SI_moment_1_fraction': tune.uniform(0.0, 1.0),  # Stats loss mix: moment1=f, moment2=1-f
+    # SI_stats_criterion can be set to -1 to disable the statistical regularization loss. If enabled, the stats criterion (loss) is added to the base criterion with weighting determined by SI_alpha_min and SI_half_life_examples.
+    'SI_stats_criterion': -1, # 'PatchwiseMomentLoss',  # Materialized by config_materialize.py; uses defaults from losses/defaults.py
+    'SI_moment_1_fraction': -1, #tune.uniform(0.0, 1.0),  # Stats loss mix: moment1=f, moment2=1-f
     # SI_alpha_min can be set to -1 to disable the statistical regularization loss. If enabled, this determines the minimum weighting of the stats loss (relative to the base loss) as the number of seen examples goes to infinity. For example, if SI_alpha_min = 0.3, then as the number of seen examples goes to infinity, the total loss becomes 0.3*L_base + 0.7*C*L_stats, where C is the running estimate of the gradient scale ratio between base and stats loss.
-    'SI_alpha_min': tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
+    'SI_alpha_min': -1, #tune.uniform(0, 1),  # Weighting between base and stats loss. Set to -1 to disable stats loss.
     # SI_half_life_examples can be set to -1 to disable the statistical regularization loss. If enabled, this determines the number of seen examples at which the weighting of the stats loss (relative to the base loss) reaches halfway between 1.0 and SI_alpha_min. For example, if SI_half_life_examples = 1000 and SI_alpha_min = 0.3, then when 1000 examples have been seen, alpha = 0.65, and the total loss is 0.65*L_base + 0.35*C*L_stats.
-    'SI_half_life_examples': tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
+    'SI_half_life_examples': -1, #tune.loguniform(100, 10000),  # Number of examples for alpha to reach halfway between 1.0 and alpha_min
 
     # Discriminator Network
     'SI_disc_hidden_dim': tune.lograndint(10, 40),              # Discriminator channel scaling factor

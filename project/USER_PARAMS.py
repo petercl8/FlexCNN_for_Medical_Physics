@@ -37,7 +37,7 @@ train_SI=True         # If working wit GAN or SUP networks, set to True build Si
 gen_sino_channels=3
 
 gen_image_channels=1      # Number of image channels for network currently being trained (generally 1)
-gen_sino_size=256         # Options: 180, 256, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
+gen_sino_size=288         # Options: 180, 256, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 90). Images are square.
 
 SI_normalize=False    # For sino-->image mappings: normalize CNN outputs (images), iterative recons, and ground truths from dataset. You can then adjust the scale factor in the search dictionaries.
@@ -110,16 +110,16 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
 #tune_csv_file='frame-CONCAT-256-bilinear-largePadSinos-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='frame-ACT-256-bilinear-XWidePadSinos-tunedStats' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-288-bilinear-narrowPadZeros-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='temp'
 
-tune_exp_name='search-ACT-256-bilinear-XWidePadSinos-tunedStats'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-288-bilinear-narrowPadZeros-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
 tune_restore=False           # Resume a terminated run (loads tune_exp_name from tune_storage_dirPath). If False, deletes any existing tune_exp_name folder and starts fresh.
-tune_minutes = 5*60           # How long to run RayTune. 240 minutes is good for a simple 256x256 network.
+tune_minutes = 7*60           # How long to run RayTune. 240 minutes is good for a simple 256x256 network.
 tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=15   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
@@ -140,9 +140,10 @@ tune_search_alg='optuna'     # 'optuna' or 'hyperopt'
 ## Tuning Files ##
 ## -------------- ##
 #tune_act_sino_file ='train-highCountSino-382x513.npy'
-#tune_act_sino_file='train-highCountSino-320x257.npy'
+#tune_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
+tune_act_sino_file='train-highCountSino-288x257-vertCrop_horizBilinear.npy'
 #tune_act_sino_file='train-highCountSino-180x180.npy'
-tune_act_sino_file='train-highCountSino-128x28.npy'
+#tune_act_sino_file='train-highCountSino-128x128.npy'
 #tune_act_sino_file='train-highCountImage.npy'
 #tune_act_sino_file='train-obliqueImage.npy'
 
@@ -164,9 +165,11 @@ tune_act_recon2_file=None
 ## Cross Validation Set ##
 ## -------------------- ##
 #tune_val_act_sino_file='val-highCountSino-382x513.npy'
-#tune_val_act_sino_file='val-highCountSino-320x257.npy'
+#tune_val_act_sino_file='val-highCountSino-320x257-vertCrop_horizPool2.npy'
+tune_val_act_sino_file='val-highCountSino-288x257-vertCrop_horizBilinear.npy'
+
 #tune_val_act_sino_file='val-highCountSino-180x180.npy'
-tune_val_act_sino_file='val-highCountSino-128x28.npy'
+#tune_val_act_sino_file='val-highCountSino-128x128.npy'
 
 tune_val_act_image_file='val-actMap.npy'
 
@@ -206,12 +209,13 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 #train_checkpoint_file='checkpoint-ATTEN_SI-256-largePadSino-untuned-25epochs'
 #train_checkpoint_file='checkpoint-FROZEN_COUNTERFLOW-256-untuned-100epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedStats-300epochs'  # Checkpoint file to load or save to.
+#train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedStats-300epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-288-narrowPadZeros-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
 
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
 train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
+train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 300        # Number of training epochs.
 train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
@@ -222,24 +226,20 @@ train_report_eval=False    # If True, evaluate on tune_report_for ('val', 'qa-si
 ## -------------------------- ##
 train_shuffle=True
 train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
+#train_augment=('II', True)
 #train_augment=(None, False)
 
-
-#train_augment=('II', True)
-
 #train_act_sino_file='train-highCountSino-382x513.npy'
-train_act_sino_file='train-highCountSino-180x180.npy'
-#train_act_sino_file='train-highCountSino-320x257.npy'
+#train_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
+train_act_sino_file='train-highCountSino-288x257-vertCrop_horizBilinear.npy'
+
+#train_act_sino_file='train-highCountSino-180x180.npy'
 #train_act_sino_file='train-highCountImage.npy'
 
 train_act_image_file='train-actMap.npy'
 #train_act_image_file='train-anniMap.npy'
 
-
-#train_atten_image_file=None
 train_atten_sino_file='train-attenSino-180x180.npy'
-
-#train_atten_image_file=None
 train_atten_image_file='train-attenMap.npy'
 
 
@@ -271,7 +271,9 @@ test_sample_division=1
 
 ## Select Data Files ##
 ## ----------------- ##
-test_act_sino_file= 'test-highCountSino-180x180.npy'
+test_act_sino_file='test-highCountSino-180x180.npy'
+#test_act_sino_file=None
+
 test_act_image_file= 'test-actMap.npy'
 
 test_atten_image_file=None
