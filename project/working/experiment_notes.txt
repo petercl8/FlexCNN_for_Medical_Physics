@@ -1,0 +1,19 @@
+Dataset
+=======
+Original dataset is of size: 382x513 (radial distance x angular sampling)
+
+There are two kinds of resized data:
+1) 320x257: Here, vertical size is left alone. The horizontal size has been replication padded by 1 and then average pooled to be of horizontal size 257. These were used for 288x288 experiments.
+
+    A) sino_resize_type = 'pool'.
+    B) sino_resize_type = 'bilinear'. To maintain the same image size as A, we use:
+            sino_resize_type='bilinear',  # 'pool' or 'bilinear'
+            sino_pad_type='zeros',  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
+            image_pad_type='zeros',  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
+            sino_init_vert_cut=288,  # Symmetrically crop sinograms to this height before resizing (None = no initial crop)
+            vert_pool_size=1,  # Vertical pooling factor (1 = no pooling)
+            horiz_pool_size=1,  # Horizontal pooling factor (1 = no pooling)
+            bilinear_intermediate_size=257,  # Intermediate size for bilinear resize before padding (None = resize directly to target)
+
+
+2) All other types: These have had initial vertical cropping to size 320. Then, they have been bilinearly resized to be of size NxN. To use these datasets, set sino_init_vert_cut = 0 (since these were already vertically cropped before resizing).

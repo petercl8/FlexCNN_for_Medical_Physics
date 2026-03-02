@@ -47,7 +47,10 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 #   image_pad_type:      image padding type: 'zeros' (pad with zeros) or 'none' (bilinear resize, default: 'zeros')
 #   vert_pool_size:      vertical pooling factor for sinograms (1 = no pooling, default: 1)
 #   horiz_pool_size:     horizontal pooling factor for sinograms (1 = no pooling, default: 1)
-#   bilinear_intermediate_size: intermediate size for bilinear resize before padding (None = resize directly to target, default: 161)
+#   bilinear_intermediate_size: intermediate size(s) for bilinear resize before padding. Can be:
+#                               - int (square, e.g., 180)
+#                               - tuple (vert_size, horiz_size) for non-square (e.g., (180, 200))
+#                               - None (resize directly to target, default: 180)
 #   sino_init_vert_cut:  symmetrically crop sinograms to this height before resizing (None = no initial crop, default: None)
 
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,

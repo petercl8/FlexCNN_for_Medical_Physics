@@ -12,53 +12,40 @@ You also don't need to worry about "Search Spaces", as this is simply a dictiona
 Feel free to look at it though, to see how I set up the search space. The last section (Set Correct Config) is where the configuration dictionary gets assigned.
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
-'''
-# Poorly performing network. Great for debugging.
+
+# Tuned for stats metric (moment weights = [0.9, 0.1]
 config_ACT_SI = {
-  "IS_disc_adv_criterion": 1,
-  "IS_disc_b1": 1,
-  "IS_disc_b2": 1,
-  "IS_disc_hidden_dim": 1,
-  "IS_disc_lr": 1,
-  "IS_disc_patchGAN": 1,
-  "SI_alpha_min": 0.5524058308954609,
-  "SI_disc_adv_criterion": 1,
-  "SI_disc_b1": 1,
-  "SI_disc_b2": 1,
-  "SI_disc_hidden_dim": 1,
-  "SI_disc_lr": 1,
-  "SI_disc_patchGAN": 1,
-  "SI_dropout": True,
+  "SI_alpha_min": 0.5213698467044514,
+  "SI_dropout": False,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
   "SI_gen_fill": 1,
   "SI_gen_final_activ": "ELU",
   "SI_gen_hidden_dim": 16,
-  "SI_gen_mult": 2.0064056851079384,
+  "SI_gen_mult": 1.6773364207779211,
   "SI_gen_neck": "wide",
-  "SI_gen_z_dim": 876,
-  "SI_half_life_examples": 6748.004126224244,
+  "SI_gen_z_dim": 727,
+  "SI_half_life_examples": 3151.6045889459424,
   "SI_layer_norm": "group",
-  "SI_learnedScale_init": 2.1259193148224687,
-  "SI_moment_1_fraction": 0.49126420918366775,
+  "SI_learnedScale_init": 12.392331521009083,
+  "SI_moment_1_fraction": 0.46359052811993384,
   "SI_normalize": False,
-  "SI_output_scale_lr_mult": 1.9980456276610286,
+  "SI_output_scale_lr_mult": 1.2702660653043705,
   "SI_pad_mode": "zeros",
   "SI_skip_mode": "none",
   "SI_stats_criterion": "PatchwiseMomentLoss",
   "batch_base2_exponent": 5,
-  "gen_b1": 0.9659488635857614,
-  "gen_b2": 0.2576282683921682,
+  "gen_b1": 0.2713979350750665,
+  "gen_b2": 0.8655007369238326,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "gen_lr": 0.003606301749682214,
+  "gen_lr": 0.00043162727752556266,
   "gen_sino_channels": 3,
   "gen_sino_size": 256,
   "network_type": "ACT",
-  "sup_base_criterion": "VarWeightedMSE",
+  "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
 '''
 # 256x256, vertical crop to 300, bilinear intemediate size = 180, tuned for SSIM, pad_type='sinogram', fill enforced to =0
 # Wide sinogram pooling experiment
@@ -95,7 +82,7 @@ config_ACT_SI = { # 256x256, tuned SSIM, pad_type='sinogram', bilinear intermedi
   "network_type": "ACT",
   "train_SI": True
 }
-
+'''
 '''
 # Tried to stimulate Grokking
 # 256x256, vertical cut to 300, bilinear intemediate size = 180, tuned for SSIM, pad_type='sinogram', fill enforced to =1
@@ -206,6 +193,48 @@ config_ACT_SI = { # 180x180, tuned SSIM, pad_type='zeros', bilinear_intermediate
   "train_SI": True
 }
 '''
+
+###############################
+### POORLY PERFORMING TRIAL, GOOD FOR DEBUGGING
+
+'''
+# Poorly performing network. Great for debugging.
+config_ACT_SI = {
+  "SI_alpha_min": 0.5524058308954609,
+  "SI_dropout": True,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 1,
+  "SI_gen_final_activ": "ELU",
+  "SI_gen_hidden_dim": 16,
+  "SI_gen_mult": 2.0064056851079384,
+  "SI_gen_neck": "wide",
+  "SI_gen_z_dim": 876,
+  "SI_half_life_examples": 6748.004126224244,
+  "SI_layer_norm": "group",
+  "SI_learnedScale_init": 2.1259193148224687,
+  "SI_moment_1_fraction": 0.49126420918366775,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 1.9980456276610286,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": "PatchwiseMomentLoss",
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.9659488635857614,
+  "gen_b2": 0.2576282683921682,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.003606301749682214,
+  "gen_sino_channels": 3,
+  "gen_sino_size": 256,
+  "network_type": "ACT",
+  "sup_base_criterion": "VarWeightedMSE",
+  "train_SI": True
+}
+
+'''
+
+
 
 ###############################
 ### OLDER TUNINGS ARE BELOW ###

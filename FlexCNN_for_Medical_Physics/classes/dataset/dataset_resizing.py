@@ -49,12 +49,10 @@ def resize_sino_data(
 
     # Step 1: Resize using selected method
     if sino_resize_type=='bilinear':
-        # Determine resize target
-        resize_target = bilinear_intermediate_size if bilinear_intermediate_size is not None else sino_size
-        
         # Bilinear resize to intermediate or target size
+        # bilinear_intermediate_size can be int (square), tuple (vert, horiz), or None
         act_sino_processed, atten_sino_processed = bilinear_resize_sino(
-            act_sino_multChannel, atten_sino_multChannel, resize_target
+            act_sino_multChannel, atten_sino_multChannel, bilinear_intermediate_size, sino_size
         )
     elif sino_resize_type=='pool':
         # Pool path: apply vertical and horizontal pooling
@@ -135,19 +133,32 @@ def _vertical_crop_sino(act_sino, atten_sino, target_height):
     
     return act_sino, atten_sino
 
-def bilinear_resize_sino(act_sino_multChannel, atten_sino_multChannel, sino_size):
+def bilinear_resize_sino(act_sino_multChannel, atten_sino_multChannel, bilinear_intermediate_size, sino_size):
     """
     Resize sinogram data (activity and attenuation) using bilinear interpolation.
     
     Args:
         act_sino_multChannel: Activity sinogram tensor of shape (C, H, W) or None
         atten_sino_multChannel: Attenuation sinogram tensor of shape (C, H, W) or None
-        sino_size: Target sinogram size (int for square)
+        bilinear_intermediate_size: Intermediate resize size. Can be:
+                                     - None: resize directly to sino_size (square)
+                                     - int: resize to (size, size) square
+                                     - tuple/list: resize to (vert_size, horiz_size) non-square
+        sino_size: Target sinogram size (int for square, used when bilinear_intermediate_size is None)
     
     Returns:
         Tuple (act_sino_resized, atten_sino_resized)
     """
-    resize_op = transforms.Resize(size=(sino_size, sino_size), antialias=True)
+    # Determine resize dimensions from bilinear_intermediate_size
+    if bilinear_intermediate_size is None:
+        vert_size = horiz_size = sino_size
+    elif isinstance(bilinear_intermediate_size, int):
+        vert_size = horiz_size = bilinear_intermediate_size
+    else:
+        # Assume tuple or list: (vert_size, horiz_size)
+        vert_size, horiz_size = bilinear_intermediate_size
+    
+    resize_op = transforms.Resize(size=(vert_size, horiz_size), antialias=True)
     act_sino_resized = resize_op(act_sino_multChannel) if act_sino_multChannel is not None else None
     atten_sino_resized = resize_op(atten_sino_multChannel) if atten_sino_multChannel is not None else None
     return act_sino_resized, atten_sino_resized
