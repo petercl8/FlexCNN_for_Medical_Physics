@@ -315,7 +315,7 @@ def evaluate_metrics(generators, batch, device, train_SI, network_type, tune_met
         # Compute CUSTOM metric only when required by tuning or during training
         compute_custom = (tune_metric == 'CUSTOM') or (run_mode == 'train')
         if compute_custom:
-            custom_val = custom_metric(eval_target, eval_output)
+            custom_val = custom_metric(eval_output, eval_target)
             metrics = {
                 'MSE': mse_val,
                 'SSIM': ssim_val,
@@ -444,7 +444,7 @@ def evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='S
         # Compute CUSTOM metric only when required by tuning or during training
         compute_custom = (tune_metric == 'CUSTOM') or (run_mode == 'train')
         if compute_custom:
-            custom_val = custom_metric(eval_target, eval_output)
+            custom_val = custom_metric(eval_output, eval_target)
             metrics = {
                 'MSE': mse_val,
                 'SSIM': ssim_val,
