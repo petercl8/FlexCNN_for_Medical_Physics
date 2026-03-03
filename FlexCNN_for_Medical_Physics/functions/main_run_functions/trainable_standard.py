@@ -142,9 +142,13 @@ def run_trainable(config, paths, settings):
         })
 
     if run_mode == 'train':
-        # Create training learning-curve dataframe (if train_test_* files provided)
-        # Dataframe is only populated if train_test_* paths are non-None
-        train_dataframe = pd.DataFrame(columns=['epoch', 'batch_step', 'example_num', 'eval_split', 'MSE', 'SSIM', 'CUSTOM'])
+        # Create or load training learning-curve dataframe (if train_test_* files provided)
+        # When resuming (load_state=True), load existing CSV if present to append new rows
+        if load_state and train_dataframe_path is not None and os.path.exists(train_dataframe_path):
+            train_dataframe = pd.read_csv(train_dataframe_path)
+            print(f'[TRAIN LEARNING CURVES] Loaded existing dataframe from {train_dataframe_path} ({len(train_dataframe)} rows)')
+        else:
+            train_dataframe = pd.DataFrame(columns=['epoch', 'batch_step', 'example_num', 'eval_split', 'MSE', 'SSIM', 'CUSTOM'])
 
     # ========================================================================================
     # SECTION 4: INSTANTIATE MODEL AND OPTIMIZER
