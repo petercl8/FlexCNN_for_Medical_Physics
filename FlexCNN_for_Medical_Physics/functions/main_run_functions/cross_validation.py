@@ -49,16 +49,21 @@ def load_eval_batch(paths, config, settings):
         paths: dict with 'tune_val_act_sino_path', 'tune_val_act_image_path', and optionally
                'tune_val_atten_sino_path', 'tune_val_atten_image_path' for frozen flow networks
         config: dict with 'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels'
-        settings: dict with 'tune_eval_batch_size' (e.g., 32)
+        settings: dict with 'eval_batch_size' (e.g., 32)
     
     Returns:
         dict with keys 'act_sino_scaled' and 'act_image_scaled' (always present, tensors on CPU),
         and 'atten_sino_scaled' and 'atten_image_scaled' if available
     
     Raises:
-        ValueError: if validation paths are not set
+        KeyError: if 'eval_batch_size' is missing from settings
+        ValueError: if eval_batch_size is invalid
     """    
-    tune_eval_batch_size = settings['tune_eval_batch_size']
+    if 'eval_batch_size' not in settings:
+        raise KeyError("Missing required settings['eval_batch_size'] for evaluation batch loading")
+    eval_batch_size = settings['eval_batch_size']
+    if eval_batch_size is None or eval_batch_size <= 0:
+        raise ValueError(f"settings['eval_batch_size'] must be > 0, got {eval_batch_size}")
     
     global _val_dataset
     
@@ -84,8 +89,8 @@ def load_eval_batch(paths, config, settings):
     # Allow replacement when requested batch size exceeds dataset size
     indices = np.random.choice(
         len(_val_dataset),
-        size=tune_eval_batch_size,
-        replace=(tune_eval_batch_size > len(_val_dataset))
+        size=eval_batch_size,
+        replace=(eval_batch_size > len(_val_dataset))
     )
     
     # Extract the batch
@@ -148,7 +153,7 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
                (hotMask passed as recon1_path; hotBackgroundMask as recon2_path
                to ensure augmentations align across all tensors)
          config: dict with 'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels'
-        settings: dict with 'tune_eval_batch_size' (e.g., 32), 'tune_qa_load_mode' ('random' or 'sequential'),
+          settings: dict with 'eval_batch_size' (e.g., 32), 'tune_qa_load_mode' ('random' or 'sequential'),
               and optional 'tune_qa_slice_range' tuple (start, end)
         augment: type of augmentation to apply (used only in random mode; sequential mode ignores this)
     
@@ -156,7 +161,7 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
         dict with keys 'act_sino_scaled', 'act_image_scaled', 'hotMask', 'hotBackgroundMask' (all tensors on CPU),
         and 'atten_sino_scaled' and 'atten_image_scaled' if available.
         
-        Sequential mode returns all phantom slices (~35 for NEMA); random mode returns tune_eval_batch_size samples.
+        Sequential mode returns all phantom slices (~35 for NEMA); random mode returns eval_batch_size samples.
         Slice range mode returns only the selected indices and ignores tune_eval_batch_size.
     
     Raises:
@@ -172,7 +177,11 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
             f"tune_report_for='qa-simple' or 'qa-nema' requires all of {required_qa_paths} to be set."
         )
     
-    tune_eval_batch_size = settings.get('tune_eval_batch_size', 32)
+    if 'eval_batch_size' not in settings:
+        raise KeyError("Missing required settings['eval_batch_size'] for QA batch loading")
+    eval_batch_size = settings['eval_batch_size']
+    if eval_batch_size is None or eval_batch_size <= 0:
+        raise ValueError(f"settings['eval_batch_size'] must be > 0, got {eval_batch_size}")
     tune_qa_load_mode = settings.get('tune_qa_load_mode', 'random')
     tune_qa_slice_range = settings.get('tune_qa_slice_range')
     
@@ -208,7 +217,7 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
         indices = np.arange(len(_qa_dataset))
     else:
         # Random mode: sample with replacement (default behavior)
-        indices = np.random.choice(len(_qa_dataset), size=tune_eval_batch_size, replace=True)
+        indices = np.random.choice(len(_qa_dataset), size=eval_batch_size, replace=True)
     
     # Extract the batch
     act_sino_batch = []
@@ -540,6 +549,7 @@ def report_eval_metrics(generators, paths, config, settings, tune_dataframe, tun
     tune_report_for = settings.get('tune_report_for', 'val')
     network_type = config.get('network_type', 'ACT')
     tune_metric = settings.get('tune_metric', 'SSIM')
+    run_mode = settings.get('run_mode', 'tune')
     
     # ===== LOAD: Batch data based on report type =====
     if tune_report_for == 'val':
@@ -552,7 +562,7 @@ def report_eval_metrics(generators, paths, config, settings, tune_dataframe, tun
     t_start = display_times(f"[TUNE_REPORT #{report_num}] Batch load time", t_start, PRINT_REPORT_TIMING)
     
     # ===== EVALUATE: Compute metrics on batch =====
-    metrics = _evaluate_batch(generators, batch, device, train_SI, network_type, tune_metric, tune_report_for, report_num)
+    metrics = _evaluate_batch(generators, batch, device, train_SI, network_type, tune_metric, tune_report_for, report_num, run_mode)
     t_start = display_times(f"[TUNE_REPORT #{report_num}] Evaluation time", t_start, PRINT_REPORT_TIMING)
     
     # ===== UPDATE: Save dataframe checkpoint if reached fraction =====

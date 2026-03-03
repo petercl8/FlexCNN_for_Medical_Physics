@@ -379,6 +379,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['tune_debug'] = tune_opts['tune_debug']
         settings['tune_report_for'] = tune_opts['tune_report_for']
         settings['tune_eval_batch_size'] = tune_opts['tune_eval_batch_size']
+        settings['eval_batch_size'] = tune_opts['tune_eval_batch_size']
         settings['tune_qa_hot_weight'] = tune_opts['tune_qa_hot_weight']
 
     elif run_mode == 'train':
@@ -395,6 +396,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['train_display_step'] = train_opts['train_display_step'] # Used in compute_display_step()
         settings['train_report_eval'] = train_opts['train_report_eval']
         settings['train_eval_batch_size'] = train_opts['train_eval_batch_size']
+        settings['eval_batch_size'] = train_opts['train_eval_batch_size']
         
         # If train_report_eval is enabled, copy tune validation settings needed for evaluation
         if train_opts['train_report_eval']:

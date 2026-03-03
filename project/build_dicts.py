@@ -77,6 +77,7 @@ def build_all_dicts(params):
         'checkpoint_dirName': params['checkpoint_dirName'],
         'tune_storage_dirName': params['tune_storage_dirName'],
         'tune_dataframe_dirName': params['tune_dataframe_dirName'],
+        'train_dataframe_dirName': params['train_dataframe_dirName'],
         'test_dataframe_dirName': params['test_dataframe_dirName'],
         'data_dirPath': params.get('data_dirPath'),  # Absolute path to data directory (or None)
         'data_dirName': params['data_dirName']  # Fallback directory name if data_dirPath is None

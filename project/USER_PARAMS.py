@@ -28,7 +28,7 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 
@@ -210,17 +210,21 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 #train_checkpoint_file='checkpoint-FROZEN_COUNTERFLOW-256-untuned-100epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedStats-300epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-ACT-288-narrowPadZeros-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-288-bilinear-narrowPadZeros-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
 
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
-train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
+train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
+train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 300        # Number of training epochs.
 train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_report_eval=False    # If True, evaluate on tune_report_for ('val', 'qa-simple', or 'qa-nema') each display_step without Ray reporting.
+train_eval_batch_size=1024           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
+train_dataframe_dirName='dataframes-train'  # Directory for training learning-curve dataframes (e.g., epoch vs MSE/SSIM/CUSTOM). Code will create if it doesn't exist.
+train_csv_file='frame-ACT-288-bilinear-narrowPadZeros-tunedSSIM-300epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+
 
 ## Data Files & Augmentations ##
 ## -------------------------- ##
@@ -232,7 +236,6 @@ train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II
 #train_act_sino_file='train-highCountSino-382x513.npy'
 #train_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
 train_act_sino_file='train-highCountSino-288x257-vertCrop_horizBilinear.npy'
-
 #train_act_sino_file='train-highCountSino-180x180.npy'
 #train_act_sino_file='train-highCountImage.npy'
 
@@ -240,8 +243,8 @@ train_act_image_file='train-actMap.npy'
 #train_act_image_file='train-anniMap.npy'
 
 train_atten_sino_file='train-attenSino-180x180.npy'
-train_atten_image_file='train-attenMap.npy'
 
+train_atten_image_file='train-attenMap.npy'
 
 train_act_recon1_file=None
 train_act_recon2_file=None
@@ -255,15 +258,13 @@ train_act_recon2_file=None
 # Feature auto-enables when required train_test_* files are provided.
 # Learning curves are logged for both training and test splits, saved to single dataframe.
 
-train_test_act_sino_file=None      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
-train_test_act_image_file=None     # Test/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
+
+train_test_act_sino_file='test-highCountSino-288x257-vertCrop_horizBilinear.npy'      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
+#train_test_act_sino_file=None      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
+train_test_act_image_file='test-actMap.npy'     # Test/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
+#train_test_act_image_file=None     # Test/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
 train_test_atten_sino_file=None    # Test/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
 train_test_atten_image_file=None   # Test/monitoring attenuation image (optional, for CONCAT/frozen flow).
-
-train_eval_batch_size=64           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
-
-train_dataframe_dirName='dataframes-train'  # Directory for training learning-curve dataframes (e.g., epoch vs MSE/SSIM/CUSTOM). Code will create if it doesn't exist.
-train_csv_file='learning-curves'   # CSV filename for training learning curves (without .csv extension; will be appended).
 
 
 ###########

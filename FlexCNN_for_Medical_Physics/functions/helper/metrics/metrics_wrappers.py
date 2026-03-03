@@ -1,3 +1,4 @@
+import os
 import torch
 import pandas as pd
 from .metrics import MSE, SSIM
@@ -196,6 +197,12 @@ def append_train_learning_curve_row(train_dataframe, train_dataframe_path, metri
     
     # Save dataframe incrementally if path is provided
     if train_dataframe_path is not None:
+        train_dataframe_dir = os.path.dirname(train_dataframe_path)
+        if train_dataframe_dir and not os.path.isdir(train_dataframe_dir):
+            raise FileNotFoundError(
+                f"Training dataframe directory does not exist: '{train_dataframe_dir}'. "
+                f"Create this directory before training, or update train_dataframe_dirName."
+            )
         train_dataframe.to_csv(train_dataframe_path, index=False)
     
     return train_dataframe

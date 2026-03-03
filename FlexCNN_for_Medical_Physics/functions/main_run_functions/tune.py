@@ -173,6 +173,11 @@ def tune_networks(config, paths, settings, tune_opts, base_dirs):
         trainable_func = run_trainable_frozen_flow
     else:
         trainable_func = run_trainable
+
+    # Initialize/clear tune dataframe once per tuning run (not once per trial)
+    tune_dataframe_path = paths.get('tune_dataframe_path')
+    if not tune_restore and tune_dataframe_path and os.path.exists(tune_dataframe_path):
+        os.remove(tune_dataframe_path)
     
     trainable_param = tune.with_parameters(trainable_func, paths=paths, settings=settings)
     trainable_with_resources = tune.with_resources(trainable_param, {"CPU": cpus_per_trial, "GPU": gpus_per_trial})

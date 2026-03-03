@@ -107,13 +107,17 @@ def run_trainable_frozen_flow(config, paths, settings):
     # ========================================================================================
     if run_mode == 'tune':
         if tune_restore == False:
-            # Create new tuning dataframe
-            tune_dataframe = pd.DataFrame({
-                'SI_dropout': [], 'SI_exp_kernel': [], 'SI_gen_fill': [], 'SI_gen_hidden_dim': [],
-                'SI_gen_neck': [], 'SI_layer_norm': [], 'SI_normalize': [], 'SI_pad_mode': [],
-                'batch_size': [], 'gen_lr': [], 'num_params': []
-            })
-            tune_dataframe.to_csv(tune_dataframe_path, index=False)
+            if os.path.exists(tune_dataframe_path):
+                # Preserve rows written by previous trials in the same Ray Tune run
+                tune_dataframe = pd.read_csv(tune_dataframe_path)
+            else:
+                # Create new tuning dataframe
+                tune_dataframe = pd.DataFrame({
+                    'SI_dropout': [], 'SI_exp_kernel': [], 'SI_gen_fill': [], 'SI_gen_hidden_dim': [],
+                    'SI_gen_neck': [], 'SI_layer_norm': [], 'SI_normalize': [], 'SI_pad_mode': [],
+                    'batch_size': [], 'gen_lr': [], 'num_params': []
+                })
+                tune_dataframe.to_csv(tune_dataframe_path, index=False)
         else:
             # Load existing tuning dataframe
             tune_dataframe = pd.read_csv(tune_dataframe_path)
@@ -413,7 +417,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                     )
                     train_dataframe = append_train_learning_curve_row(
                         train_dataframe, train_dataframe_path, train_metrics,
-                        eval_split='training set', epoch=epoch, batch_step=batch_step, example_num=batch_step
+                        eval_split='training set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
                     )
                     
                     # _____ EVALUATION: Test split _____
@@ -427,16 +431,18 @@ def run_trainable_frozen_flow(config, paths, settings):
                     )
                     train_dataframe = append_train_learning_curve_row(
                         train_dataframe, train_dataframe_path, test_metrics,
-                        eval_split='test set', epoch=epoch, batch_step=batch_step, example_num=batch_step
+                        eval_split='test set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
                     )
                     
                     # Restore original paths
                     paths.update(paths_backup)
                     
-                    print(f"[TRAIN LEARNING CURVES] Epoch {epoch}: training_set={train_metrics}, test_set={test_metrics}")
+                    print(f"[TRAIN LEARNING CURVES] Epoch {epoch+1}: training_set={train_metrics}, test_set={test_metrics}")
                     
+                except FileNotFoundError:
+                    raise
                 except Exception as e:
-                    print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch} evaluation failed: {str(e)}")
+                    print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch+1} evaluation failed: {str(e)}")
                     print("  Continuing training without learning curve logging for this epoch.")
                 finally:
                     gen_act.train()  # Restore training mode

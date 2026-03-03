@@ -13,6 +13,7 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
+'''
 # Tuned for stats metric (moment weights = [0.9, 0.1]
 config_ACT_SI = {
   "SI_alpha_min": 0.5213698467044514,
@@ -46,6 +47,7 @@ config_ACT_SI = {
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
+'''
 '''
 # 256x256, vertical crop to 300, bilinear intemediate size = 180, tuned for SSIM, pad_type='sinogram', fill enforced to =0
 # Wide sinogram pooling experiment
@@ -119,44 +121,6 @@ config_ACT_SI ={
   "train_SI": True
 }
 '''
-
-'''
-# Crop vertically, then pool horizontally experiment
-# 288x288, tuned SSIM, pad_type='zeros', interemediate size = None, horiz_pool=2, vert_pool=1
-# results in 257x257 size which is then padded with zeros to 288
-config_ACT_SI = { 
-  "SI_alpha_min": -1,
-  "SI_dropout": False,
-  "SI_exp_kernel": 3,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "LeakyReLU",
-  "SI_gen_hidden_dim": 10,
-  "SI_gen_mult": 1.5012782419950113,
-  "SI_gen_neck": "narrow", # narrow
-  "SI_gen_z_dim": 872,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance", # instance
-  "SI_learnedScale_init": 7.305980552864529,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 1.6943444827125673,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "conv",
-  "SI_stats_criterion": -1,
-  "SI_moment_1_fraction": -1,
-  "batch_base2_exponent": 7,
-  "gen_b1": 0.3600790033157822,
-  "gen_b2": 0.6033159868492163,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0024018267054557695,
-  "gen_sino_channels": 3,
-  "gen_sino_size": 288, # 288
-  "network_type": "ACT",
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
 '''
 # 180x180, tuned for SSIM, pad_type='zeros', bilinear intermediate size = 161
 # Bilinear intermediate size to 161 (same pooling fraction  as 256x256 experiment
@@ -193,47 +157,85 @@ config_ACT_SI = { # 180x180, tuned SSIM, pad_type='zeros', bilinear_intermediate
   "train_SI": True
 }
 '''
+########################
+### PRELIMINARY EXERIMENTS TO DETERMINE CROPPING/POOLING vs. BILINEAR INTERMEDIATE SIZE
+### Both experiments are for 288x288 network
 
-###############################
-### POORLY PERFORMING TRIAL, GOOD FOR DEBUGGING
-
-'''
-# Poorly performing network. Great for debugging.
-config_ACT_SI = {
-  "SI_alpha_min": 0.5524058308954609,
-  "SI_dropout": True,
+# 288x288, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded with zeros horizontally to 288
+config_ACT_SI= {
+  "SI_alpha_min": -1,
+  "SI_disc_adv_criterion": 1,
+  "SI_dropout": false,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
-  "SI_gen_fill": 1,
-  "SI_gen_final_activ": "ELU",
-  "SI_gen_hidden_dim": 16,
-  "SI_gen_mult": 2.0064056851079384,
-  "SI_gen_neck": "wide",
-  "SI_gen_z_dim": 876,
-  "SI_half_life_examples": 6748.004126224244,
-  "SI_layer_norm": "group",
-  "SI_learnedScale_init": 2.1259193148224687,
-  "SI_moment_1_fraction": 0.49126420918366775,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "Tanh",
+  "SI_gen_hidden_dim": 10,
+  "SI_gen_mult": 1.9886575078445312,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 1494,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 5.894328507562502,
+  "SI_moment_1_fraction": -1,
   "SI_normalize": False,
-  "SI_output_scale_lr_mult": 1.9980456276610286,
-  "SI_pad_mode": "zeros",
+  "SI_output_scale_lr_mult": 9.862580591354153,
+  "SI_pad_mode": "replicate",
   "SI_skip_mode": "none",
-  "SI_stats_criterion": "PatchwiseMomentLoss",
+  "SI_stats_criterion": -1,
   "batch_base2_exponent": 5,
-  "gen_b1": 0.9659488635857614,
-  "gen_b2": 0.2576282683921682,
+  "gen_b1": 0.5583313727913738,
+  "gen_b2": 0.3819733954553099,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "gen_lr": 0.003606301749682214,
+  "gen_lr": 0.0016547324637469305,
   "gen_sino_channels": 3,
-  "gen_sino_size": 256,
+  "gen_sino_size": 288,
   "network_type": "ACT",
-  "sup_base_criterion": "VarWeightedMSE",
+  "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
 
-'''
 
+'''
+# 288x288, tuned SSIM
+# Crop sinograms vertically to 288, then average pool horizontally (pool size = 2)
+# results in 288x257 size which is then padded with zeros horizontally to 288
+config_ACT_SI = { 
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 10,
+  "SI_gen_mult": 1.5012782419950113,
+  "SI_gen_neck": "narrow", # narrow
+  "SI_gen_z_dim": 872,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance", # instance
+  "SI_learnedScale_init": 7.305980552864529,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 1.6943444827125673,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "conv",
+  "SI_stats_criterion": -1,
+  "SI_moment_1_fraction": -1,
+  "batch_base2_exponent": 7,
+  "gen_b1": 0.3600790033157822,
+  "gen_b2": 0.6033159868492163,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0024018267054557695,
+  "gen_sino_channels": 3,
+  "gen_sino_size": 288, # 288
+  "network_type": "ACT",
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
 
 
 ###############################
@@ -344,36 +346,42 @@ config_ACT_SI = {
 }
 '''
 
+###############################
+### POORLY PERFORMING TRIAL, GOOD FOR DEBUGGING
+
 '''
-# 3x180x180 --> 1x180x180, Tuned for SSIM on OLDER dataset
+# Poorly performing network. Great for debugging.
 config_ACT_SI = {
-  "train_SI": True,
-  "SI_dropout": False,
-  "SI_exp_kernel": 4, # Options: 3, 4 (default 4)
-  "SI_gen_fill": 0, # Options: 0,1,2 (default 0)
-  "SI_gen_final_activ": nn.Tanh(),
-  "SI_gen_hidden_dim": 23,
-  "SI_gen_mult": 1.6605902406330195,
-  "SI_gen_neck": "narrow", # Options: 1, 6, 11 (default 1)
-  "SI_gen_z_dim": 789,
-  "SI_layer_norm": "instance",
+  "SI_alpha_min": 0.5524058308954609,
+  "SI_dropout": True,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 1,
+  "SI_gen_final_activ": "ELU",
+  "SI_gen_hidden_dim": 16,
+  "SI_gen_mult": 2.0064056851079384,
+  "SI_gen_neck": "wide",
+  "SI_gen_z_dim": 876,
+  "SI_half_life_examples": 6748.004126224244,
+  "SI_layer_norm": "group",
+  "SI_learnedScale_init": 2.1259193148224687,
+  "SI_moment_1_fraction": 0.49126420918366775,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 1.9980456276610286,
   "SI_pad_mode": "zeros",
-  "batch_size": 71,
-  "gen_b1": 0.2082092731474774,
-  "gen_b2": 0.27147903136187507,
-  "gen_lr": 0.0005481469822215635,
-  "sup_base_criterion": nn.MSELoss(),
-  "sup_stats_criterion": None,
-  "sup_alpha_min": 0.2,
-  "sup_half_life_examples": 2000,
-  "network_type": "ACT",
-  "gen_image_channels":1,
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": "PatchwiseMomentLoss",
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.9659488635857614,
+  "gen_b2": 0.2576282683921682,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.003606301749682214,
   "gen_sino_channels": 3,
-  "gen_image_size":180,
-  "gen_sino_size":180,
-  "SI_normalize": True, # Default: 'true'
-  "SI_fixedScale": 8100,
-  "SI_skip_mode": "none", # Options: 'none', 'add', 'concat' (default 'none')
-  "SI_moment_1_fraction": -1
+  "gen_sino_size": 256,
+  "network_type": "ACT",
+  "sup_base_criterion": "VarWeightedMSE",
+  "train_SI": True
 }
+
 '''
