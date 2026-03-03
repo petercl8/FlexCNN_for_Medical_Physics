@@ -31,13 +31,13 @@ from FlexCNN_for_Medical_Physics.functions.helper.image_processing.display_image
 _val_dataset = None
 _qa_dataset = None
 
-# Timing control for report_tune_metrics
-PRINT_REPORT_TIMING = False  # Set to False to suppress timing output during tuning reports
+# Timing control for report_eval_metrics
+PRINT_REPORT_TIMING = False  # Set to False to suppress timing output during evaluations
 
 # Control whether to use ground truth for ROI checks (QA mode only)
 use_ground_truth_rois = False
 
-def load_validation_batch(paths, config, settings):
+def load_eval_batch(paths, config, settings):
     """
     Load a fresh random validation batch without augmentation.
     
@@ -251,11 +251,11 @@ def load_qa_batch(paths, config, settings, augment=('SI', True)):
     
     return result
 
-def evaluate_val(generators, batch, device, train_SI, network_type, tune_metric='SSIM', tune_report_for='val'):
+def evaluate_metrics(generators, batch, device, train_SI, network_type, tune_metric='SSIM', tune_report_for='val', run_mode='tune'):
     """
     Evaluate simple network (ACT, ATTEN, or CONCAT) on validation or QA batch.
     
-    For frozen flow networks, use evaluate_val_frozen() instead.
+    For frozen flow networks, use evaluate_metrics_frozen() instead.
     
     Evaluation mode is automatically detected:
     - If tune_report_for='val': Returns validation metrics (MSE/SSIM/CUSTOM)
@@ -297,24 +297,27 @@ def evaluate_val(generators, batch, device, train_SI, network_type, tune_metric=
     
     # Compute metrics based on eval mode
     if tune_report_for == 'val':
-        # Validation mode: always compute MSE for diagnostics, plus the tuning metric
+        # Validation mode: metric policy based on run mode
+        # - Always compute MSE and SSIM for diagnostics
+        # - Compute CUSTOM when tune_metric=='CUSTOM' OR during training (run_mode=='train')
         mse_val = calculate_metric(eval_target, eval_output, MSE)
+        ssim_val = calculate_metric(eval_target, eval_output, SSIM)
         
-        # Compute tuning metric
-        if tune_metric == 'MSE':
-            metric_val = mse_val
-        elif tune_metric == 'SSIM':
-            metric_val = calculate_metric(eval_target, eval_output, SSIM)
-        elif tune_metric == 'CUSTOM':
-            metric_val = custom_metric(eval_target, eval_output)
+        # Compute CUSTOM metric only when required by tuning or during training
+        compute_custom = (tune_metric == 'CUSTOM') or (run_mode == 'train')
+        if compute_custom:
+            custom_val = custom_metric(eval_target, eval_output)
+            metrics = {
+                'MSE': mse_val,
+                'SSIM': ssim_val,
+                'CUSTOM': custom_val
+            }
         else:
-            raise ValueError(f"Unknown tune_metric='{tune_metric}'")
-        
-        # Report MSE and tuning metric (skip SSIM to keep reporting fast)
-        metrics = {
-            'MSE': mse_val,
-            tune_metric: metric_val
-        }
+            # Tune mode with non-CUSTOM metric: skip expensive CUSTOM computation
+            metrics = {
+                'MSE': mse_val,
+                'SSIM': ssim_val
+            }
         
         # Explicit cleanup
         del eval_input, eval_target, eval_output
@@ -355,7 +358,7 @@ def evaluate_val(generators, batch, device, train_SI, network_type, tune_metric=
     else:
         raise ValueError(f"Unknown tune_report_for='{tune_report_for}' (expected 'val', 'qa-simple', or 'qa-nema')")
 
-def evaluate_val_frozen(generators, batch, device, flow_mode, tune_metric='SSIM', tune_report_for='val'):
+def evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='SSIM', tune_report_for='val', run_mode='tune'):
     """
     Evaluate frozen flow network on validation or QA batch.
     
@@ -423,24 +426,27 @@ def evaluate_val_frozen(generators, batch, device, flow_mode, tune_metric='SSIM'
     
     # Compute metrics based on eval mode
     if tune_report_for == 'val':
-        # Validation mode: always compute MSE for diagnostics, plus the tuning metric
+        # Validation mode: metric policy based on run mode
+        # - Always compute MSE and SSIM for diagnostics
+        # - Compute CUSTOM when tune_metric=='CUSTOM' OR during training (run_mode=='train')
         mse_val = calculate_metric(eval_target, eval_output, MSE)
+        ssim_val = calculate_metric(eval_target, eval_output, SSIM)
         
-        # Compute tuning metric
-        if tune_metric == 'MSE':
-            metric_val = mse_val
-        elif tune_metric == 'SSIM':
-            metric_val = calculate_metric(eval_target, eval_output, SSIM)
-        elif tune_metric == 'CUSTOM':
-            metric_val = custom_metric(eval_target, eval_output)
+        # Compute CUSTOM metric only when required by tuning or during training
+        compute_custom = (tune_metric == 'CUSTOM') or (run_mode == 'train')
+        if compute_custom:
+            custom_val = custom_metric(eval_target, eval_output)
+            metrics = {
+                'MSE': mse_val,
+                'SSIM': ssim_val,
+                'CUSTOM': custom_val
+            }
         else:
-            raise ValueError(f"Unknown tune_metric='{tune_metric}'")
-        
-        # Report MSE and tuning metric (skip SSIM to keep reporting fast)
-        metrics = {
-            'MSE': mse_val,
-            tune_metric: metric_val
-        }
+            # Tune mode with non-CUSTOM metric: skip expensive CUSTOM computation
+            metrics = {
+                'MSE': mse_val,
+                'SSIM': ssim_val
+            }
         
         # Explicit cleanup
         del eval_act_sino, eval_act_image, atten_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output
@@ -473,26 +479,26 @@ def evaluate_val_frozen(generators, batch, device, flow_mode, tune_metric='SSIM'
     else:
         raise ValueError(f"Unknown tune_report_for='{tune_report_for}' (expected 'val', 'qa-simple', or 'qa-nema')")
 
-def _evaluate_batch(generators, batch, device, train_SI, network_type, tune_metric, tune_report_for, report_num):
+def _evaluate_batch(generators, batch, device, train_SI, network_type, tune_metric, tune_report_for, report_num, run_mode='tune'):
     """
     Evaluate batch on generator(s) and return metrics.
     
-    Internal helper for report_tune_metrics. Routes between simple and frozen flow evaluators
+    Internal helper for report_eval_metrics. Routes between simple and frozen flow evaluators
     based on network_type. Passes tune_report_for to determine evaluation mode.
     """
     is_frozen_flow = network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW')
     
     if is_frozen_flow:
         flow_mode = 'coflow' if network_type == 'FROZEN_COFLOW' else 'counterflow'
-        metrics = evaluate_val_frozen(generators, batch, device, flow_mode, 
-                                     tune_metric=tune_metric, tune_report_for=tune_report_for)
+        metrics = evaluate_metrics_frozen(generators, batch, device, flow_mode, 
+                                     tune_metric=tune_metric, tune_report_for=tune_report_for, run_mode=run_mode)
     else:
-        metrics = evaluate_val(generators, batch, device, train_SI, network_type, 
-                              tune_metric=tune_metric, tune_report_for=tune_report_for)
+        metrics = evaluate_metrics(generators, batch, device, train_SI, network_type, 
+                              tune_metric=tune_metric, tune_report_for=tune_report_for, run_mode=run_mode)
     
     return metrics
 
-def report_tune_metrics(generators, paths, config, settings, tune_dataframe, tune_dataframe_path, 
+def report_eval_metrics(generators, paths, config, settings, tune_dataframe, tune_dataframe_path, 
                         train_SI, tune_dataframe_fraction, tune_max_t, report_num, 
                         example_num, batch_step, epoch, device, report_to_ray=True, 
                         return_metrics=False):
@@ -537,7 +543,7 @@ def report_tune_metrics(generators, paths, config, settings, tune_dataframe, tun
     
     # ===== LOAD: Batch data based on report type =====
     if tune_report_for == 'val':
-        batch = load_validation_batch(paths, config, settings)
+        batch = load_eval_batch(paths, config, settings)
     elif tune_report_for in ('qa-simple', 'qa-nema'):
         batch = load_qa_batch(paths, config, settings, augment=('SI', True))
     else:

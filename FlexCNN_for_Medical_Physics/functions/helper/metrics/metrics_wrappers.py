@@ -152,3 +152,50 @@ def update_tune_dataframe(tune_dataframe, tune_dataframe_path, model, config, me
     tune_dataframe.to_csv(tune_dataframe_path, index=False)
 
     return tune_dataframe
+
+
+def append_train_learning_curve_row(train_dataframe, train_dataframe_path, metrics_dict, eval_split, epoch, batch_step, example_num):
+    """
+    Append a single learning-curve row to the training dataframe and save incrementally.
+    
+    Args:
+        train_dataframe: Current training learning-curve dataframe (pd.DataFrame)
+        train_dataframe_path: Path to save dataframe (str, must be a valid directory path or None)
+        metrics_dict: Dictionary of metrics from evaluate_metrics/evaluate_metrics_frozen
+                      Expected keys: 'MSE', 'SSIM', and optionally 'CUSTOM'
+        eval_split: Evaluation split label (str, 'training set' or 'test set')
+        epoch: Current epoch number (int)
+        batch_step: Current batch count in epoch (int)
+        example_num: Current example number globally (int)
+    
+    Returns:
+        Updated training dataframe (pd.DataFrame)
+    
+    Notes:
+        - Columns: epoch, batch_step, example_num, eval_split, MSE, SSIM, CUSTOM (if present)
+        - Row is appended and dataframe is saved to CSV incrementally
+        - If train_dataframe_path is None, dataframe is not saved (dev/test mode)
+    """
+    # Build row from metrics: always include MSE and SSIM
+    row_data = {
+        'epoch': epoch,
+        'batch_step': batch_step,
+        'example_num': example_num,
+        'eval_split': eval_split,
+        'MSE': metrics_dict.get('MSE', None),
+        'SSIM': metrics_dict.get('SSIM', None),
+    }
+    
+    # Add CUSTOM metric if present
+    if 'CUSTOM' in metrics_dict:
+        row_data['CUSTOM'] = metrics_dict['CUSTOM']
+    
+    # Append row to dataframe
+    new_row = pd.DataFrame(row_data, index=[0])
+    train_dataframe = pd.concat([train_dataframe, new_row], axis=0)
+    
+    # Save dataframe incrementally if path is provided
+    if train_dataframe_path is not None:
+        train_dataframe.to_csv(train_dataframe_path, index=False)
+    
+    return train_dataframe

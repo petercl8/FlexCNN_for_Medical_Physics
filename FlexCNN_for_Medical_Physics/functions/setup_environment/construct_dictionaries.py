@@ -213,6 +213,7 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['plot_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['plot_dirName'])
     paths['tune_storage_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['tune_storage_dirName'])
     paths['tune_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['tune_dataframe_dirName'])
+    paths['train_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['train_dataframe_dirName']) if run_mode == 'train' else None
     paths['test_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['test_dataframe_dirName'])
     
     # Checkpoint directory: Use absolute path if provided, otherwise place in project directory
@@ -253,6 +254,10 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['train_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_recon2_file']) if data_files['train_act_recon2_file'] is not None else None
     paths['train_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_image_file']) if data_files['train_atten_image_file'] is not None else None
     paths['train_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_sino_file']) if data_files['train_atten_sino_file'] is not None else None
+    paths['train_test_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_test_act_sino_file']) if data_files['train_test_act_sino_file'] is not None else None
+    paths['train_test_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_test_act_image_file']) if data_files['train_test_act_image_file'] is not None else None
+    paths['train_test_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_test_atten_image_file']) if data_files['train_test_atten_image_file'] is not None else None
+    paths['train_test_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_test_atten_sino_file']) if data_files['train_test_atten_sino_file'] is not None else None
     paths['test_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_sino_file'])
     paths['test_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_image_file'])
     paths['test_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_recon1_file']) if data_files['test_act_recon1_file'] is not None else None
@@ -309,6 +314,8 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     
     # Dataframe paths (always constructed for clarity)
     paths['tune_dataframe_path'] = os.path.join(paths['tune_dataframe_dirPath'], f"{mode_files['tune_csv_file']}.csv")
+    if run_mode == 'train':
+        paths['train_dataframe_path'] = os.path.join(paths['train_dataframe_dirPath'], f"{mode_files['train_csv_file']}.csv")
     paths['test_dataframe_path'] = os.path.join(paths['test_dataframe_dirPath'], f"{mode_files['test_csv_file']}.csv")
     
     return paths
@@ -387,6 +394,7 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['sample_division'] = train_opts['train_sample_division']
         settings['train_display_step'] = train_opts['train_display_step'] # Used in compute_display_step()
         settings['train_report_eval'] = train_opts['train_report_eval']
+        settings['train_eval_batch_size'] = train_opts['train_eval_batch_size']
         
         # If train_report_eval is enabled, copy tune validation settings needed for evaluation
         if train_opts['train_report_eval']:

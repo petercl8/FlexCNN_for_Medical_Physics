@@ -527,3 +527,99 @@ def compute_test_metrics(network_type, input_, CNN_output, target, act_image_sca
             reconstruct_images_and_update_test_dataframe(input_, CNN_output, act_image_scaled, test_dataframe, config, compute_MLEM=False, recon1=recon1, recon2=recon2)
     
     return test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output
+
+
+# ========================================================================================
+# TRAINING LEARNING CURVE PATH MANAGEMENT HELPERS
+# ========================================================================================
+
+def check_train_test_paths_provided(paths, network_type):
+    """
+    Check if required train_test_* paths are provided based on network type.
+    
+    Parameters
+    ----------
+    paths : dict
+        Paths dictionary containing train_test_* keys
+    network_type : str
+        Network type ('ATTEN', 'ACT', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW')
+    
+    Returns
+    -------
+    bool
+        True if required test paths are provided, False otherwise
+    """
+    if network_type == 'ATTEN':
+        # Attenuation network requires atten test paths
+        return (
+            paths.get('train_test_atten_sino_path') is not None and
+            paths.get('train_test_atten_image_path') is not None
+        )
+    else:
+        # All other networks (ACT, CONCAT, FROZEN_*) require act test paths
+        return (
+            paths.get('train_test_act_sino_path') is not None and
+            paths.get('train_test_act_image_path') is not None
+        )
+
+
+def backup_and_swap_to_test_paths(paths, network_type):
+    """
+    Backup current paths and swap to test split paths based on network type.
+    Modifies paths dict in-place.
+    
+    Parameters
+    ----------
+    paths : dict
+        Paths dictionary to modify (in-place)
+    network_type : str
+        Network type ('ATTEN', 'ACT', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW')
+    
+    Returns
+    -------
+    tuple
+        Tuple of (paths, paths_backup) where:
+        - paths: the same dictionary, updated in-place to point to test paths
+        - paths_backup: original values for later restoration
+    """
+    if network_type == 'ATTEN':
+        # Attenuation-only: swap atten paths
+        paths_backup = {
+            'atten_sino_path': paths.get('atten_sino_path'),
+            'atten_image_path': paths.get('atten_image_path'),
+        }
+        paths['atten_sino_path'] = paths['train_test_atten_sino_path']
+        paths['atten_image_path'] = paths['train_test_atten_image_path']
+    
+    elif network_type in ('CONCAT', 'FROZEN_COFLOW'):
+        # CONCAT and COFLOW: swap activity paths + attenuation sinogram
+        paths_backup = {
+            'act_sino_path': paths['act_sino_path'],
+            'act_image_path': paths['act_image_path'],
+            'atten_sino_path': paths.get('atten_sino_path'),
+        }
+        paths['act_sino_path'] = paths['train_test_act_sino_path']
+        paths['act_image_path'] = paths['train_test_act_image_path']
+        paths['atten_sino_path'] = paths.get('train_test_atten_sino_path')
+    
+    elif network_type == 'FROZEN_COUNTERFLOW':
+        # COUNTERFLOW: swap activity paths + attenuation image
+        paths_backup = {
+            'act_sino_path': paths['act_sino_path'],
+            'act_image_path': paths['act_image_path'],
+            'atten_image_path': paths.get('atten_image_path'),
+        }
+        paths['act_sino_path'] = paths['train_test_act_sino_path']
+        paths['act_image_path'] = paths['train_test_act_image_path']
+        paths['atten_image_path'] = paths.get('train_test_atten_image_path')
+    
+    else:  # ACT
+        # ACT: swap activity paths only
+        paths_backup = {
+            'act_sino_path': paths['act_sino_path'],
+            'act_image_path': paths['act_image_path'],
+        }
+        paths['act_sino_path'] = paths['train_test_act_sino_path']
+        paths['act_image_path'] = paths['train_test_act_image_path']
+    
+    return paths, paths_backup

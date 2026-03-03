@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from FlexCNN_for_Medical_Physics.classes.dataset.dataset_classes import NpArrayDataSet
 from FlexCNN_for_Medical_Physics.custom_criteria import HybridLoss
 from FlexCNN_for_Medical_Physics.functions.helper.utilities.timing import display_times
-from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics_wrappers import calculate_metric
+from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics_wrappers import calculate_metric, append_train_learning_curve_row
 from FlexCNN_for_Medical_Physics.functions.helper.metrics.metrics import SSIM, MSE
 from FlexCNN_for_Medical_Physics.functions.helper.model_setup.weights_init import weights_init_he
 from FlexCNN_for_Medical_Physics.functions.helper.utilities.displays_and_reports import (
@@ -30,9 +30,11 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     compute_test_metrics,
     init_checkpoint_state,
     compute_and_validate_moment_weights,
+    check_train_test_paths_provided,
+    backup_and_swap_to_test_paths,
 )
 
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.cross_validation import report_tune_metrics
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.cross_validation import report_eval_metrics
 
 from FlexCNN_for_Medical_Physics.functions.helper.model_setup.setup_generators_optimizer import (
     instantiate_dual_generators,
@@ -85,6 +87,8 @@ def run_trainable_frozen_flow(config, paths, settings):
         tune_max_t = settings['tune_max_t']
         tune_restore = settings['tune_restore']
         tune_dataframe_path = paths['tune_dataframe_path']
+    elif run_mode == 'train':
+        train_dataframe_path = paths.get('train_dataframe_path')
 
     # Checkpoint path
     checkpoint_path = paths['checkpoint_path']
@@ -120,6 +124,11 @@ def run_trainable_frozen_flow(config, paths, settings):
             'MSE (Network)': [], 'MSE (Recon1)': [], 'MSE (Recon2)': [],
             'SSIM (Network)': [], 'SSIM (Recon1)': [], 'SSIM (Recon2)': []
         })
+
+    if run_mode == 'train':
+        # Create training learning-curve dataframe (if train_test_* files provided)
+        # Dataframe is only populated if train_test_* paths are non-None
+        train_dataframe = pd.DataFrame(columns=['epoch', 'batch_step', 'example_num', 'eval_split', 'MSE', 'SSIM', 'CUSTOM'])
 
     # ========================================================================================
     # SECTION 4: INSTANTIATE MODELS (FROZEN ATTENUATION + TRAINABLE ACTIVITY)
@@ -334,7 +343,7 @@ def run_trainable_frozen_flow(config, paths, settings):
 
                 # Ray Tune reporting (tune mode)
                 if run_mode == 'tune' and session is not None:
-                    report_tune_metrics(
+                    report_eval_metrics(
                         (gen_act, gen_atten), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         train_SI_act, tune_dataframe_fraction, tune_max_t, report_num,
                         example_num, batch_step, epoch, device
@@ -349,7 +358,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                     visualize_train_frozen(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM, epoch, batch_step, example_num)
 
                     if settings.get('train_report_eval', False):
-                        eval_metrics = report_tune_metrics(
+                        eval_metrics = report_eval_metrics(
                             (gen_act, gen_atten), paths, config, settings, None, None,
                             train_SI_act, None, None, report_num,
                             example_num, batch_step, epoch, device,
@@ -384,6 +393,54 @@ def run_trainable_frozen_flow(config, paths, settings):
             # End of batch: reset loader timer
             time_init_loader = time.time()
 
+        # ========================================================================================
+        # SECTION 12.5: EPOCH-END LEARNING CURVE EVALUATION (train mode only)
+        # ========================================================================================
+        if run_mode == 'train':
+            # Evaluate on both training and test splits at epoch boundary
+            train_test_paths_provided = check_train_test_paths_provided(paths, config['network_type'])
+            
+            if train_test_paths_provided:
+                gen_act.eval()  # Set to eval mode for consistency
+                
+                try:
+                    # _____ EVALUATION: Training split _____
+                    train_metrics = report_eval_metrics(
+                        (gen_act, gen_atten), paths, config, settings, None, None,
+                        train_SI_act, None, None, 0,  # report_num=0 (not reporting to Ray)
+                        batch_step, batch_step, epoch, device,
+                        report_to_ray=False, return_metrics=True
+                    )
+                    train_dataframe = append_train_learning_curve_row(
+                        train_dataframe, train_dataframe_path, train_metrics,
+                        eval_split='training set', epoch=epoch, batch_step=batch_step, example_num=batch_step
+                    )
+                    
+                    # _____ EVALUATION: Test split _____
+                    paths, paths_backup = backup_and_swap_to_test_paths(paths, config['network_type'])
+                    
+                    test_metrics = report_eval_metrics(
+                        (gen_act, gen_atten), paths, config, settings, None, None,
+                        train_SI_act, None, None, 0,  # report_num=0 (not reporting to Ray)
+                        batch_step, batch_step, epoch, device,
+                        report_to_ray=False, return_metrics=True
+                    )
+                    train_dataframe = append_train_learning_curve_row(
+                        train_dataframe, train_dataframe_path, test_metrics,
+                        eval_split='test set', epoch=epoch, batch_step=batch_step, example_num=batch_step
+                    )
+                    
+                    # Restore original paths
+                    paths.update(paths_backup)
+                    
+                    print(f"[TRAIN LEARNING CURVES] Epoch {epoch}: training_set={train_metrics}, test_set={test_metrics}")
+                    
+                except Exception as e:
+                    print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch} evaluation failed: {str(e)}")
+                    print("  Continuing training without learning curve logging for this epoch.")
+                finally:
+                    gen_act.train()  # Restore training mode
+
     # ========================================================================================
     # SECTION 13: FINAL STATE SAVING (after all epochs complete)
     # ========================================================================================
@@ -393,8 +450,10 @@ def run_trainable_frozen_flow(config, paths, settings):
         save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
 
     # ========================================================================================
-    # SECTION 14: RETURN TEST DATAFRAME (if applicable)
+    # SECTION 14: RETURN DATAFRAMES (if applicable)
     # ========================================================================================
 
     if run_mode == 'test':
         return test_dataframe
+    elif run_mode == 'train':
+        return train_dataframe

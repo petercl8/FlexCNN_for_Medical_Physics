@@ -108,6 +108,10 @@ def build_all_dicts(params):
         'train_act_recon2_file': params['train_act_recon2_file'],
         'train_atten_image_file': params['train_atten_image_file'],
         'train_atten_sino_file': params['train_atten_sino_file'],
+        'train_test_act_sino_file': params['train_test_act_sino_file'],
+        'train_test_act_image_file': params['train_test_act_image_file'],
+        'train_test_atten_image_file': params['train_test_atten_image_file'],
+        'train_test_atten_sino_file': params['train_test_atten_sino_file'],
         'test_act_sino_file': params['test_act_sino_file'],
         'test_act_image_file': params['test_act_image_file'],
         'test_act_recon1_file': params['test_act_recon1_file'],
@@ -125,6 +129,8 @@ def build_all_dicts(params):
     mode_files = {
         'tune_csv_file': params['tune_csv_file'],
         'train_checkpoint_file': params['train_checkpoint_file'],
+        'train_dataframe_dirName': params['train_dataframe_dirName'],
+        'train_csv_file': params['train_csv_file'],
         'test_checkpoint_file': params['test_checkpoint_file'],
         'test_csv_file': params['test_csv_file'],
         'visualize_checkpoint_file': params['visualize_checkpoint_file']
@@ -178,6 +184,7 @@ def build_all_dicts(params):
         'train_sample_division': params['train_sample_division'],
         'train_show_times': params['train_show_times'],
         'train_report_eval': params['train_report_eval'],
+        'train_eval_batch_size': params['train_eval_batch_size'],
     }
     
     test_opts = {

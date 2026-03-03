@@ -249,6 +249,22 @@ train_act_recon2_file=None
 #train_act_recon2_file='train-obliqueImage.npy'
 #train_act_recon1_file='train-actMap.npy'
 
+## Training Learning Curve Logging ##
+## -------------------------------- ##
+# To enable learning-curve logging during training, provide train_test data files (non-None).
+# Feature auto-enables when required train_test_* files are provided.
+# Learning curves are logged for both training and test splits, saved to single dataframe.
+
+train_test_act_sino_file=None      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
+train_test_act_image_file=None     # Test/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
+train_test_atten_sino_file=None    # Test/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
+train_test_atten_image_file=None   # Test/monitoring attenuation image (optional, for CONCAT/frozen flow).
+
+train_eval_batch_size=64           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
+
+train_dataframe_dirName='dataframes-train'  # Directory for training learning-curve dataframes (e.g., epoch vs MSE/SSIM/CUSTOM). Code will create if it doesn't exist.
+train_csv_file='learning-curves'   # CSV filename for training learning curves (without .csv extension; will be appended).
+
 
 ###########
 # Testing #
