@@ -1,2 +1,0 @@
-SI_dropout,SI_exp_kernel,SI_gen_fill,SI_gen_hidden_dim,SI_gen_neck,SI_layer_norm,SI_normalize,SI_pad_mode,batch_size,gen_lr,num_params,MSE,CUSTOM
-0.0,3.0,1.0,15.0,narrow,group,0.0,zeros,32.0,0.00026862364341016435,941391.0,105.50323851406574,797.759765625

@@ -161,6 +161,7 @@ config_ACT_SI = { # 180x180, tuned SSIM, pad_type='zeros', bilinear_intermediate
 ### PRELIMINARY EXERIMENTS TO DETERMINE CROPPING/POOLING vs. BILINEAR INTERMEDIATE SIZE
 ### Both experiments are for 288x288 network
 
+'''
 # 288x288, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded with zeros horizontally to 288
@@ -197,9 +198,9 @@ config_ACT_SI= {
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
-
 '''
+
+
 # 288x288, tuned SSIM
 # Crop sinograms vertically to 288, then average pool horizontally (pool size = 2)
 # results in 288x257 size which is then padded with zeros horizontally to 288
@@ -235,7 +236,7 @@ config_ACT_SI = {
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-'''
+
 
 
 ###############################

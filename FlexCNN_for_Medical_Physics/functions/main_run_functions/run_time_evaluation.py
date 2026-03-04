@@ -50,7 +50,6 @@ def _sample_eval_indices(dataset, eval_batch_size):
         replace=(eval_batch_size > len(dataset))
     )
 
-
 def _extract_standard_eval_batch(dataset, indices):
     """Extract act/atten tensors from sampled dataset indices (no QA masks)."""
     act_sino_batch = []
@@ -195,11 +194,11 @@ def load_eval_batch(split, paths, config, settings, augment=None):
         if augment is None:
             augment = ('SI', True)
         
-        global _qa_dataset
-        
         # Determine augmentation based on load mode
         qa_augment = augment if qa_load_mode == 'random' else (None, False)
         
+        global _qa_dataset
+
         # Load QA dataset on first call; reuse on subsequent calls
         if _qa_dataset is None:
             _qa_dataset = NpArrayDataSet(

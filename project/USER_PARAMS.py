@@ -28,10 +28,8 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
-from ast import For
 
-
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 
@@ -192,18 +190,18 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 ## QA Phantoms   ##
 ###################
 ## QA Configuration ##
-qa_load_mode='random'        # 'random': augmented random sampling of QA phantom. 'sequential': load whole phantom in order, no augmentation
+qa_load_mode='sequential'        # 'random': augmented random sampling of QA phantom. 'sequential': load whole phantom in order, no augmentation. 'random' is generally best for tuning on QA phantoms, 'sequential' makes sense for plotting learning curves while training.
 qa_slice_range=None          # Optional (start, end) slice range to load specific QA indices (end is exclusive). To look at the center of a NEMA phantom, use (13,20)
 qa_hot_weight=0.5            # A weighted contrast recovery coefficient as follows: ROI_NEMA_hot * qa_hot_weight + ROI_NEMA_cold * (1-qa_hot_weight)
 
 ## QA Files ##
-qa_act_sino_file='QA-NEMA-highCountSino-180x180.npy'
-qa_act_image_file='QA-NEMA-actMap.npy'
+qa_act_sino_file=None # 'QA-NEMA-highCountSino-180x180.npy'
+qa_act_image_file=None # QA-NEMA-actMap.npy'
 qa_atten_image_file=None
 qa_atten_sino_file=None
 
-qa_hotMask_file='QA-NEMA-hotMask_17mm.npy'
-qa_hotBackgroundMask_file='QA-NEMA-backMask_17mm.npy'
+qa_hotMask_file=None # 'QA-NEMA-hotMask_17mm.npy'
+qa_hotBackgroundMask_file=None #'QA-NEMA-backMask_17mm.npy'
 qa_coldMask_file=None #'QA-NEMA-coldMask_37mm.npy'
 qa_coldBackgroundMask_file=None #'QA-NEMA-backMask_37mm.npy'
 
@@ -214,21 +212,18 @@ qa_coldBackgroundMask_file=None #'QA-NEMA-backMask_37mm.npy'
 ## Training ##
 ##############
 
-# Note: For dual network training, checkpoints are autmatically appended suffixes of -atten and -act.
+#####
+# NOTE: For dual network training, checkpoints are autmatically appended suffixes of -atten and -act.
+#####
 
-#train_checkpoint_file='checkpoint-ATTEN_SI-256-largePadSino-untuned-25epochs'
-#train_checkpoint_file='checkpoint-FROZEN_COUNTERFLOW-256-untuned-100epochs'  # Checkpoint file to load or save to.
-#train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
-#train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedStats-300epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
 train_checkpoint_file='checkpoint-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
-
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
-train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
+train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
+train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 600        # Number of training epochs.
-train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=25     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_eval_batch_size=1024           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
@@ -243,8 +238,7 @@ train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II
 #train_augment=('II', True)
 #train_augment=(None, False)
 
-#train_act_sino_file='train-highCountSino-382x513.npy'
-train_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
+train_act_sino_file='train-highCountSino-288x257-vertCrop_horizPool2.npy'
 #train_act_sino_file='train-highCountSino-288x257-vertCrop_horizBilinear.npy'
 #train_act_sino_file='train-highCountSino-180x180.npy'
 #train_act_sino_file='train-highCountImage.npy'
@@ -258,9 +252,8 @@ train_atten_image_file='train-attenMap.npy'
 
 train_act_recon1_file=None
 train_act_recon2_file=None
-#train_act_recon1_file='train-highCountImage.npy'  # Can set recon files to None if dataset does not have these.
-#train_act_recon2_file='train-obliqueImage.npy'
-#train_act_recon1_file='train-actMap.npy'
+#train_act_recon1_file='train-highCountImage.npy'  # Can set recon files to None if dataset does not have these or are unused in training.
+
 
 ## Training Learning Curve Logging ##
 ## -------------------------------- ##
@@ -268,9 +261,10 @@ train_act_recon2_file=None
 # Feature auto-enables when required train_test_* files are provided.
 # Learning curves are logged for both training and test splits, saved to single dataframe.
 
-train_test_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
+train_test_act_sino_file='test-highCountSino-288x257-vertCrop_horizPool2.npy'
 #train_test_act_sino_file='test-highCountSino-288x257-vertCrop_horizBilinear.npy'      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
 #train_test_act_sino_file=None      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
+
 train_test_act_image_file='test-actMap.npy'     # Test/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
 #train_test_act_image_file=None     # Test/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
 train_test_atten_sino_file=None    # Test/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
@@ -280,16 +274,20 @@ train_test_atten_image_file=None   # Test/monitoring attenuation image (optional
 ###########
 # Testing #
 ###########
-test_dataframe_dirName= 'TestOnFull'  # Directory for test metric dataframes
-test_csv_file = 'combined-tunedLowSSIM-trainedLowSSIM-onTestSet-wMLEM' # csv dataframe file to save testing results to
-test_checkpoint_file='checkpoint-tunedLowSSIM-trainedLowSSIM-100epochs' # Checkpoint to load model for testing
+test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
+test_csv_file = 'frame-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs-trainSet.csv' # csv dataframe file to save testing results to
+#test_csv_file = 'frame-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs-trainSet.csv' # csv dataframe file to save testing results to
+
+test_checkpoint_file='checkpoint-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs' # Checkpoint to load model for testing
+#test_checkpoint_file='checkpoint-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs'
 
 test_display_step=15        # Make this a larger number to save bit of time (displays images/metrics less often)
 test_batch_size=25          # This doesn't affect the final metrics, just the displayed metrics as testing procedes
-test_chunk_size=875              # How many examples do you want to test at once? NOTE: This should be a multiple of test_batch_size AND also go into the test set size evenly.
-testset_size=35000          # Size of the set to test. This must be <= the number of examples in your test set file.
+test_chunk_size=None       # How many examples do you want to test at once? # This should be a multiple of test_batch_size AND also go into the test set size evenly.
+                            # To test all at once set test_cunk_size = None.
+testset_size=-1          # Size of the set to test. This must be <= the number of examples in your test set file. Set to -1 to test all examples
 test_begin_at=0             # Begin testing at this example number.
-test_compute_MLEM=False          # Compute a simple MLEM reconstruction from the sinograms when running testing.
+test_compute_MLEM=False      # Compute a simple MLEM reconstruction from the sinograms when running testing.
                             # This takes a lot longer. If set to false, only FBP is calculated.
 test_merge_dataframes=True  # Merge the smaller/chunked dataframes at the end of the test run into one large dataframe?
 test_show_times=False       # Show calculation times?
@@ -298,16 +296,16 @@ test_sample_division=1
 
 ## Select Data Files ##
 ## ----------------- ##
-test_act_sino_file='test-highCountSino-180x180.npy'
-#test_act_sino_file=None
+test_act_sino_file='train-highCountSino-288x257-vertCrop_horizPool2.npy'
+test_act_image_file= 'train-actMap.npy'
 
-test_act_image_file= 'test-actMap.npy'
+test_act_recon1_file='train-highCountImage.npy'
+test_act_recon2_file='train-obliqueImage.npy'
 
 test_atten_image_file=None
 test_atten_sino_file=None
 
-test_act_recon1_file='test-highCountImage.npy'
-test_act_recon2_file='test-obliqueImage.npy'
+
 
 #test_act_sino_file=  'test_sino-35k.npy'
 #test_act_image_file= 'test_image-35k.npy'

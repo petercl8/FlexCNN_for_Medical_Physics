@@ -35,6 +35,8 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     compute_test_metrics,
     init_checkpoint_state,
     compute_and_validate_moment_weights,
+    route_batch_inputs,
+    check_eval_paths_provided,
 )
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluation import report_cross_validation_metrics
@@ -97,6 +99,7 @@ def run_trainable(config, paths, settings):
         tune_dataframe_path = paths['tune_dataframe_path']
     elif run_mode == 'train':
         train_dataframe_path = paths.get('train_dataframe_path')
+    
     checkpoint_path = paths['checkpoint_path']
 
 
@@ -411,7 +414,6 @@ def run_trainable(config, paths, settings):
         if run_mode == 'train':
             # Evaluate on training, holdout, and optionally QA splits at epoch boundary
             from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluation import load_eval_batch, evaluate_metrics
-            from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import check_eval_paths_provided, route_batch_inputs
             
             # Check which splits are available
             available = check_eval_paths_provided(paths, network_type)

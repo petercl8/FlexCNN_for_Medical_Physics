@@ -10,14 +10,15 @@ def plot_learning_curves(
     epoch_range=None,
     metric_range=None,
     train_label=None,
-    test_label=None,
+    holdout_label=None,
+    qa_label=None,
     ax=None,
     title=None,
     fontsize=12,
     ticksize=10,
 ):
     """
-    Plot training and test learning curves from a training CSV dataframe.
+    Plot training, holdout, and QA learning curves from a training CSV dataframe.
 
     Parameters
     ----------
@@ -33,8 +34,10 @@ def plot_learning_curves(
         Optional y-axis limits as (min_metric, max_metric).
     train_label : str or None
         Optional legend label for training split. Defaults to 'training set'.
-    test_label : str or None
-        Optional legend label for test split. Defaults to 'test set'.
+    holdout_label : str or None
+        Optional legend label for holdout split. Defaults to 'holdout set'.
+    qa_label : str or None
+        Optional legend label for QA split. Defaults to 'QA set'.
     ax : matplotlib.axes.Axes or None
         Target axes to draw into. If None, creates a new figure and axes.
     title : str or None
@@ -71,24 +74,30 @@ def plot_learning_curves(
         fig = ax.figure
 
     train_split_name = 'training set'
-    test_split_name = 'test set'
+    holdout_split_name = 'holdout set'
+    qa_split_name = 'QA set'
 
     train_df = dataframe[dataframe['eval_split'] == train_split_name].copy()
-    test_df = dataframe[dataframe['eval_split'] == test_split_name].copy()
+    holdout_df = dataframe[dataframe['eval_split'] == holdout_split_name].copy()
+    qa_df = dataframe[dataframe['eval_split'] == qa_split_name].copy()
 
     if epoch_range is not None:
         train_df = train_df[(train_df['epoch'] >= epoch_range[0]) & (train_df['epoch'] <= epoch_range[1])]
-        test_df = test_df[(test_df['epoch'] >= epoch_range[0]) & (test_df['epoch'] <= epoch_range[1])]
+        holdout_df = holdout_df[(holdout_df['epoch'] >= epoch_range[0]) & (holdout_df['epoch'] <= epoch_range[1])]
+        qa_df = qa_df[(qa_df['epoch'] >= epoch_range[0]) & (qa_df['epoch'] <= epoch_range[1])]
 
     if metric_range is not None:
         train_df = train_df[(train_df[metric_name] >= metric_range[0]) & (train_df[metric_name] <= metric_range[1])]
-        test_df = test_df[(test_df[metric_name] >= metric_range[0]) & (test_df[metric_name] <= metric_range[1])]
+        holdout_df = holdout_df[(holdout_df[metric_name] >= metric_range[0]) & (holdout_df[metric_name] <= metric_range[1])]
+        qa_df = qa_df[(qa_df[metric_name] >= metric_range[0]) & (qa_df[metric_name] <= metric_range[1])]
 
     train_df = train_df.sort_values(by='epoch')
-    test_df = test_df.sort_values(by='epoch')
+    holdout_df = holdout_df.sort_values(by='epoch')
+    qa_df = qa_df.sort_values(by='epoch')
 
     train_curve_label = train_label if train_label is not None else train_split_name
-    test_curve_label = test_label if test_label is not None else test_split_name
+    holdout_curve_label = holdout_label if holdout_label is not None else holdout_split_name
+    qa_curve_label = qa_label if qa_label is not None else qa_split_name
 
     if not train_df.empty:
         train_df.plot(
@@ -100,12 +109,22 @@ def plot_learning_curves(
             fontsize=ticksize,
         )
 
-    if not test_df.empty:
-        test_df.plot(
+    if not holdout_df.empty:
+        holdout_df.plot(
             x='epoch',
             y=metric_name,
             ax=ax,
-            label=test_curve_label,
+            label=holdout_curve_label,
+            legend=True,
+            fontsize=ticksize,
+        )
+
+    if not qa_df.empty:
+        qa_df.plot(
+            x='epoch',
+            y=metric_name,
+            ax=ax,
+            label=qa_curve_label,
             legend=True,
             fontsize=ticksize,
         )

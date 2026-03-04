@@ -213,7 +213,7 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['plot_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['plot_dirName'])
     paths['tune_storage_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['tune_storage_dirName'])
     paths['tune_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['tune_dataframe_dirName'])
-    paths['train_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['train_dataframe_dirName']) if run_mode == 'train' else None
+    paths['train_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['train_dataframe_dirName'])
     paths['test_dataframe_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['test_dataframe_dirName'])
     
     # Checkpoint directory: Use absolute path if provided, otherwise place in project directory
@@ -340,6 +340,9 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['tune_dataframe_path'] = os.path.join(paths['tune_dataframe_dirPath'], f"{mode_files['tune_csv_file']}.csv")
     if run_mode == 'train':
         paths['train_dataframe_path'] = os.path.join(paths['train_dataframe_dirPath'], f"{mode_files['train_csv_file']}.csv")
+    else:
+        # Explicitly set to None for non-train modes to prevent accidental logging to training CSV
+        paths['train_dataframe_path'] = None
     paths['test_dataframe_path'] = os.path.join(paths['test_dataframe_dirPath'], f"{mode_files['test_csv_file']}.csv")
     
     return paths
@@ -438,7 +441,7 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         settings['save_state'] = False
         settings['offset'] = 0
         settings['show_times'] = test_opts['test_show_times']
-        settings['sample_division'] = test_opts['test_sample_division', 1]
+        settings['sample_division'] = test_opts['test_sample_division']
         settings['test_display_step'] = test_opts['test_display_step'] # Used in compute_display_step()
         #settings['test_batch_size'] = test_opts['test_batch_size']
     

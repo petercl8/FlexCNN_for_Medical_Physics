@@ -199,6 +199,7 @@ def build_all_dicts(params):
         'test_begin_at': params['test_begin_at'],
         'test_compute_MLEM': params['test_compute_MLEM'],
         'test_merge_dataframes': params['test_merge_dataframes'],
+        'test_csv_file': params['test_csv_file'],
         'test_show_times': params['test_show_times'],
         'test_shuffle': params['test_shuffle'],
         'test_sample_division': params['test_sample_division']

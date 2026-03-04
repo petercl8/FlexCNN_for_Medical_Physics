@@ -1,6 +1,10 @@
 Dataset
 =======
-1) Original dataset is of size: 382x513 (radial distance x angular sampling)
+1) Original dataset is of size: 382x513 (radial distance x angular sampling).
+    Training set: 17830 examples
+    Validation set: 3653 examples
+    Test set: 5729 examples
+
 
 2) 320x257: Here, vertical size is left alone. The horizontal size has been replication padded by 1 and then average pooled to be of horizontal size 257. These were used for the 288x288 experiment which used cropping/pooling to resize.
 
