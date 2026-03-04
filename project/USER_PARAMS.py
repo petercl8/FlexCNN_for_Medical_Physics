@@ -28,6 +28,9 @@ v2-8 TPU - 1.82/hr
 ### General Setup ###
 #####################
 ## Basic Options ##
+from ast import For
+
+
 run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
@@ -120,7 +123,8 @@ tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train t
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
 tune_restore=False           # Resume a terminated run (loads tune_exp_name from tune_storage_dirPath). If False, deletes any existing tune_exp_name folder and starts fresh.
 tune_minutes = 7*60           # How long to run RayTune. 240 minutes is good for a simple 256x256 network.
-tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'CR_symmetric', 'hot_underestimation', 'cold_overestimation'
+tune_metric = 'SSIM'         # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). 
+                            # For QA set to 'qa-simple' for simple phantom CR metrics. Set to 'qa-nema' for NEMA hot contrast recovery.
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=15   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
 
@@ -129,9 +133,8 @@ tune_max_t = 36              # Maximum number of reports before terminating a tr
 
 tune_grace_period=4          # Minimum number of reports before terminating a trial
 tune_eval_batch_size=64      # If tuning on validation or QA set, what is the batch size to evaluate?
-tune_report_for='val'        # Set to 'val' for validation metrics (MSE/SSIM/CUSTOM). Set to 'qa-simple' for simple phantom CR metrics. Set to 'qa-nema' for NEMA hot contrast recovery.
-tune_qa_load_mode='random'   # 'random': augmented random sampling of QA phantom. 'sequential': load whole phantom in order, no augmentation
-tune_qa_slice_range=None     # Optional (start, end) slice range to load specific QA indices (end is exclusive). Too look at the center of a NEMA phantom, use (13,20)  
+tune_report_for='val'        # Set to 'val' for validation metrics (MSE/SSIM/CUSTOM) or set to 'qa' to evaluate on QA phantoms.
+tune_metric = 'SSIM'   # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). For QA set: 'qa-simple' or 'qa-nema'
 tune_augment=('SI', True)    # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
 tune_debug=False             # Run logger to debug tuning
 tune_force_fixed_config=False# Force tuning with a fixed configuration dictionary. This is useful for debugging, to make sure that a network has a good architecture for learning.
@@ -181,22 +184,29 @@ tune_val_atten_sino_file=None
 
 tune_val_atten_image_file=None
 
-# QA Phantoms #
-tune_qa_hot_weight=0.5 # A weighted contrast recovery coefficient is reported to ray tune as follows: ROI_NEMA_hot * tune_qa_hot_weight + ROI_NEMA_cold * (1-tune_qa_hot_weight)
-
-tune_qa_act_sino_file='QA-NEMA-highCountSino-180x180.npy'
-tune_qa_act_image_file='QA-NEMA-actMap.npy'
-tune_qa_atten_image_file=None
-tune_qa_atten_sino_file=None
-
-tune_qa_hotMask_file='QA-NEMA-hotMask_17mm.npy'
-tune_qa_hotBackgroundMask_file='QA-NEMA-backMask_17mm.npy'
-tune_qa_coldMask_file=None #'QA-NEMA-coldMask_37mm.npy'
-tune_qa_coldBackgroundMask_file=None #'QA-NEMA-backMask_37mm.npy'
-
 ## Unlikely to Change ##
 tune_storage_dirName='searches'     # Create tuning folders (one for each experiment, each of which contains multiple trials) in this directory. Leave blank ('') to place search files in project directory
 tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (stores network information for each network trialed). Code will create it if it doesn't exist.
+
+###################
+## QA Phantoms   ##
+###################
+## QA Configuration ##
+qa_load_mode='random'        # 'random': augmented random sampling of QA phantom. 'sequential': load whole phantom in order, no augmentation
+qa_slice_range=None          # Optional (start, end) slice range to load specific QA indices (end is exclusive). To look at the center of a NEMA phantom, use (13,20)
+qa_hot_weight=0.5            # A weighted contrast recovery coefficient as follows: ROI_NEMA_hot * qa_hot_weight + ROI_NEMA_cold * (1-qa_hot_weight)
+
+## QA Files ##
+qa_act_sino_file='QA-NEMA-highCountSino-180x180.npy'
+qa_act_image_file='QA-NEMA-actMap.npy'
+qa_atten_image_file=None
+qa_atten_sino_file=None
+
+qa_hotMask_file='QA-NEMA-hotMask_17mm.npy'
+qa_hotBackgroundMask_file='QA-NEMA-backMask_17mm.npy'
+qa_coldMask_file=None #'QA-NEMA-coldMask_37mm.npy'
+qa_coldBackgroundMask_file=None #'QA-NEMA-backMask_37mm.npy'
+
 
 """## Training"""
 
@@ -210,20 +220,20 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 #train_checkpoint_file='checkpoint-FROZEN_COUNTERFLOW-256-untuned-100epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedSSIM-300epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-256-largePadSino-fill_1-tunedStats-300epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
+#train_checkpoint_file='checkpoint-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
 
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
-train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
+train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 600        # Number of training epochs.
 train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
-train_report_eval=False    # If True, evaluate on tune_report_for ('val', 'qa-simple', or 'qa-nema') each display_step without Ray reporting.
 train_eval_batch_size=1024           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
 train_dataframe_dirName='dataframes-train'  # Directory for training learning-curve dataframes (e.g., epoch vs MSE/SSIM/CUSTOM). Code will create if it doesn't exist.
-train_csv_file='frame-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='frame-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 
 
 ## Data Files & Augmentations ##
@@ -234,8 +244,8 @@ train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II
 #train_augment=(None, False)
 
 #train_act_sino_file='train-highCountSino-382x513.npy'
-#train_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
-train_act_sino_file='train-highCountSino-288x257-vertCrop_horizBilinear.npy'
+train_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
+#train_act_sino_file='train-highCountSino-288x257-vertCrop_horizBilinear.npy'
 #train_act_sino_file='train-highCountSino-180x180.npy'
 #train_act_sino_file='train-highCountImage.npy'
 
@@ -258,8 +268,8 @@ train_act_recon2_file=None
 # Feature auto-enables when required train_test_* files are provided.
 # Learning curves are logged for both training and test splits, saved to single dataframe.
 
-
-train_test_act_sino_file='test-highCountSino-288x257-vertCrop_horizBilinear.npy'      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
+train_test_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
+#train_test_act_sino_file='test-highCountSino-288x257-vertCrop_horizBilinear.npy'      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
 #train_test_act_sino_file=None      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
 train_test_act_image_file='test-actMap.npy'     # Test/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
 #train_test_act_image_file=None     # Test/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.

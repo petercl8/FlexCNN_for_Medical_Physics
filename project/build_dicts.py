@@ -94,15 +94,16 @@ def build_all_dicts(params):
         'tune_val_act_image_file': params['tune_val_act_image_file'],
         'tune_val_atten_image_file': params['tune_val_atten_image_file'],
         'tune_val_atten_sino_file': params['tune_val_atten_sino_file'],
-        'tune_qa_act_sino_file': params['tune_qa_act_sino_file'],
-        'tune_qa_act_image_file': params['tune_qa_act_image_file'],
-        'tune_qa_hotMask_file': params['tune_qa_hotMask_file'],
-        'tune_qa_hotBackgroundMask_file': params['tune_qa_hotBackgroundMask_file'],
-        'tune_qa_coldMask_file': params['tune_qa_coldMask_file'],
-        'tune_qa_coldBackgroundMask_file': params['tune_qa_coldBackgroundMask_file'],
-        'tune_qa_backMask_file': None,  # Added to fix KeyError
-        'tune_qa_atten_image_file': params['tune_qa_atten_image_file'],
-        'tune_qa_atten_sino_file': params['tune_qa_atten_sino_file'],
+        # QA parameters (consolidated, used by both tune and train modes)
+        'qa_act_sino_file': params['qa_act_sino_file'],
+        'qa_act_image_file': params['qa_act_image_file'],
+        'qa_hotMask_file': params['qa_hotMask_file'],
+        'qa_hotBackgroundMask_file': params['qa_hotBackgroundMask_file'],
+        'qa_coldMask_file': params['qa_coldMask_file'],
+        'qa_coldBackgroundMask_file': params['qa_coldBackgroundMask_file'],
+        'qa_backMask_file': None,  # Added to fix KeyError
+        'qa_atten_image_file': params['qa_atten_image_file'],
+        'qa_atten_sino_file': params['qa_atten_sino_file'],
         'train_act_sino_file': params['train_act_sino_file'],
         'train_act_image_file': params['train_act_image_file'],
         'train_act_recon1_file': params['train_act_recon1_file'],
@@ -148,6 +149,12 @@ def build_all_dicts(params):
         'IS_normalize': params['IS_normalize'],
     }
     
+    qa_opts = {
+        'qa_load_mode': params['qa_load_mode'],
+        'qa_slice_range': params['qa_slice_range'],
+        'qa_hot_weight': params['qa_hot_weight'],
+    }
+    
     tune_opts = {
         'tune_exp_name': params['tune_exp_name'],
         'tune_scheduler': params['tune_scheduler'],
@@ -160,13 +167,10 @@ def build_all_dicts(params):
         'tune_batches_per_report': params['tune_batches_per_report'],
         'tune_examples_per_report': params['tune_examples_per_report'],
         'tune_augment': params['tune_augment'],
-        'tune_qa_load_mode': params['tune_qa_load_mode'],
-        'tune_qa_slice_range': params['tune_qa_slice_range'],
         'tune_grace_period': params['tune_grace_period'],
         'tune_debug': params['tune_debug'],
         'tune_force_fixed_config': params['tune_force_fixed_config'],
         'tune_report_for': params['tune_report_for'],
-        'tune_qa_hot_weight': params['tune_qa_hot_weight'],
         'tune_eval_batch_size': params['tune_eval_batch_size'],
         'num_CPUs': params['num_CPUs'],
         'num_GPUs': params['num_GPUs'],
@@ -184,7 +188,6 @@ def build_all_dicts(params):
         'train_display_step': params['train_display_step'],
         'train_sample_division': params['train_sample_division'],
         'train_show_times': params['train_show_times'],
-        'train_report_eval': params['train_report_eval'],
         'train_eval_batch_size': params['train_eval_batch_size'],
     }
     
@@ -220,6 +223,7 @@ def build_all_dicts(params):
     settings = setup_settings(
         run_mode=params['run_mode'],
         common_settings=common_settings,
+        qa_opts=qa_opts,
         tune_opts=tune_opts,
         train_opts=train_opts,
         test_opts=test_opts,
@@ -266,6 +270,7 @@ def build_all_dicts(params):
         'data_files': data_files,
         'mode_files': mode_files,
         'network_opts': network_opts,
+        'qa_opts': qa_opts,
         'tune_opts': tune_opts,
         'train_opts': train_opts,
         'test_opts': test_opts,

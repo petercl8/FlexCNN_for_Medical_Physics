@@ -239,15 +239,15 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['tune_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_act_image_file']) if data_files['tune_val_act_image_file'] is not None else None
     paths['tune_val_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_image_file']) if data_files['tune_val_atten_image_file'] is not None else None
     paths['tune_val_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_sino_file']) if data_files['tune_val_atten_sino_file'] is not None else None
-    paths['tune_qa_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_act_sino_file']) if data_files['tune_qa_act_sino_file'] is not None else None
-    paths['tune_qa_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_act_image_file']) if data_files['tune_qa_act_image_file'] is not None else None
-    paths['tune_qa_backMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_backMask_file']) if data_files['tune_qa_backMask_file'] is not None else None
-    paths['tune_qa_hotMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_hotMask_file']) if data_files['tune_qa_hotMask_file'] is not None else None
-    paths['tune_qa_hotBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_hotBackgroundMask_file']) if data_files['tune_qa_hotBackgroundMask_file'] is not None else None
-    paths['tune_qa_coldMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_coldMask_file']) if data_files['tune_qa_coldMask_file'] is not None else None
-    paths['tune_qa_coldBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_coldBackgroundMask_file']) if data_files['tune_qa_coldBackgroundMask_file'] is not None else None
-    paths['tune_qa_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_atten_image_file']) if data_files['tune_qa_atten_image_file'] is not None else None
-    paths['tune_qa_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_qa_atten_sino_file']) if data_files['tune_qa_atten_sino_file'] is not None else None
+    paths['qa_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_sino_file']) if data_files['qa_act_sino_file'] is not None else None
+    paths['qa_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_image_file']) if data_files['qa_act_image_file'] is not None else None
+    paths['qa_backMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_backMask_file']) if data_files['qa_backMask_file'] is not None else None
+    paths['qa_hotMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_hotMask_file']) if data_files['qa_hotMask_file'] is not None else None
+    paths['qa_hotBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_hotBackgroundMask_file']) if data_files['qa_hotBackgroundMask_file'] is not None else None
+    paths['qa_coldMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_coldMask_file']) if data_files['qa_coldMask_file'] is not None else None
+    paths['qa_coldBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_coldBackgroundMask_file']) if data_files['qa_coldBackgroundMask_file'] is not None else None
+    paths['qa_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['qa_atten_image_file']) if data_files['qa_atten_image_file'] is not None else None
+    paths['qa_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['qa_atten_sino_file']) if data_files['qa_atten_sino_file'] is not None else None
     paths['train_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_sino_file'])
     paths['train_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_image_file'])
     paths['train_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_recon1_file']) if data_files['train_act_recon1_file'] is not None else None
@@ -272,6 +272,30 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['visualize_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_atten_sino_file']) if data_files['visualize_atten_sino_file'] is not None else None
     
     # Backward-compatible note: attenuation image/sinogram paths already assigned above for each mode
+    
+    # Evaluation path aliases: unified naming for holdout and QA splits across tune/train modes
+    # eval_holdout_* maps to tune_val_* (tune mode) or train_test_* (train mode)
+    if run_mode == 'tune':
+        paths['eval_holdout_act_sino_path'] = paths['tune_val_act_sino_path']
+        paths['eval_holdout_act_image_path'] = paths['tune_val_act_image_path']
+        paths['eval_holdout_atten_sino_path'] = paths['tune_val_atten_sino_path']
+        paths['eval_holdout_atten_image_path'] = paths['tune_val_atten_image_path']
+    elif run_mode == 'train':
+        paths['eval_holdout_act_sino_path'] = paths['train_test_act_sino_path']
+        paths['eval_holdout_act_image_path'] = paths['train_test_act_image_path']
+        paths['eval_holdout_atten_sino_path'] = paths['train_test_atten_sino_path']
+        paths['eval_holdout_atten_image_path'] = paths['train_test_atten_image_path']
+    
+    # eval_qa_* aliases for unified QA split naming (consistent across tune/train modes)
+    paths['eval_qa_act_sino_path'] = paths['qa_act_sino_path']
+    paths['eval_qa_act_image_path'] = paths['qa_act_image_path']
+    paths['eval_qa_atten_sino_path'] = paths['qa_atten_sino_path']
+    paths['eval_qa_atten_image_path'] = paths['qa_atten_image_path']
+    paths['eval_qa_hotMask_path'] = paths['qa_hotMask_path']
+    paths['eval_qa_hotBackgroundMask_path'] = paths['qa_hotBackgroundMask_path']
+    paths['eval_qa_coldMask_path'] = paths['qa_coldMask_path']
+    paths['eval_qa_coldBackgroundMask_path'] = paths['qa_coldBackgroundMask_path']
+    paths['eval_qa_backMask_path'] = paths['qa_backMask_path']
     
     # Active paths and checkpoint filename selection (act_* only; no legacy fallbacks)
     if run_mode == 'tune':
@@ -320,12 +344,13 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     
     return paths
 
-def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts, viz_opts):
+def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, test_opts, viz_opts):
     """
     Build all non-path runtime settings.
     
     Args:
         common_settings: dict with keys: device, num_examples
+        qa_opts: dict with keys: qa_load_mode, qa_slice_range, qa_hot_weight (QA phantom settings, shared across modes)
         tune_opts: dict with keys: tune_augment, tune_batches_per_report, tune_examples_per_report,
                    tune_even_reporting, tune_max_t, tune_dataframe_fraction
         train_opts: dict with keys: train_augment, training_epochs, train_load_state, train_save_state,
@@ -374,13 +399,16 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['tune_batches_per_report'] = tune_opts['tune_batches_per_report']
         settings['tune_examples_per_report'] = tune_opts['tune_examples_per_report']
         settings['tune_augment'] = tune_opts['tune_augment']
-        settings['tune_qa_load_mode'] = tune_opts.get('tune_qa_load_mode', 'random')
-        settings['tune_qa_slice_range'] = tune_opts.get('tune_qa_slice_range')
         settings['tune_debug'] = tune_opts['tune_debug']
-        settings['tune_report_for'] = tune_opts['tune_report_for']
+        settings['evaluate_on'] = tune_opts['tune_report_for']
         settings['tune_eval_batch_size'] = tune_opts['tune_eval_batch_size']
         settings['eval_batch_size'] = tune_opts['tune_eval_batch_size']
-        settings['tune_qa_hot_weight'] = tune_opts['tune_qa_hot_weight']
+        settings['tune_metric'] = tune_opts['tune_metric']
+        
+        # QA phantom settings (can be used for both tune and train modes)
+        settings['qa_load_mode'] = qa_opts.get('qa_load_mode', 'random')
+        settings['qa_slice_range'] = qa_opts.get('qa_slice_range')
+        settings['qa_hot_weight'] = qa_opts.get('qa_hot_weight', 0.5)
 
     elif run_mode == 'train':
         settings['augment'] = train_opts['train_augment']
@@ -394,18 +422,13 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         settings['show_times'] = train_opts['train_show_times']
         settings['sample_division'] = train_opts['train_sample_division']
         settings['train_display_step'] = train_opts['train_display_step'] # Used in compute_display_step()
-        settings['train_report_eval'] = train_opts['train_report_eval']
         settings['train_eval_batch_size'] = train_opts['train_eval_batch_size']
         settings['eval_batch_size'] = train_opts['train_eval_batch_size']
         
-        # If train_report_eval is enabled, copy tune validation settings needed for evaluation
-        if train_opts['train_report_eval']:
-            settings['tune_report_for'] = tune_opts['tune_report_for']
-            settings['tune_qa_load_mode'] = tune_opts.get('tune_qa_load_mode', 'random')
-            settings['tune_qa_slice_range'] = tune_opts.get('tune_qa_slice_range')
-            settings['tune_metric'] = tune_opts['tune_metric']
-            settings['tune_eval_batch_size'] = tune_opts['tune_eval_batch_size']
-            settings['tune_qa_hot_weight'] = tune_opts.get('tune_qa_hot_weight', 0.5)
+        # QA phantom settings (shared with tune mode via qa_opts)
+        settings['qa_load_mode'] = qa_opts.get('qa_load_mode', 'random')
+        settings['qa_slice_range'] = qa_opts.get('qa_slice_range')
+        settings['qa_hot_weight'] = qa_opts.get('qa_hot_weight', 0.5)
 
     elif run_mode == 'test':
         settings['augment'] = (None, False) # If testing, do not augment
@@ -431,5 +454,42 @@ def setup_settings( run_mode, common_settings, tune_opts, train_opts, test_opts,
         #settings['visualize_batch_size'] = viz_opts['visualize_batch_size']
     else:
         raise ValueError(f"Unknown run_mode: {run_mode}")
+    
+    # ===== VALIDATION: Check tune_metric vs evaluate_on compatibility (tune mode only) =====
+    if run_mode == 'tune':
+        # Both evaluate_on and tune_metric must be explicitly set (no defaults)
+        if 'evaluate_on' not in settings:
+            raise ValueError(
+                f"evaluate_on must be explicitly set for tune mode. "
+                f"Valid values: 'val' (for standard metrics) or 'qa' (for QA metrics)."
+            )
+        if 'tune_metric' not in settings:
+            raise ValueError(
+                f"tune_metric must be explicitly set for tune mode."
+            )
+        
+        evaluate_on = settings['evaluate_on']
+        tune_metric = settings['tune_metric']
+        qa_metrics = ('qa-simple', 'qa-nema')
+        
+        # Validate: evaluate_on must be 'val' or 'qa'
+        if evaluate_on not in ('val', 'qa'):
+            raise ValueError(
+                f"evaluate_on must be either 'val' or 'qa', got '{evaluate_on}'."
+            )
+        
+        # Validate: QA metrics must use evaluate_on='qa'
+        if tune_metric in qa_metrics and evaluate_on != 'qa':
+            raise ValueError(
+                f"tune_metric='{tune_metric}' requires evaluate_on='qa', "
+                f"but got evaluate_on='{evaluate_on}'."
+            )
+        
+        # Validate: evaluate_on='qa' requires QA metric
+        if evaluate_on == 'qa' and tune_metric not in qa_metrics:
+            raise ValueError(
+                f"evaluate_on='qa' requires tune_metric in {qa_metrics}, "
+                f"but got tune_metric='{tune_metric}'."
+            )
     
     return settings

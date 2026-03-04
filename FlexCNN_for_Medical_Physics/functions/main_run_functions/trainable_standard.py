@@ -31,16 +31,13 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     visualize_train,
     visualize_test,
     visualize_visualize,
-    route_batch_inputs,
     generate_reconstructions_for_visualization,
     compute_test_metrics,
     init_checkpoint_state,
     compute_and_validate_moment_weights,
-    check_train_test_paths_provided,
-    backup_and_swap_to_test_paths,
 )
 
-from FlexCNN_for_Medical_Physics.functions.main_run_functions.cross_validation import report_eval_metrics
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluation import report_cross_validation_metrics
 
 from FlexCNN_for_Medical_Physics.functions.helper.model_setup.setup_generators_optimizer import (
     create_generator,
@@ -369,7 +366,7 @@ def run_trainable(config, paths, settings):
 
                 # _____ REPORTING: Ray Tune Validation (tune mode) _____
                 if run_mode == 'tune' and session is not None:
-                    report_eval_metrics(
+                    report_cross_validation_metrics(
                         (gen,), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         train_SI, tune_dataframe_fraction, tune_max_t, report_num,
                         example_num, batch_step, epoch, device
@@ -383,19 +380,6 @@ def run_trainable(config, paths, settings):
                     current_CNN_MSE = calculate_metric(target, CNN_output, MSE)
                     visualize_train(batch_data, mean_gen_loss, current_CNN_MSE, 
                                   current_CNN_SSIM, epoch, batch_step, example_num)
-
-                    if settings.get('train_report_eval', False):
-                        eval_metrics = report_eval_metrics(
-                            (gen,), paths, config, settings, None, None,
-                            train_SI, None, None, report_num,
-                            example_num, batch_step, epoch, device,
-                            report_to_ray=False, return_metrics=True
-                        )
-                        eval_report_for = settings.get('tune_report_for', 'val')
-                        print("\n============================================================")
-                        print(f"[TRAIN_EVAL:{eval_report_for}] {eval_metrics}")
-                        print("============================================================\n")
-                        report_num += 1
 
                 # _____ VISUALIZATION: Test Mode _____
                 if run_mode == 'test':
@@ -425,52 +409,72 @@ def run_trainable(config, paths, settings):
         # SECTION 12.5: EPOCH-END LEARNING CURVE EVALUATION (train mode only)
         # ========================================================================================
         if run_mode == 'train':
-            # Evaluate on both training and test splits at epoch boundary
-            train_test_paths_provided = check_train_test_paths_provided(paths, network_type)
+            # Evaluate on training, holdout, and optionally QA splits at epoch boundary
+            from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluation import load_eval_batch, evaluate_metrics
+            from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import check_eval_paths_provided, route_batch_inputs
             
-            if train_test_paths_provided:
-                gen.eval()  # Set to eval mode for consistency
+            # Check which splits are available
+            available = check_eval_paths_provided(paths, network_type)
+            
+            gen.eval()
+            try:
+                # ===== TRAINING SPLIT (always available) =====
+                train_batch = load_eval_batch('train', paths, config, settings)
+                train_metrics = evaluate_metrics(
+                    (gen,), train_batch, device, train_SI, network_type,
+                    tune_metric='MSE',  # Metric doesn't matter for train split, we'll compute all standard metrics
+                    evaluate_on='val',
+                    run_mode='train',
+                    compute_standard_metrics=True  # Always compute MSE/SSIM/CUSTOM for CSV consistency
+                )
+                train_dataframe = append_train_learning_curve_row(
+                    train_dataframe, train_dataframe_path, train_metrics,
+                    eval_split='training set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
+                )
                 
-                try:
-                    # _____ EVALUATION: Training split _____
-                    train_metrics = report_eval_metrics(
-                        (gen,), paths, config, settings, None, None,
-                        train_SI, None, None, 0,  # report_num=0 (not reporting to Ray)
-                        batch_step, batch_step, epoch, device,
-                        report_to_ray=False, return_metrics=True
+                # ===== HOLDOUT SPLIT (conditional) =====
+                if available['holdout']:
+                    holdout_batch = load_eval_batch('holdout', paths, config, settings)
+                    holdout_metrics = evaluate_metrics(
+                        (gen,), holdout_batch, device, train_SI, network_type,
+                        tune_metric='MSE',
+                        evaluate_on='val',
+                        run_mode='train',
+                        compute_standard_metrics=True  # Always compute standard metrics for CSV consistency
                     )
                     train_dataframe = append_train_learning_curve_row(
-                        train_dataframe, train_dataframe_path, train_metrics,
-                        eval_split='training set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
+                        train_dataframe, train_dataframe_path, holdout_metrics,
+                        eval_split='holdout set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
                     )
-                    
-                    # _____ EVALUATION: Test split _____
-                    paths, paths_backup = backup_and_swap_to_test_paths(paths, network_type)
-                    
-                    test_metrics = report_eval_metrics(
-                        (gen,), paths, config, settings, None, None,
-                        train_SI, None, None, 0,  # report_num=0 (not reporting to Ray)
-                        batch_step, batch_step, epoch, device,
-                        report_to_ray=False, return_metrics=True
+                
+                # ===== QA SPLIT (conditional) =====
+                if available['qa']:
+                    qa_batch = load_eval_batch('qa', paths, config, settings, augment=('SI', True))
+                    qa_metrics = evaluate_metrics(
+                        (gen,), qa_batch, device, train_SI, network_type,
+                        tune_metric='MSE',
+                        evaluate_on='val',  # Force validation metrics for learning curves
+                        run_mode='train',
+                        compute_standard_metrics=True  # Always compute standard metrics for CSV consistency
                     )
                     train_dataframe = append_train_learning_curve_row(
-                        train_dataframe, train_dataframe_path, test_metrics,
-                        eval_split='test set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
+                        train_dataframe, train_dataframe_path, qa_metrics,
+                        eval_split='QA set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
                     )
-                    
-                    # Restore original paths
-                    paths.update(paths_backup)
-                    
-                    print(f"[TRAIN LEARNING CURVES] Epoch {epoch+1}: training_set={train_metrics}, test_set={test_metrics}")
-                    
-                except FileNotFoundError:
-                    raise
-                except Exception as e:
-                    print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch+1} evaluation failed: {str(e)}")
-                    print("  Continuing training without learning curve logging for this epoch.")
                 
-                finally:
-                    gen.train()  # Restore training mode
+                print(f"[TRAIN LEARNING CURVES] Epoch {epoch+1}: train={train_metrics[list(train_metrics.keys())[0]]:.4f}")
+                if available['holdout']:
+                    print(f"  holdout={holdout_metrics[list(holdout_metrics.keys())[0]]:.4f}")
+                if available['qa']:
+                    print(f"  qa={qa_metrics[list(qa_metrics.keys())[0]]:.4f}")
+                    
+            except FileNotFoundError:
+                raise
+            except Exception as e:
+                print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch+1} evaluation failed: {str(e)}")
+                print("  Continuing training without learning curve logging for this epoch.")
+            finally:
+                gen.train()  # Restore to train mode
 
     # ========================================================================================
     # SECTION 13: FINAL STATE SAVING (after all epochs complete)

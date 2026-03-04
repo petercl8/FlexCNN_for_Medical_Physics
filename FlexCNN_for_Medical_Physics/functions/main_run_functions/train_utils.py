@@ -4,7 +4,7 @@ Shared training utilities for supervisory trainables.
 Provides infrastructure functions (generator/optimizer creation, checkpointing),
 visualization functions, batch collation, and shared utilities for training pipelines.
 
-Cross-validation (tuning metrics reporting) has been moved to cross_validation module.
+Runtime evaluation functions (tuning/training metrics reporting) have been moved to run_time_evaluation module.
 """
 import os
 import torch
@@ -533,93 +533,82 @@ def compute_test_metrics(network_type, input_, CNN_output, target, act_image_sca
 # TRAINING LEARNING CURVE PATH MANAGEMENT HELPERS
 # ========================================================================================
 
-def check_train_test_paths_provided(paths, network_type):
+def check_eval_paths_provided(paths, network_type, require_qa_masks=False):
     """
-    Check if required train_test_* paths are provided based on network type.
+    Check which evaluation splits (holdout/qa) have required paths provided.
     
     Parameters
     ----------
     paths : dict
-        Paths dictionary containing train_test_* keys
+        Paths dictionary containing eval_holdout_* and eval_qa_* keys
     network_type : str
         Network type ('ATTEN', 'ACT', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW')
+    require_qa_masks : bool, optional
+        If True, QA availability requires hot-region masks. If False, masks are not required
+        (useful when only standard metrics are computed).
     
     Returns
     -------
-    bool
-        True if required test paths are provided, False otherwise
+    dict
+        {'holdout': bool, 'qa': bool} indicating path availability for each split
     """
+    # Check holdout split (validation/test set)
     if network_type == 'ATTEN':
-        # Attenuation network requires atten test paths
-        return (
-            paths.get('train_test_atten_sino_path') is not None and
-            paths.get('train_test_atten_image_path') is not None
+        holdout_available = (
+            paths.get('eval_holdout_atten_sino_path') is not None and
+            paths.get('eval_holdout_atten_image_path') is not None
+        )
+    elif network_type in ('ACT', 'GAN'):
+        holdout_available = (
+            paths.get('eval_holdout_act_sino_path') is not None and
+            paths.get('eval_holdout_act_image_path') is not None
+        )
+    elif network_type in ('CONCAT', 'FROZEN_COFLOW'):
+        holdout_available = (
+            paths.get('eval_holdout_act_sino_path') is not None and
+            paths.get('eval_holdout_act_image_path') is not None and
+            paths.get('eval_holdout_atten_sino_path') is not None
+        )
+    elif network_type == 'FROZEN_COUNTERFLOW':
+        holdout_available = (
+            paths.get('eval_holdout_act_sino_path') is not None and
+            paths.get('eval_holdout_act_image_path') is not None and
+            paths.get('eval_holdout_atten_image_path') is not None
         )
     else:
-        # All other networks (ACT, CONCAT, FROZEN_*) require act test paths
-        return (
-            paths.get('train_test_act_sino_path') is not None and
-            paths.get('train_test_act_image_path') is not None
-        )
-
-
-def backup_and_swap_to_test_paths(paths, network_type):
-    """
-    Backup current paths and swap to test split paths based on network type.
-    Modifies paths dict in-place.
+        raise ValueError(f"Unknown network_type '{network_type}' for evaluation path checks.")
     
-    Parameters
-    ----------
-    paths : dict
-        Paths dictionary to modify (in-place)
-    network_type : str
-        Network type ('ATTEN', 'ACT', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW')
-    
-    Returns
-    -------
-    tuple
-        Tuple of (paths, paths_backup) where:
-        - paths: the same dictionary, updated in-place to point to test paths
-        - paths_backup: original values for later restoration
-    """
+    # Check QA split
     if network_type == 'ATTEN':
-        # Attenuation-only: swap atten paths
-        paths_backup = {
-            'atten_sino_path': paths.get('atten_sino_path'),
-            'atten_image_path': paths.get('atten_image_path'),
-        }
-        paths['atten_sino_path'] = paths['train_test_atten_sino_path']
-        paths['atten_image_path'] = paths['train_test_atten_image_path']
-    
+        qa_available = (
+            paths.get('eval_qa_atten_sino_path') is not None and
+            paths.get('eval_qa_atten_image_path') is not None
+        )
+    elif network_type in ('ACT', 'GAN'):
+        qa_available = (
+            paths.get('eval_qa_act_sino_path') is not None and
+            paths.get('eval_qa_act_image_path') is not None
+        )
     elif network_type in ('CONCAT', 'FROZEN_COFLOW'):
-        # CONCAT and COFLOW: swap activity paths + attenuation sinogram
-        paths_backup = {
-            'act_sino_path': paths['act_sino_path'],
-            'act_image_path': paths['act_image_path'],
-            'atten_sino_path': paths.get('atten_sino_path'),
-        }
-        paths['act_sino_path'] = paths['train_test_act_sino_path']
-        paths['act_image_path'] = paths['train_test_act_image_path']
-        paths['atten_sino_path'] = paths.get('train_test_atten_sino_path')
-    
+        qa_available = (
+            paths.get('eval_qa_act_sino_path') is not None and
+            paths.get('eval_qa_act_image_path') is not None and
+            paths.get('eval_qa_atten_sino_path') is not None
+        )
     elif network_type == 'FROZEN_COUNTERFLOW':
-        # COUNTERFLOW: swap activity paths + attenuation image
-        paths_backup = {
-            'act_sino_path': paths['act_sino_path'],
-            'act_image_path': paths['act_image_path'],
-            'atten_image_path': paths.get('atten_image_path'),
-        }
-        paths['act_sino_path'] = paths['train_test_act_sino_path']
-        paths['act_image_path'] = paths['train_test_act_image_path']
-        paths['atten_image_path'] = paths.get('train_test_atten_image_path')
+        qa_available = (
+            paths.get('eval_qa_act_sino_path') is not None and
+            paths.get('eval_qa_act_image_path') is not None and
+            paths.get('eval_qa_atten_image_path') is not None
+        )
+    else:
+        raise ValueError(f"Unknown network_type '{network_type}' for evaluation path checks.")
+
+    if require_qa_masks:
+        qa_available = (
+            qa_available and
+            paths.get('eval_qa_hotMask_path') is not None and
+            paths.get('eval_qa_hotBackgroundMask_path') is not None
+        )
     
-    else:  # ACT
-        # ACT: swap activity paths only
-        paths_backup = {
-            'act_sino_path': paths['act_sino_path'],
-            'act_image_path': paths['act_image_path'],
-        }
-        paths['act_sino_path'] = paths['train_test_act_sino_path']
-        paths['act_image_path'] = paths['train_test_act_image_path']
-    
-    return paths, paths_backup
+    return {'holdout': holdout_available, 'qa': qa_available}
