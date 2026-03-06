@@ -5,7 +5,7 @@ run-type settings
 
 config_net_dicts
 ================
-correct search space
+correct search space (including 'stats' and 'fill' options)
 OR
 correct tuned config
 
