@@ -84,6 +84,50 @@ def create_optimizer(model, config: dict) -> torch.optim.Adam:
     
     return optimizer
 
+
+def create_lr_scheduler(optimizer, settings: dict, total_epochs: int, resumed_epochs: int = 0):
+    """
+    Create an epoch-based learning rate scheduler for training mode.
+
+    Args:
+        optimizer: Optimizer instance.
+        settings: Runtime settings dictionary.
+        total_epochs: Total planned training epochs (T_max for cosine schedule).
+        resumed_epochs: Number of completed epochs before current run.
+
+    Returns:
+        Scheduler instance or None when scheduling is disabled.
+    """
+    if settings.get('run_mode') != 'train':
+        return None
+
+    schedule_type = settings.get('train_lr_schedule_type', 'none')
+    if schedule_type == 'none':
+        return None
+
+    if schedule_type != 'cosine':
+        raise ValueError(f"Unknown train_lr_schedule_type '{schedule_type}'.")
+
+    if total_epochs <= 0:
+        raise ValueError(f"total_epochs must be positive, got {total_epochs}.")
+
+    min_factor = settings.get('train_lr_min_factor', 0.01)
+    base_lrs = [group['lr'] for group in optimizer.param_groups]
+    eta_min = min(base_lrs) * min_factor
+
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer,
+        T_max=total_epochs,
+        eta_min=eta_min,
+    )
+
+    # Backward-compatible resume path for checkpoints without scheduler state.
+    # We only advance the scheduler (never optimizer) to the loaded epoch index.
+    for _ in range(max(0, resumed_epochs)):
+        scheduler.step()
+
+    return scheduler
+
 def _extract_frozen_config(config):
     """
     Strip FROZEN_ prefix from all keys that have it to prepare config for frozen generator.

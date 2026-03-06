@@ -183,6 +183,8 @@ def build_all_dicts(params):
         'train_load_state': params['train_load_state'],
         'train_save_state': params['train_save_state'],
         'training_epochs': params['train_epochs'],
+        'train_lr_schedule_type': params['train_lr_schedule_type'],
+        'train_lr_min_factor': params['train_lr_min_factor'],
         'train_augment': params['train_augment'],
         'train_shuffle': params['train_shuffle'],
         'train_display_step': params['train_display_step'],

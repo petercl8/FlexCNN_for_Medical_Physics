@@ -220,19 +220,24 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 
 #train_checkpoint_file='checkpoint-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-ACT-288-pool-288x171-padSino-tunedSSIM-600epochs'
+train_checkpoint_file='checkpoint-ACT-288-pool-288x171-padSino-tunedSSIM-800epochs'
 
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
 train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
-train_epochs = 600        # Number of training epochs.
+train_epochs = 800        # Number of training epochs.
 train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_eval_batch_size=1024           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
 train_dataframe_dirName='dataframes-train'  # Directory for training learning-curve dataframes (e.g., epoch vs MSE/SSIM/CUSTOM). Code will create if it doesn't exist.
-train_csv_file='frame-ACT-288-pool-288x171-padSino-tunedSSIM-600epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='frame-ACT-288-pool-288x171-padSino-tunedSSIM-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+
+## Learning Rate Scheduling ##
+## ------------------------ ##
+train_lr_schedule_type='cosine'  # Options: 'none', 'cosine'. Scheduling is applied in train mode only.
+train_lr_min_factor=0.05       # Minimum LR as a fraction of gen_lr (eta_min = gen_lr * train_lr_min_factor).
 
 ## Data Files & Augmentations ##
 ## -------------------------- ##

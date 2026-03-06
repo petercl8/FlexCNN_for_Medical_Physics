@@ -133,7 +133,7 @@ def collate_nested(batch):
     return act_data, atten_data, recon_data
 
 
-def build_checkpoint_dict(model, optimizer, config: dict, epoch: int, batch_step: int) -> dict:
+def build_checkpoint_dict(model, optimizer, config: dict, epoch: int, batch_step: int, scheduler=None) -> dict:
     """
     Assemble checkpoint dictionary with model state, optimizer state, and metadata.
     
@@ -145,7 +145,8 @@ def build_checkpoint_dict(model, optimizer, config: dict, epoch: int, batch_step
         batch_step: Current batch step number.
     
     Returns:
-        Dictionary with keys: 'epoch', 'batch_step', 'gen_state_dict', 'gen_opt_state_dict'.
+        Dictionary with keys: 'epoch', 'batch_step', 'gen_state_dict', 'gen_opt_state_dict',
+        and optionally 'lr_scheduler_state_dict'.
     """
     checkpoint = {
         'epoch': epoch,
@@ -153,6 +154,8 @@ def build_checkpoint_dict(model, optimizer, config: dict, epoch: int, batch_step
         'gen_state_dict': model.state_dict(),
         'gen_opt_state_dict': optimizer.state_dict(),
     }
+    if scheduler is not None:
+        checkpoint['lr_scheduler_state_dict'] = scheduler.state_dict()
     return checkpoint
 
 
@@ -179,7 +182,8 @@ def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs, dev
         device: Device string for torch.load map_location
     
     Returns:
-        Tuple of (start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict)
+        Tuple of (start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict,
+        lr_scheduler_state_dict)
         For test/visualize, gen_state_dict and gen_opt_state_dict are returned for proper loading.
     
     Raises:
@@ -193,6 +197,7 @@ def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs, dev
         batch_step_loaded = checkpoint['batch_step']
         gen_state_dict = checkpoint['gen_state_dict']
         gen_opt_state_dict = checkpoint['gen_opt_state_dict']
+        lr_scheduler_state_dict = checkpoint.get('lr_scheduler_state_dict')
         if run_mode in ('test', 'visualize'):
             start_epoch = 0
             end_epoch = 1
@@ -207,7 +212,8 @@ def init_checkpoint_state(load_state, run_mode, checkpoint_path, num_epochs, dev
         end_epoch = num_epochs
         gen_state_dict = None
         gen_opt_state_dict = None
-    return start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict
+        lr_scheduler_state_dict = None
+    return start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict, lr_scheduler_state_dict
 
 
 def log_tune_debug(gen, epoch: int, batch_step: int, gen_loss, device: str) -> None:

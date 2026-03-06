@@ -44,6 +44,7 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluatio
 from FlexCNN_for_Medical_Physics.functions.helper.model_setup.setup_generators_optimizer import (
     create_generator,
     create_optimizer,
+    create_lr_scheduler,
 )
 from FlexCNN_for_Medical_Physics.functions.helper.model_setup.config_materialize import materialize_config
 
@@ -159,7 +160,7 @@ def run_trainable(config, paths, settings):
     # ========================================================================================
     # SECTION 5: LOAD OR INITIALIZE CHECKPOINT AND WEIGHTS
     # ========================================================================================
-    start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict = init_checkpoint_state(
+    start_epoch, end_epoch, batch_step, gen_state_dict, gen_opt_state_dict, lr_scheduler_state_dict = init_checkpoint_state(
         load_state, run_mode, checkpoint_path, num_epochs, device
     )
     if load_state:
@@ -171,6 +172,16 @@ def run_trainable(config, paths, settings):
     # Set to eval mode for test/visualize
     if run_mode in ('test', 'visualize'):
         gen.eval()
+
+    # Epoch-based scheduler is active in train mode only.
+    lr_scheduler = create_lr_scheduler(
+        gen_opt,
+        settings,
+        total_epochs=num_epochs,
+        resumed_epochs=start_epoch,
+    )
+    if lr_scheduler is not None and lr_scheduler_state_dict is not None:
+        lr_scheduler.load_state_dict(lr_scheduler_state_dict)
 
     # ========================================================================================
     # SECTION 6: INSTANTIATE LOSS FUNCTION
@@ -397,7 +408,7 @@ def run_trainable(config, paths, settings):
                 # _____ STATE SAVING _____
                 if save_state:
                     print('Saving model!')
-                    checkpoint_dict = build_checkpoint_dict(gen, gen_opt, config, epoch, batch_step)
+                    checkpoint_dict = build_checkpoint_dict(gen, gen_opt, config, epoch, batch_step, scheduler=lr_scheduler)
                     save_checkpoint(checkpoint_dict, checkpoint_path)
 
                 # _____ RESET RUNNING METRICS _____
@@ -478,12 +489,17 @@ def run_trainable(config, paths, settings):
             finally:
                 gen.train()  # Restore to train mode
 
+            if lr_scheduler is not None:
+                lr_scheduler.step()
+                current_lr = gen_opt.param_groups[0]['lr']
+                print(f"[LR] Epoch {epoch+1}: {current_lr:.6e}")
+
     # ========================================================================================
     # SECTION 13: FINAL STATE SAVING (after all epochs complete)
     # ========================================================================================
     if save_state:
         print('Saving model!')
-        checkpoint_dict = build_checkpoint_dict(gen, gen_opt, config, epoch + 1, batch_step)
+        checkpoint_dict = build_checkpoint_dict(gen, gen_opt, config, epoch + 1, batch_step, scheduler=lr_scheduler)
         save_checkpoint(checkpoint_dict, checkpoint_path)
 
     # ========================================================================================

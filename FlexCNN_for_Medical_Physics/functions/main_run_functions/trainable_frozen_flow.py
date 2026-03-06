@@ -37,6 +37,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.model_setup.setup_generators_o
     instantiate_dual_generators,
     load_dual_generator_checkpoints,
     create_optimizer,
+    create_lr_scheduler,
 )
 from FlexCNN_for_Medical_Physics.functions.helper.model_setup.config_materialize import materialize_config
 
@@ -160,11 +161,21 @@ def run_trainable_frozen_flow(config, paths, settings):
     # Optimizer (activity only) is ready after checkpoint loading; feature scales are no longer used
     # Use settings['load_state'] directly, as it is set appropriately for each run_mode
 
-    start_epoch, end_epoch, batch_step, gen_state_dict, gen_act_opt_state_dict = init_checkpoint_state(
+    start_epoch, end_epoch, batch_step, gen_state_dict, gen_act_opt_state_dict, lr_scheduler_state_dict = init_checkpoint_state(
         load_state, run_mode, act_ckpt, num_epochs, device
     )
     if gen_act_opt_state_dict:
         gen_act_opt.load_state_dict(gen_act_opt_state_dict)
+
+    # Epoch-based scheduler is active in train mode only (activity network).
+    lr_scheduler = create_lr_scheduler(
+        gen_act_opt,
+        settings,
+        total_epochs=num_epochs,
+        resumed_epochs=start_epoch,
+    )
+    if lr_scheduler is not None and lr_scheduler_state_dict is not None:
+        lr_scheduler.load_state_dict(lr_scheduler_state_dict)
 
     # ========================================================================================
     # SECTION 6: INSTANTIATE LOSS FUNCTION FOR ACTIVITY NETWORK
@@ -374,7 +385,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 # _____ STATE SAVING _____
                 if save_state:
                     print('Saving model!')
-                    checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch, batch_step)
+                    checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch, batch_step, scheduler=lr_scheduler)
                     save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
 
                 # Reset running metrics after each display interval
@@ -455,12 +466,17 @@ def run_trainable_frozen_flow(config, paths, settings):
             finally:
                 gen_act.train()  # Restore training mode
 
+            if lr_scheduler is not None:
+                lr_scheduler.step()
+                current_lr = gen_act_opt.param_groups[0]['lr']
+                print(f"[LR] Epoch {epoch+1}: {current_lr:.6e}")
+
     # ========================================================================================
     # SECTION 13: FINAL STATE SAVING (after all epochs complete)
     # ========================================================================================
     if save_state:
         print('Saving model!')
-        checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch + 1, batch_step)
+        checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch + 1, batch_step, scheduler=lr_scheduler)
         save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
 
     # ========================================================================================

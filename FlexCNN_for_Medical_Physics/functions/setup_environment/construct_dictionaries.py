@@ -357,7 +357,8 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         tune_opts: dict with keys: tune_augment, tune_batches_per_report, tune_examples_per_report,
                    tune_even_reporting, tune_max_t, tune_dataframe_fraction
         train_opts: dict with keys: train_augment, training_epochs, train_load_state, train_save_state,
-                    train_show_times, train_sample_division, train_display_step
+                    train_show_times, train_sample_division, train_display_step,
+                    train_lr_schedule_type, train_lr_min_factor
         test_opts: dict with keys: test_show_times, test_display_step, test_batch_size, test_chunk_size,
                    testset_size, test_begin_at, test_compute_MLEM, test_merge_dataframes,
                    test_shuffle, test_sample_division
@@ -427,6 +428,8 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         settings['train_display_step'] = train_opts['train_display_step'] # Used in compute_display_step()
         settings['train_eval_batch_size'] = train_opts['train_eval_batch_size']
         settings['eval_batch_size'] = train_opts['train_eval_batch_size']
+        settings['train_lr_schedule_type'] = train_opts['train_lr_schedule_type']
+        settings['train_lr_min_factor'] = train_opts['train_lr_min_factor']
         
         # QA phantom settings (shared with tune mode via qa_opts)
         settings['qa_load_mode'] = qa_opts.get('qa_load_mode', 'random')
