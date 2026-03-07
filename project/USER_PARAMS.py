@@ -227,6 +227,7 @@ train_checkpoint_file='checkpoint-ACT-288-bilinear-288x257-padZeros-tunedSSIM-0p
 
 train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
+train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
 train_epochs = 800        # Number of training epochs.
 train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
@@ -267,19 +268,19 @@ train_act_recon2_file=None
 
 ## Training Learning Curve Logging ##
 ## -------------------------------- ##
-# To enable learning-curve logging during training, provide train_test data files (non-None).
-# Feature auto-enables when required train_test_* files are provided.
-# Learning curves are logged for both training and test splits, saved to single dataframe.
+# To enable learning-curve logging during training, provide train_val data files (non-None).
+# Feature auto-enables when required train_val_* files are provided.
+# Learning curves are logged for both training and validation splits, saved to single dataframe.
 
-train_test_act_sino_file='val-highCountSino-bilinear-288x257.npy'
-#train_test_act_sino_file='test-highCountSino-pool-288x257.npy'
-#train_test_act_sino_file='test-highCountSino-pool-288x171.npy'     
-#train_test_act_sino_file=None      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
+train_val_act_sino_file='val-highCountSino-bilinear-288x257.npy'
+#train_val_act_sino_file='test-highCountSino-pool-288x257.npy'
+#train_val_act_sino_file='test-highCountSino-pool-288x171.npy'     
+#train_val_act_sino_file=None      # Validation/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
 
-train_test_act_image_file='val-actMap.npy'     # Test/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
-#train_test_act_image_file=None     # Test/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
-train_test_atten_sino_file=None    # Test/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
-train_test_atten_image_file=None   # Test/monitoring attenuation image (optional, for CONCAT/frozen flow).
+train_val_act_image_file='val-actMap.npy'     # Validation/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
+#train_val_act_image_file=None     # Validation/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
+train_val_atten_sino_file=None    # Validation/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
+train_val_atten_image_file=None   # Validation/monitoring attenuation image (optional, for CONCAT/frozen flow).
 
 
 ###########

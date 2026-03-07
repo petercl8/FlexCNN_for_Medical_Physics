@@ -254,10 +254,10 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['train_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_recon2_file']) if data_files['train_act_recon2_file'] is not None else None
     paths['train_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_image_file']) if data_files['train_atten_image_file'] is not None else None
     paths['train_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_sino_file']) if data_files['train_atten_sino_file'] is not None else None
-    paths['train_test_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_test_act_sino_file']) if data_files['train_test_act_sino_file'] is not None else None
-    paths['train_test_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_test_act_image_file']) if data_files['train_test_act_image_file'] is not None else None
-    paths['train_test_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_test_atten_image_file']) if data_files['train_test_atten_image_file'] is not None else None
-    paths['train_test_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_test_atten_sino_file']) if data_files['train_test_atten_sino_file'] is not None else None
+    paths['train_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_act_sino_file']) if data_files['train_val_act_sino_file'] is not None else None
+    paths['train_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_act_image_file']) if data_files['train_val_act_image_file'] is not None else None
+    paths['train_val_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_atten_image_file']) if data_files['train_val_atten_image_file'] is not None else None
+    paths['train_val_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_atten_sino_file']) if data_files['train_val_atten_sino_file'] is not None else None
     paths['test_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_sino_file'])
     paths['test_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_image_file'])
     paths['test_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_recon1_file']) if data_files['test_act_recon1_file'] is not None else None
@@ -274,17 +274,17 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     # Backward-compatible note: attenuation image/sinogram paths already assigned above for each mode
     
     # Evaluation path aliases: unified naming for holdout and QA splits across tune/train modes
-    # eval_holdout_* maps to tune_val_* (tune mode) or train_test_* (train mode)
+    # eval_holdout_* maps to tune_val_* (tune mode) or train_val_* (train mode)
     if run_mode == 'tune':
         paths['eval_holdout_act_sino_path'] = paths['tune_val_act_sino_path']
         paths['eval_holdout_act_image_path'] = paths['tune_val_act_image_path']
         paths['eval_holdout_atten_sino_path'] = paths['tune_val_atten_sino_path']
         paths['eval_holdout_atten_image_path'] = paths['tune_val_atten_image_path']
     elif run_mode == 'train':
-        paths['eval_holdout_act_sino_path'] = paths['train_test_act_sino_path']
-        paths['eval_holdout_act_image_path'] = paths['train_test_act_image_path']
-        paths['eval_holdout_atten_sino_path'] = paths['train_test_atten_sino_path']
-        paths['eval_holdout_atten_image_path'] = paths['train_test_atten_image_path']
+        paths['eval_holdout_act_sino_path'] = paths['train_val_act_sino_path']
+        paths['eval_holdout_act_image_path'] = paths['train_val_act_image_path']
+        paths['eval_holdout_atten_sino_path'] = paths['train_val_atten_sino_path']
+        paths['eval_holdout_atten_image_path'] = paths['train_val_atten_image_path']
     
     # eval_qa_* aliases for unified QA split naming (consistent across tune/train modes)
     paths['eval_qa_act_sino_path'] = paths['qa_act_sino_path']
@@ -430,6 +430,21 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         settings['eval_batch_size'] = train_opts['train_eval_batch_size']
         settings['train_lr_schedule_type'] = train_opts['train_lr_schedule_type']
         settings['train_lr_min_factor'] = train_opts['train_lr_min_factor']
+        settings['train_save_on'] = train_opts['train_save_on']
+        
+        # Validate train_save_on setting
+        if settings['train_save_on'] not in ['always', 'SSIM', 'MSE', 'CUSTOM']:
+            raise ValueError(f"Invalid train_save_on='{settings['train_save_on']}'. Must be: 'always', 'SSIM', 'MSE', or 'CUSTOM'")
+        
+        # If metric-based saving is requested, ensure holdout files are provided
+        if settings['train_save_on'] in ['SSIM', 'MSE', 'CUSTOM']:
+            if (data_files.get('train_val_act_sino_file') is None or 
+                data_files.get('train_val_act_image_file') is None):
+                raise ValueError(
+                    f"train_save_on='{settings['train_save_on']}' requires holdout (validation) files. "
+                    f"Set train_val_act_sino_file and train_val_act_image_file in user_params.py, "
+                    f"or change train_save_on to 'always'."
+                )
         
         # QA phantom settings (shared with tune mode via qa_opts)
         settings['qa_load_mode'] = qa_opts.get('qa_load_mode', 'random')

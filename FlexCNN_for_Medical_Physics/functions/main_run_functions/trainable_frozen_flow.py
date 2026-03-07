@@ -128,7 +128,7 @@ def run_trainable_frozen_flow(config, paths, settings):
         })
 
     if run_mode == 'train':
-        # Create or load training learning-curve dataframe (if train_test_* files provided)
+        # Create or load training learning-curve dataframe (if train_val_* files provided)
         # When resuming (load_state=True), load existing CSV if present to append new rows
         if load_state and train_dataframe_path is not None and os.path.exists(train_dataframe_path):
             train_dataframe = pd.read_csv(train_dataframe_path)
@@ -258,6 +258,9 @@ def run_trainable_frozen_flow(config, paths, settings):
 
     time_init_full = time.time()
     time_init_loader = time.time()
+    
+    # Track best holdout performance for conditional saving (train mode only)
+    best_holdout_metrics = {}
 
     # ========================================================================================
     # SECTION 9: EPOCH LOOP
@@ -382,12 +385,6 @@ def run_trainable_frozen_flow(config, paths, settings):
                     batch_data['batch_step'] = batch_step
                     visualize_visualize(batch_data, batch_size, offset)
 
-                # _____ STATE SAVING _____
-                if save_state:
-                    print('Saving model!')
-                    checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch, batch_step, scheduler=lr_scheduler)
-                    save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
-
                 # Reset running metrics after each display interval
                 mean_gen_loss = 0
 
@@ -457,6 +454,27 @@ def run_trainable_frozen_flow(config, paths, settings):
                     print(f"  holdout={holdout_metrics[list(holdout_metrics.keys())[0]]:.4f}")
                 if available['qa']:
                     print(f"  qa={qa_metrics[list(qa_metrics.keys())[0]]:.4f}")
+                
+                # ===== CONDITIONAL SAVE BASED ON HOLDOUT PERFORMANCE =====
+                if save_state and available['holdout']:
+                    if settings['train_save_on'] == 'always':
+                        should_save = True
+                    else:
+                        # Get the metric specified by train_save_on ('SSIM', 'MSE', or 'CUSTOM')
+                        metric_value = holdout_metrics[settings['train_save_on']]
+                        
+                        if settings['train_save_on'] == 'SSIM':
+                            # Maximize: save if new value is higher
+                            should_save = metric_value > best_holdout_metrics.get(settings['train_save_on'], -float('inf'))
+                        elif settings['train_save_on'] in ['MSE', 'CUSTOM']:
+                            # Minimize: save if new value is lower
+                            should_save = metric_value < best_holdout_metrics.get(settings['train_save_on'], float('inf'))
+                    
+                    if should_save:
+                        best_holdout_metrics[settings['train_save_on']] = metric_value
+                        print(f'💾 Saving model! New best {settings["train_save_on"]}: {metric_value:.6f}')
+                        checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch, batch_step, scheduler=lr_scheduler)
+                        save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
                     
             except FileNotFoundError:
                 raise
@@ -472,15 +490,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 print(f"[LR] Epoch {epoch+1}: {current_lr:.6e}")
 
     # ========================================================================================
-    # SECTION 13: FINAL STATE SAVING (after all epochs complete)
-    # ========================================================================================
-    if save_state:
-        print('Saving model!')
-        checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch + 1, batch_step, scheduler=lr_scheduler)
-        save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
-
-    # ========================================================================================
-    # SECTION 14: RETURN DATAFRAMES (if applicable)
+    # SECTION 13: RETURN DATAFRAMES (if applicable)
     # ========================================================================================
 
     if run_mode == 'test':
