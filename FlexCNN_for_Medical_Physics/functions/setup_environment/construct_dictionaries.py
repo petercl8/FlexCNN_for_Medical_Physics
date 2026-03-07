@@ -438,8 +438,8 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         
         # If metric-based saving is requested, ensure holdout files are provided
         if settings['train_save_on'] in ['SSIM', 'MSE', 'CUSTOM']:
-            if (data_files.get('train_val_act_sino_file') is None or 
-                data_files.get('train_val_act_image_file') is None):
+            if (train_opts.get('train_val_act_sino_file') is None or 
+                train_opts.get('train_val_act_image_file') is None):
                 raise ValueError(
                     f"train_save_on='{settings['train_save_on']}' requires holdout (validation) files. "
                     f"Set train_val_act_sino_file and train_val_act_image_file in user_params.py, "

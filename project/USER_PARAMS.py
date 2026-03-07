@@ -196,8 +196,8 @@ qa_slice_range=(13,20)          # Set to None, or (start, end) slice range to lo
 qa_hot_weight=0.5            # A weighted contrast recovery coefficient as follows: ROI_NEMA_hot * qa_hot_weight + ROI_NEMA_cold * (1-qa_hot_weight)
 
 ## QA Files ##
-qa_act_sino_file='QA-NEMA-highCountSino-bilinear-288x257.npy'
-#qa_act_sino_file='QA-NEMA-highCountSino-pool-288x257.npy'
+#qa_act_sino_file='QA-NEMA-highCountSino-bilinear-288x257.npy'
+qa_act_sino_file='QA-NEMA-highCountSino-pool-288x257.npy'
 #qa_act_sino_file='QA-NEMA-highCountSino-pool-288x171.npy'
 qa_act_image_file='QA-NEMA-actMap.npy'
 qa_atten_image_file=None
@@ -219,22 +219,22 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are autmatically appended suffixes of -atten and -act.
 #####
 
-train_checkpoint_file='checkpoint-ACT-288-bilinear-288x257-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
-#train_checkpoint_file='checkpoint-ACT-288-pool-288x257-padZeros-tunedSSIM-800epochs'  # Checkpoint file to load or save to.
+#train_checkpoint_file='checkpoint-ACT-288-bilinear-288x257-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-288-pool-288x257-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-288-pool-288x171-padSino-tunedSSIM-800epochs'
-
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
+train_csv_file='frame-ACT-288-pool-288x257-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 
-train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
+train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
 train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
+
 train_epochs = 800        # Number of training epochs.
 train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_eval_batch_size=1024           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
 train_dataframe_dirName='dataframes-train'  # Directory for training learning-curve dataframes (e.g., epoch vs MSE/SSIM/CUSTOM). Code will create if it doesn't exist.
-train_csv_file='frame-ACT-288-bilinear-288x257-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 
 ## Learning Rate Scheduling ##
 ## ------------------------ ##
@@ -248,8 +248,8 @@ train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II
 #train_augment=('II', True)
 #train_augment=(None, False)
 
-train_act_sino_file='train-highCountSino-bilinear-288x257.npy'
-#train_act_sino_file='train-highCountSino-pool-288x257.npy'
+train_act_sino_file='train-highCountSino-pool-288x257.npy'
+#train_act_sino_file='train-highCountSino-bilinear-288x257.npy'
 #train_act_sino_file='train-highCountSino-pool-288x171.npy'
 #train_act_sino_file='train-highCountSino-180x180.npy'
 #train_act_sino_file='train-highCountImage.npy'
@@ -272,9 +272,9 @@ train_act_recon2_file=None
 # Feature auto-enables when required train_val_* files are provided.
 # Learning curves are logged for both training and validation splits, saved to single dataframe.
 
-train_val_act_sino_file='val-highCountSino-bilinear-288x257.npy'
-#train_val_act_sino_file='test-highCountSino-pool-288x257.npy'
-#train_val_act_sino_file='test-highCountSino-pool-288x171.npy'     
+#train_val_act_sino_file='val-highCountSino-bilinear-288x257.npy'
+train_val_act_sino_file='val-highCountSino-pool-288x257.npy'
+#train_val_act_sino_file='val-highCountSino-pool-288x171.npy'     
 #train_val_act_sino_file=None      # Validation/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
 
 train_val_act_image_file='val-actMap.npy'     # Validation/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.

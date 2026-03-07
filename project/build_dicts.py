@@ -192,6 +192,8 @@ def build_all_dicts(params):
         'train_sample_division': params['train_sample_division'],
         'train_show_times': params['train_show_times'],
         'train_eval_batch_size': params['train_eval_batch_size'],
+        'train_val_act_sino_file': params['train_val_act_sino_file'],
+        'train_val_act_image_file': params['train_val_act_image_file'],
     }
     
     test_opts = {

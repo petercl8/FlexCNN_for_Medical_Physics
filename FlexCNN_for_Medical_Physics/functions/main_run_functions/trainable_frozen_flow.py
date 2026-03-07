@@ -472,8 +472,10 @@ def run_trainable_frozen_flow(config, paths, settings):
                     
                     if should_save:
                         best_holdout_metrics[settings['train_save_on']] = metric_value
+                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                         print(f'💾 Saving model! New best {settings["train_save_on"]}: {metric_value:.6f}')
-                        checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch, batch_step, scheduler=lr_scheduler)
+                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                        checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch+1, batch_step, scheduler=lr_scheduler)
                         save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
                     
             except FileNotFoundError:
