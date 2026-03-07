@@ -111,10 +111,10 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
 #tune_csv_file='frame-CONCAT-256-bilinear-largePadSinos-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='frame-ACT-288-pool-widePadSino-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-288-pool-288x171-padSino-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='temp'
 
-tune_exp_name='search-ACT-288-pool-widePadSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-288-pool-288x171-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
@@ -141,9 +141,9 @@ tune_search_alg='optuna'     # 'optuna' or 'hyperopt'
 ## Tuning Files ##
 ## -------------- ##
 #tune_act_sino_file ='train-highCountSino-382x513.npy'
-#tune_act_sino_file='train-highCountSino-320x257-vertCrop_horizPool2.npy'
-tune_act_sino_file='train-highCountSino-288x171-vertCrop_horizPool3.npy'
-#tune_act_sino_file='train-highCountSino-288x257-vertCrop_horizBilinear.npy'
+tune_act_sino_file='train-highCountSino-bilinear-288x257.npy'
+#tune_act_sino_file='train-highCountSino-pool-288x257.npy'
+#tune_act_sino_file='train-highCountSino-pool-288x171.npy'
 #tune_act_sino_file='train-highCountSino-180x180.npy'
 #tune_act_sino_file='train-highCountSino-128x128.npy'
 #tune_act_sino_file='train-highCountImage.npy'
@@ -168,8 +168,7 @@ tune_act_recon2_file=None
 ## -------------------- ##
 #tune_val_act_sino_file='val-highCountSino-382x513.npy'
 #tune_val_act_sino_file='val-highCountSino-320x257-vertCrop_horizPool2.npy'
-tune_val_act_sino_file='val-highCountSino-288x171-vertCrop_horizPool3.npy'
-#tune_val_act_sino_file='val-highCountSino-288x257-vertCrop_horizBilinear.npy'
+tune_val_act_sino_file='val-highCountSino-288x257-vertCrop_horizBilinear.npy'
 
 #tune_val_act_sino_file='val-highCountSino-180x180.npy'
 #tune_val_act_sino_file='val-highCountSino-128x128.npy'
@@ -193,11 +192,13 @@ tune_dataframe_dirName= 'dataframes-tune'  # Directory for tuning dataframe (sto
 ###################
 ## QA Configuration ##
 qa_load_mode='sequential'        # 'random': augmented random sampling of QA phantom. 'sequential': load whole phantom in order, no augmentation. 'random' is generally best for tuning on QA phantoms, 'sequential' makes sense for plotting learning curves while training.
-qa_slice_range=None          # Optional (start, end) slice range to load specific QA indices (end is exclusive). To look at the center of a NEMA phantom, use (13,20)
+qa_slice_range=(13,20)          # Set to None, or (start, end) slice range to load specific QA indices (end is exclusive). To look at the center of a NEMA phantom, use (13,20)
 qa_hot_weight=0.5            # A weighted contrast recovery coefficient as follows: ROI_NEMA_hot * qa_hot_weight + ROI_NEMA_cold * (1-qa_hot_weight)
 
 ## QA Files ##
-qa_act_sino_file='QA-NEMA-highCountSino-288x171-vertCrop_horizPool3.npy'
+qa_act_sino_file='QA-NEMA-highCountSino-bilinear-288x257.npy'
+#qa_act_sino_file='QA-NEMA-highCountSino-pool-288x257.npy'
+#qa_act_sino_file='QA-NEMA-highCountSino-pool-288x171.npy'
 qa_act_image_file='QA-NEMA-actMap.npy'
 qa_atten_image_file=None
 qa_atten_sino_file=None
@@ -218,13 +219,13 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are autmatically appended suffixes of -atten and -act.
 #####
 
-#train_checkpoint_file='checkpoint-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
-#train_checkpoint_file='checkpoint-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-ACT-288-pool-288x171-padSino-tunedSSIM-800epochs'
+train_checkpoint_file='checkpoint-ACT-288-bilinear-288x257-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
+#train_checkpoint_file='checkpoint-ACT-288-pool-288x257-padZeros-tunedSSIM-800epochs'  # Checkpoint file to load or save to.
+#train_checkpoint_file='checkpoint-ACT-288-pool-288x171-padSino-tunedSSIM-800epochs'
 
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
 
-train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
+train_load_state=True   # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
 train_epochs = 800        # Number of training epochs.
 train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
@@ -232,12 +233,12 @@ train_sample_division=1    # To evenly sample the training set by a given factor
 train_show_times=False    # Show calculation times during training?
 train_eval_batch_size=1024           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
 train_dataframe_dirName='dataframes-train'  # Directory for training learning-curve dataframes (e.g., epoch vs MSE/SSIM/CUSTOM). Code will create if it doesn't exist.
-train_csv_file='frame-ACT-288-pool-288x171-padSino-tunedSSIM-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='frame-ACT-288-bilinear-288x257-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 
 ## Learning Rate Scheduling ##
 ## ------------------------ ##
 train_lr_schedule_type='cosine'  # Options: 'none', 'cosine'. Scheduling is applied in train mode only.
-train_lr_min_factor=0.05       # Minimum LR as a fraction of gen_lr (eta_min = gen_lr * train_lr_min_factor).
+train_lr_min_factor=0.03       # Minimum LR as a fraction of gen_lr (eta_min = gen_lr * train_lr_min_factor).
 
 ## Data Files & Augmentations ##
 ## -------------------------- ##
@@ -246,8 +247,9 @@ train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II
 #train_augment=('II', True)
 #train_augment=(None, False)
 
-train_act_sino_file='train-highCountSino-288x171-vertCrop_horizPool3.npy'
-#train_act_sino_file='train-highCountSino-288x257-vertCrop_horizBilinear.npy'
+train_act_sino_file='train-highCountSino-bilinear-288x257.npy'
+#train_act_sino_file='train-highCountSino-pool-288x257.npy'
+#train_act_sino_file='train-highCountSino-pool-288x171.npy'
 #train_act_sino_file='train-highCountSino-180x180.npy'
 #train_act_sino_file='train-highCountImage.npy'
 
@@ -269,11 +271,12 @@ train_act_recon2_file=None
 # Feature auto-enables when required train_test_* files are provided.
 # Learning curves are logged for both training and test splits, saved to single dataframe.
 
-train_test_act_sino_file='test-highCountSino-288x171-vertCrop_horizPool3.npy'
-#train_test_act_sino_file='test-highCountSino-288x257-vertCrop_horizBilinear.npy'      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
+train_test_act_sino_file='val-highCountSino-bilinear-288x257.npy'
+#train_test_act_sino_file='test-highCountSino-pool-288x257.npy'
+#train_test_act_sino_file='test-highCountSino-pool-288x171.npy'     
 #train_test_act_sino_file=None      # Test/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
 
-train_test_act_image_file='test-actMap.npy'     # Test/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
+train_test_act_image_file='val-actMap.npy'     # Test/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
 #train_test_act_image_file=None     # Test/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
 train_test_atten_sino_file=None    # Test/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
 train_test_atten_image_file=None   # Test/monitoring attenuation image (optional, for CONCAT/frozen flow).

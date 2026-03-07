@@ -13,6 +13,45 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
+# 288x288, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded with zeros horizontally to 288
+config_ACT_SI= {
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "Tanh",
+  "SI_gen_hidden_dim": 10,
+  "SI_gen_mult": 1.9886575078445312,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 1494,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 5.894328507562502,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 9.862580591354153,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.5583313727913738,
+  "gen_b2": 0.3819733954553099,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0016547324637469305,
+  "gen_sino_channels": 3,
+  "gen_sino_size": 288,
+  "network_type": "ACT",
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+
+'''
+## Tuned for 288x288 network with 288x171 pooling and sinogram-padding
+## Tuning metric SSIM
 config_ACT_SI = {
   "SI_alpha_min": -1,
   "SI_dropout": False,
@@ -45,7 +84,7 @@ config_ACT_SI = {
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
+'''
 '''
 # 288x288, tuned SSIM
 # Crop sinograms vertically to 288, then average pool horizontally (pool size = 2)
@@ -84,46 +123,6 @@ config_ACT_SI = {
   "train_SI": True
 }
 '''
-
-'''
-# 288x288, tuned SSIM
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded with zeros horizontally to 288
-config_ACT_SI= {
-  "SI_alpha_min": -1,
-  "SI_disc_adv_criterion": 1,
-  "SI_dropout": false,
-  "SI_exp_kernel": 3,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "Tanh",
-  "SI_gen_hidden_dim": 10,
-  "SI_gen_mult": 1.9886575078445312,
-  "SI_gen_neck": "narrow",
-  "SI_gen_z_dim": 1494,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "none",
-  "SI_learnedScale_init": 5.894328507562502,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 9.862580591354153,
-  "SI_pad_mode": "replicate",
-  "SI_skip_mode": "none",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.5583313727913738,
-  "gen_b2": 0.3819733954553099,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0016547324637469305,
-  "gen_sino_channels": 3,
-  "gen_sino_size": 288,
-  "network_type": "ACT",
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
-
 
 ###############################
 ### OLDER TUNINGS ARE BELOW ###

@@ -82,7 +82,6 @@ def _extract_standard_eval_batch(dataset, indices):
 
     return result
 
-
 def _get_or_create_eval_dataset(split, paths, config, settings):
     """Get cached train/holdout evaluation dataset or create it on first call."""
     global _train_dataset, _holdout_dataset
@@ -187,7 +186,7 @@ def load_eval_batch(split, paths, config, settings, augment=None):
                 f"split='qa' requires all of {required_qa_paths} to be set."
             )
         
-        qa_load_mode = settings.get('qa_load_mode', 'random')
+        qa_load_mode = settings.get('qa_load_mode')
         qa_slice_range = settings.get('qa_slice_range')
         
         # Default augmentation for QA batch

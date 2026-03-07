@@ -101,7 +101,7 @@ def create_lr_scheduler(optimizer, settings: dict, total_epochs: int, resumed_ep
     if settings.get('run_mode') != 'train':
         return None
 
-    schedule_type = settings.get('train_lr_schedule_type', 'none')
+    schedule_type = settings.get('train_lr_schedule_type')
     if schedule_type == 'none':
         return None
 
@@ -111,7 +111,7 @@ def create_lr_scheduler(optimizer, settings: dict, total_epochs: int, resumed_ep
     if total_epochs <= 0:
         raise ValueError(f"total_epochs must be positive, got {total_epochs}.")
 
-    min_factor = settings.get('train_lr_min_factor', 0.01)
+    min_factor = settings.get('train_lr_min_factor')
     base_lrs = [group['lr'] for group in optimizer.param_groups]
     eta_min = min(base_lrs) * min_factor
 
