@@ -29,7 +29,7 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 
@@ -287,11 +287,8 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 # Testing #
 ###########
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
-test_csv_file = 'frame-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs-trainSet.csv' # csv dataframe file to save testing results to
-#test_csv_file = 'frame-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs-trainSet.csv' # csv dataframe file to save testing results to
-
-test_checkpoint_file='checkpoint-ACT-288-pool-narrowPadZeros-tunedSSIM-600epochs' # Checkpoint to load model for testing
-#test_checkpoint_file='checkpoint-ACT-288-bilinear-narrowPadZeros-tunedSSIM-600epochs'
+test_csv_file =           'frame-ACT-288-pool-288x257-padZeros-tunedSSIM-0p3lr-800epochs-trainSet.csv' # csv dataframe file to save testing results to
+test_checkpoint_file='checkpoint-ACT-288-pool-288x257-padZeros-tunedSSIM-0p3lr-800epochs' # Checkpoint to load model for testing
 
 test_display_step=15        # Make this a larger number to save bit of time (displays images/metrics less often)
 test_batch_size=25          # This doesn't affect the final metrics, just the displayed metrics as testing procedes
@@ -308,7 +305,7 @@ test_sample_division=1
 
 ## Select Data Files ##
 ## ----------------- ##
-test_act_sino_file='train-highCountSino-288x257-vertCrop_horizPool2.npy'
+test_act_sino_file='train-highCountSino-288x257-pool-288x257.npy'
 test_act_image_file= 'train-actMap.npy'
 
 test_act_recon1_file='train-highCountImage.npy'
