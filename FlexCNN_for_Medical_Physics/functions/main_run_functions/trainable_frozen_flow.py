@@ -173,9 +173,14 @@ def run_trainable_frozen_flow(config, paths, settings):
         settings,
         total_epochs=num_epochs,
         resumed_epochs=start_epoch,
+        advance_on_resume=(lr_scheduler_state_dict is None),
     )
     if lr_scheduler is not None and lr_scheduler_state_dict is not None:
         lr_scheduler.load_state_dict(lr_scheduler_state_dict)
+
+    if run_mode == 'train':
+        start_lr = gen_act_opt.param_groups[0]['lr']
+        print(f"[LR] Training start: {start_lr:.6e}")
 
     # ========================================================================================
     # SECTION 6: INSTANTIATE LOSS FUNCTION FOR ACTIVITY NETWORK
@@ -472,8 +477,10 @@ def run_trainable_frozen_flow(config, paths, settings):
                     
                     if should_save:
                         best_holdout_metrics[settings['train_save_on']] = metric_value
+                        save_lr = gen_act_opt.param_groups[0]['lr']
                         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                         print(f'💾 Saving model! New best {settings["train_save_on"]}: {metric_value:.6f}')
+                        print(f'[LR] Save-time LR: {save_lr:.6e}')
                         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                         checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch+1, batch_step, scheduler=lr_scheduler)
                         save_checkpoint(checkpoint_dict, checkpoint_path + '-act')

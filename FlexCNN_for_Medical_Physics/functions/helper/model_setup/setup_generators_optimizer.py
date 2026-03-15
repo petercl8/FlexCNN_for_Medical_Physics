@@ -85,7 +85,7 @@ def create_optimizer(model, config: dict) -> torch.optim.Adam:
     return optimizer
 
 
-def create_lr_scheduler(optimizer, settings: dict, total_epochs: int, resumed_epochs: int = 0):
+def create_lr_scheduler(optimizer, settings: dict, total_epochs: int, resumed_epochs: int = 0, advance_on_resume: bool = True):
     """
     Create an epoch-based learning rate scheduler for training mode.
 
@@ -94,6 +94,8 @@ def create_lr_scheduler(optimizer, settings: dict, total_epochs: int, resumed_ep
         settings: Runtime settings dictionary.
         total_epochs: Total planned training epochs (T_max for cosine schedule).
         resumed_epochs: Number of completed epochs before current run.
+        advance_on_resume: If True, manually advance scheduler by resumed_epochs.
+            Use False when loading scheduler state from checkpoint.
 
     Returns:
         Scheduler instance or None when scheduling is disabled.
@@ -122,9 +124,10 @@ def create_lr_scheduler(optimizer, settings: dict, total_epochs: int, resumed_ep
     )
 
     # Backward-compatible resume path for checkpoints without scheduler state.
-    # We only advance the scheduler (never optimizer) to the loaded epoch index.
-    for _ in range(max(0, resumed_epochs)):
-        scheduler.step()
+    # Only advance when explicitly requested by caller.
+    if advance_on_resume:
+        for _ in range(max(0, resumed_epochs)):
+            scheduler.step()
 
     return scheduler
 

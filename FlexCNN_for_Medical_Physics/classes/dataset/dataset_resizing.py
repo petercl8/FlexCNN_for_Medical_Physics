@@ -187,6 +187,9 @@ def pool_sino(
         Tuple (act_sino_pooled, atten_sino_pooled)
     """
 
+    if vert_pool_size == 1 and horiz_pool_size == 1:
+        return act_sino_multChannel, atten_sino_multChannel
+
     def _process_sinogram_stack(sino_stack):
         """
         Helper to apply pooling transforms to sinogram stack [B, C, H, W] where B=1 or B=2.
