@@ -54,6 +54,8 @@ def _extract_standard_eval_batch(dataset, indices):
     """Extract act/atten tensors from sampled dataset indices (no QA masks)."""
     act_sino_batch = []
     act_image_batch = []
+    act_recon1_batch = []
+    act_recon2_batch = []
     atten_sino_batch = []
     atten_image_batch = []
 
@@ -63,6 +65,12 @@ def _extract_standard_eval_batch(dataset, indices):
             act_sino, act_image = act_data
             act_sino_batch.append(act_sino)
             act_image_batch.append(act_image)
+        if recon_data is not None:
+            recon1, recon2 = recon_data
+            if recon1 is not None:
+                act_recon1_batch.append(recon1)
+            if recon2 is not None:
+                act_recon2_batch.append(recon2)
         if atten_data is not None:
             atten_sino, atten_image = atten_data
             if atten_sino is not None:
@@ -75,6 +83,10 @@ def _extract_standard_eval_batch(dataset, indices):
         result['act_sino_scaled'] = torch.stack(act_sino_batch)
     if act_image_batch:
         result['act_image_scaled'] = torch.stack(act_image_batch)
+    if act_recon1_batch:
+        result['act_recon1_scaled'] = torch.stack(act_recon1_batch)
+    if act_recon2_batch:
+        result['act_recon2_scaled'] = torch.stack(act_recon2_batch)
     if atten_sino_batch:
         result['atten_sino_scaled'] = torch.stack(atten_sino_batch)
     if atten_image_batch:
@@ -98,8 +110,8 @@ def _get_or_create_eval_dataset(split, paths, config, settings):
                 num_examples=-1,
                 sample_division=1,
                 device='cpu',
-                act_recon1_path=None,
-                act_recon2_path=None,
+                act_recon1_path=paths.get('act_recon1_path'),
+                act_recon2_path=paths.get('act_recon2_path'),
                 atten_image_path=paths.get('atten_image_path'),
                 atten_sino_path=paths.get('atten_sino_path')
             )
@@ -117,8 +129,8 @@ def _get_or_create_eval_dataset(split, paths, config, settings):
                 num_examples=-1,
                 sample_division=1,
                 device='cpu',
-                act_recon1_path=None,
-                act_recon2_path=None,
+                act_recon1_path=paths.get('eval_holdout_act_recon1_path'),
+                act_recon2_path=paths.get('eval_holdout_act_recon2_path'),
                 atten_image_path=paths.get('eval_holdout_atten_image_path'),
                 atten_sino_path=paths.get('eval_holdout_atten_sino_path')
             )
@@ -176,11 +188,24 @@ def load_eval_batch(split, paths, config, settings, augment=None):
     
     # ===== QA split: Load phantom with masks =====
     else:  # split == 'qa'
+        network_type = str(config.get('network_type')).upper()
+        recon_variant = int(config.get('recon_variant'))
+
         # Check required paths
-        required_qa_paths = [
-            'eval_qa_act_sino_path', 'eval_qa_act_image_path', 'eval_qa_hotMask_path',
-            'eval_qa_hotBackgroundMask_path'
-        ]
+        if network_type == 'DENOISE':
+            if recon_variant not in (1, 2):
+                raise ValueError(f"DENOISE requires recon_variant to be 1 or 2, got {recon_variant}")
+            required_qa_paths = [
+                'eval_qa_act_image_path',
+                'eval_qa_act_recon1_path' if recon_variant == 1 else 'eval_qa_act_recon2_path',
+                'eval_qa_hotMask_path',
+                'eval_qa_hotBackgroundMask_path'
+            ]
+        else:
+            required_qa_paths = [
+                'eval_qa_act_sino_path', 'eval_qa_act_image_path', 'eval_qa_hotMask_path',
+                'eval_qa_hotBackgroundMask_path'
+            ]
         if not all(paths.get(p) is not None for p in required_qa_paths):
             raise ValueError(
                 f"split='qa' requires all of {required_qa_paths} to be set."
@@ -195,16 +220,24 @@ def load_eval_batch(split, paths, config, settings, augment=None):
         
         # Determine augmentation based on load mode
         qa_augment = augment if qa_load_mode == 'random' else (None, False)
+
+        # For DENOISE QA evaluation, route selected recon path through act_sino slot.
+        qa_act_sino_path = paths.get('eval_qa_act_sino_path')
+        if network_type == 'DENOISE':
+            qa_act_sino_path = paths.get('eval_qa_act_recon1_path' if recon_variant == 1 else 'eval_qa_act_recon2_path')
         
         global _qa_dataset
 
         # Load QA dataset on first call; reuse on subsequent calls
         if _qa_dataset is None:
+            qa_settings = dict(settings)
+            qa_settings['act_recon1_scale'] = 1.0 # We use the recon slots in the dataloader for masks.
+            qa_settings['act_recon2_scale'] = 1.0 # Therefore, set the scales to 1.0 to avoid unintended scaling of the masks.
             _qa_dataset = NpArrayDataSet(
                 act_image_path=paths['eval_qa_act_image_path'],
-                act_sino_path=paths['eval_qa_act_sino_path'],
+                act_sino_path=qa_act_sino_path,
                 config=config,
-                settings=settings,
+                settings=qa_settings,
                 augment=qa_augment,
                 offset=0,
                 num_examples=-1,
@@ -249,11 +282,17 @@ def load_eval_batch(split, paths, config, settings, augment=None):
                     atten_image_batch.append(atten_image)
         
         result = {
-            'act_sino_scaled': torch.stack(act_sino_batch),
             'act_image_scaled': torch.stack(act_image_batch),
             'hotMask': torch.stack(hotMask_batch),
             'hotBackgroundMask': torch.stack(hotBackgroundMask_batch),
         }
+        # For DENOISE, store the recon input in the correct slot so route_batch_inputs
+        # sees it the same way for all splits (train, holdout, QA).
+        if network_type == 'DENOISE':
+            recon_key = 'act_recon1_scaled' if recon_variant == 1 else 'act_recon2_scaled'
+            result[recon_key] = torch.stack(act_sino_batch)
+        else:
+            result['act_sino_scaled'] = torch.stack(act_sino_batch)
         
         if atten_sino_batch:
             result['atten_sino_scaled'] = torch.stack(atten_sino_batch)
@@ -262,11 +301,11 @@ def load_eval_batch(split, paths, config, settings, augment=None):
         
         return result
 
-def evaluate_metrics(generators, batch, device, train_SI, network_type, tune_metric='SSIM', evaluate_on='val', run_mode='tune', compute_standard_metrics=False):
+def evaluate_metrics(generators, batch, device, tune_metric='SSIM', evaluate_on='val', run_mode='tune', compute_standard_metrics=False, config=None):
     """
     Evaluate network(s) on holdout or QA batch with unified interface.
     
-    Routes between simple and frozen flow networks based on network_type parameter.
+    Routes between simple and frozen flow networks based on config['network_type'].
     Supports mixed metric outputs: standard metrics (MSE/SSIM/CUSTOM) or split-specific
     metrics (ROI for QA) depending on compute_standard_metrics flag.
     
@@ -283,9 +322,11 @@ def evaluate_metrics(generators, batch, device, train_SI, network_type, tune_met
                - 'act_sino_scaled', 'act_image_scaled' (always present)
                - 'atten_sino_scaled' or 'atten_image_scaled' (for attenuation networks)
                - 'hotMask', 'hotBackgroundMask' (for QA modes)
-        device: torch device to move tensors to
-        train_SI: bool, True for sino→image, False for image→sino
-        network_type: str, 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW'
+         device: torch device to move tensors to
+         config: dict, must include at least:
+             - 'network_type': one of 'ACT', 'ATTEN', 'CONCAT', 'DENOISE', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'
+             - 'train_SI': bool, True for sino→image, False for image→sino
+             - optional 'recon_variant' for DENOISE input routing
         tune_metric: str, which metric to optimize ('MSE', 'SSIM', 'CUSTOM', 'qa-simple', 'qa-nema')
         evaluate_on: str, 'val' or 'qa'
         run_mode: str, 'tune' or 'train' (affects CUSTOM metric computation)
@@ -300,6 +341,12 @@ def evaluate_metrics(generators, batch, device, train_SI, network_type, tune_met
     Raises:
         ValueError: if network_type is invalid or required data missing
     """
+    if config is None:
+        raise ValueError("evaluate_metrics requires config to determine network_type/train_SI")
+
+    train_SI = bool(config.get('train_SI'))
+    network_type = str(config.get('network_type')).upper()
+
     # Route to appropriate evaluator based on network type
     is_frozen_flow = network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW')
     
@@ -313,9 +360,10 @@ def evaluate_metrics(generators, batch, device, train_SI, network_type, tune_met
         # Simple network path  
         return _evaluate_metrics_simple(generators, batch, device, train_SI, network_type,
                                          tune_metric=tune_metric, evaluate_on=evaluate_on,
-                                         run_mode=run_mode, compute_standard_metrics=compute_standard_metrics)
+                                         run_mode=run_mode, compute_standard_metrics=compute_standard_metrics,
+                                         config=config)
 
-def _evaluate_metrics_simple(generators, batch, device, train_SI, network_type, tune_metric='SSIM', evaluate_on='val', run_mode='tune', compute_standard_metrics=False):
+def _evaluate_metrics_simple(generators, batch, device, train_SI, network_type, tune_metric='SSIM', evaluate_on='val', run_mode='tune', compute_standard_metrics=False, config=None):
     """
     Evaluate simple network (ACT, ATTEN, or CONCAT) on batch.
     
@@ -327,7 +375,8 @@ def _evaluate_metrics_simple(generators, batch, device, train_SI, network_type, 
     gen = generators[0]
     
     # Route inputs and targets
-    eval_input, eval_target = route_batch_inputs(train_SI, batch, network_type)
+    recon_variant = 1 if config is None else int(config.get('recon_variant'))
+    eval_input, eval_target = route_batch_inputs(train_SI, batch, network_type, recon_variant=recon_variant)
     
     # Move to device
     eval_input = eval_input.to(device)
@@ -364,12 +413,13 @@ def _evaluate_metrics_simple(generators, batch, device, train_SI, network_type, 
     elif evaluate_on == 'qa':
         # QA mode: Compute ROI metrics based on tune_metric type
         hotMask = batch['hotMask'].to(device)
+        hotBackgroundMask = None
         eval_qa_output = eval_target if use_ground_truth_rois else eval_output
         
         if tune_metric == 'qa-simple':
             # QA Simple mode: compute simple ROI metrics
             cr_metrics = ROI_simple_phantom(eval_target, eval_qa_output, hotMask)
-            del eval_input, eval_target, eval_output, hotMask, hotBackgroundMask, eval_qa_output
+            del eval_input, eval_target, eval_output, hotMask, eval_qa_output
             return cr_metrics
         elif tune_metric == 'qa-nema':
             # QA NEMA mode: compute NEMA ROI metrics
@@ -461,12 +511,13 @@ def _evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='
     elif evaluate_on == 'qa':
         # QA mode: Compute ROI metrics based on tune_metric type
         hotMask = batch['hotMask'].to(device)
+        hotBackgroundMask = None
         eval_qa_output = eval_act_image if use_ground_truth_rois else eval_output
         
         if tune_metric == 'qa-simple':
             # QA Simple mode: compute simple ROI metrics
             cr_metrics = ROI_simple_phantom(eval_act_image, eval_qa_output, hotMask)
-            del eval_act_sino, eval_act_image, atten_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output, hotMask, hotBackgroundMask, eval_qa_output
+            del eval_act_sino, eval_act_image, atten_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output, hotMask, eval_qa_output
             return cr_metrics
         elif tune_metric == 'qa-nema':
             # QA NEMA mode: compute NEMA ROI metrics
@@ -481,7 +532,7 @@ def _evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='
         raise ValueError(f"Unknown evaluate_on='{evaluate_on}' (expected 'val' or 'qa')")
 
 def report_cross_validation_metrics(generators, paths, config, settings, tune_dataframe, tune_dataframe_path, 
-                        train_SI, tune_dataframe_fraction, tune_max_t, report_num, 
+                        tune_dataframe_fraction, tune_max_t, report_num, 
                         example_num, batch_step, epoch, device, report_to_ray=True, 
                         return_metrics=False):
     """
@@ -497,7 +548,6 @@ def report_cross_validation_metrics(generators, paths, config, settings, tune_da
         settings: Settings dictionary with evaluate_on, tune_metric, etc.
         tune_dataframe: Current tune dataframe (optional)
         tune_dataframe_path: Path to save dataframe (optional)
-        train_SI: Training direction (True for sino→image)
         tune_dataframe_fraction: Fraction of tune_max_t at which to save dataframe
         tune_max_t: Maximum number of reports
         report_num: Current report number
@@ -520,7 +570,6 @@ def report_cross_validation_metrics(generators, paths, config, settings, tune_da
     
     t_total = t_start = time.time()
     evaluate_on = settings.get('evaluate_on', 'val')
-    network_type = config.get('network_type', 'ACT')
     tune_metric = settings.get('tune_metric', 'SSIM')
     run_mode = settings.get('run_mode', 'tune')
     
@@ -535,9 +584,9 @@ def report_cross_validation_metrics(generators, paths, config, settings, tune_da
     t_start = display_times(f"[TUNE_REPORT #{report_num}] Batch load time", t_start, PRINT_REPORT_TIMING)
     
     # ===== EVALUATE: Compute metrics on batch =====
-    metrics = evaluate_metrics(generators, batch, device, train_SI, network_type, 
+    metrics = evaluate_metrics(generators, batch, device,
                                tune_metric=tune_metric, evaluate_on=evaluate_on, 
-                               run_mode=run_mode, compute_standard_metrics=False)
+                               run_mode=run_mode, compute_standard_metrics=False, config=config)
     t_start = display_times(f"[TUNE_REPORT #{report_num}] Evaluation time", t_start, PRINT_REPORT_TIMING)
     
     # ===== UPDATE: Save dataframe checkpoint if reached fraction =====

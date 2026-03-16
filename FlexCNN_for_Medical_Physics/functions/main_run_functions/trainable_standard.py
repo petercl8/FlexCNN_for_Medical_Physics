@@ -237,6 +237,14 @@ def run_trainable(config, paths, settings):
         paths['atten_image_path'] = None
         paths['tune_val_atten_image_path'] = None
         paths['tune_qa_atten_image_path']=None
+    elif network_type == 'DENOISE':
+        # DENOISE: attenuation paths are not required
+        paths['atten_image_path'] = None
+        paths['atten_sino_path'] = None
+        paths['tune_val_atten_image_path'] = None
+        paths['tune_val_atten_sino_path'] = None
+        paths['tune_qa_atten_path'] = None
+        paths['tune_qa_atten_image_path'] = None
 
 
     # ========================================================================================
@@ -252,6 +260,16 @@ def run_trainable(config, paths, settings):
         # Require activity domain
         require_path('act_image_path')
         require_path('act_sino_path')
+    if network_type == 'DENOISE':
+        # Require activity image target and selected reconstruction input
+        require_path('act_image_path')
+        recon_variant = int(config.get('recon_variant'))
+        if recon_variant == 1:
+            require_path('act_recon1_path')
+        elif recon_variant == 2:
+            require_path('act_recon2_path')
+        else:
+            raise ValueError(f"Invalid recon_variant={recon_variant}. Expected 1 or 2.")
     if network_type == 'CONCAT':
         # CONCAT needs activity target and both sinograms#
         require_path('atten_sino_path')
@@ -321,10 +339,17 @@ def run_trainable(config, paths, settings):
             batch_tensors = {
                 'act_sino_scaled': act_sino_scaled,
                 'act_image_scaled': act_image_scaled,
+                'act_recon1_scaled': act_recon1,
+                'act_recon2_scaled': act_recon2,
                 'atten_sino_scaled': atten_sino_scaled,
                 'atten_image_scaled': atten_image_scaled
             }
-            input_, target = route_batch_inputs(train_SI, batch_tensors, network_type)
+            input_, target = route_batch_inputs(
+                train_SI,
+                batch_tensors,
+                network_type,
+                recon_variant=config.get('recon_variant')
+            )
 
             # _____ SUBSECTION 10C: FORWARD PASS & TRAINING STEP (tune/train only) _____
             if run_mode in ('tune', 'train'):
@@ -368,7 +393,7 @@ def run_trainable(config, paths, settings):
             if run_mode == 'visualize':
                 if network_type != 'ATTEN':
                     # Activity domain: generate recon comparisons
-                    recon1_output, recon2_output = generate_reconstructions_for_visualization(recon1, recon2, input_, config)
+                    recon1_output, recon2_output = generate_reconstructions_for_visualization(act_recon1, act_recon2, input_, config)
 
             _ = display_times('metrics time', time_init_metrics, show_times)
 
@@ -392,7 +417,7 @@ def run_trainable(config, paths, settings):
                 if run_mode == 'tune' and session is not None:
                     report_cross_validation_metrics(
                         (gen,), paths, config, settings, tune_dataframe, tune_dataframe_path,
-                        train_SI, tune_dataframe_fraction, tune_max_t, report_num,
+                        tune_dataframe_fraction, tune_max_t, report_num,
                         example_num, batch_step, epoch, device
                     )
                     report_num += 1
@@ -431,18 +456,19 @@ def run_trainable(config, paths, settings):
             from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluation import load_eval_batch, evaluate_metrics
             
             # Check which splits are available
-            available = check_eval_paths_provided(paths, network_type)
+            available = check_eval_paths_provided(paths, network_type, config=config)
             
             gen.eval()
             try:
                 # ===== TRAINING SPLIT (always available) =====
                 train_batch = load_eval_batch('train', paths, config, settings)
                 train_metrics = evaluate_metrics(
-                    (gen,), train_batch, device, train_SI, network_type,
+                    (gen,), train_batch, device,
                     tune_metric='MSE',  # Metric doesn't matter for train split, we'll compute all standard metrics
                     evaluate_on='val',
                     run_mode='train',
-                    compute_standard_metrics=True  # Always compute MSE/SSIM/CUSTOM for CSV consistency
+                    compute_standard_metrics=True,  # Always compute MSE/SSIM/CUSTOM for CSV consistency
+                    config=config
                 )
                 train_dataframe = append_train_learning_curve_row(
                     train_dataframe, train_dataframe_path, train_metrics,
@@ -453,11 +479,12 @@ def run_trainable(config, paths, settings):
                 if available['holdout']:
                     holdout_batch = load_eval_batch('holdout', paths, config, settings)
                     holdout_metrics = evaluate_metrics(
-                        (gen,), holdout_batch, device, train_SI, network_type,
+                        (gen,), holdout_batch, device,
                         tune_metric='MSE',
                         evaluate_on='val',
                         run_mode='train',
-                        compute_standard_metrics=True  # Always compute standard metrics for CSV consistency
+                        compute_standard_metrics=True,  # Always compute standard metrics for CSV consistency
+                        config=config
                     )
                     train_dataframe = append_train_learning_curve_row(
                         train_dataframe, train_dataframe_path, holdout_metrics,
@@ -468,11 +495,12 @@ def run_trainable(config, paths, settings):
                 if available['qa']:
                     qa_batch = load_eval_batch('qa', paths, config, settings, augment=('SI', True))
                     qa_metrics = evaluate_metrics(
-                        (gen,), qa_batch, device, train_SI, network_type,
+                        (gen,), qa_batch, device,
                         tune_metric='MSE',
                         evaluate_on='val',  # Force validation metrics for learning curves
                         run_mode='train',
-                        compute_standard_metrics=True  # Always compute standard metrics for CSV consistency
+                        compute_standard_metrics=True,  # Always compute standard metrics for CSV consistency
+                        config=config
                     )
                     train_dataframe = append_train_learning_curve_row(
                         train_dataframe, train_dataframe_path, qa_metrics,

@@ -30,8 +30,9 @@ v2-8 TPU - 1.82/hr
 ## Basic Options ##
 
 run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
-network_type='ACT'    # 'ACT', 'ATTEN', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
+network_type='ACT'    # 'ACT', 'ATTEN', 'DENOISE', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
+recon_variant=1       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
 
 ## See note below for info about these options ##
 #gen_sino_channels=1       # Number of sinogram channels for network currently being trained.
@@ -42,7 +43,7 @@ gen_sino_size=288         # Options: 180, 256, 288, 320. Resize input sinograms 
 gen_image_size=180        # Image size (Options: 90). Images are square.
 
 SI_normalize=False    # For sino-->image mappings: normalize CNN outputs (images), iterative recons, and ground truths from dataset. You can then adjust the scale factor in the search dictionaries.
-IS_normalize=False    # For image-->sinogram mappings: normalize CNN houtputs (sinograms), projections, and ground truth sinograms from dataset. You can then adjust scale factor in search dicts.
+IS_normalize=False    # For image-->sinogram mappings: normalize CNN outputs (sinograms), projections, and ground truth sinograms from dataset. You can then adjust scale factor in search dicts.
 
 ## Plot Mode ##
 plot_mode='inline'    # Options: 'always' (always show plots), 'inline' (only in Jupyter/Interactive Window), 'never' (silent)
@@ -181,6 +182,8 @@ tune_val_act_image_file='val-actMap.npy'
 tune_val_atten_sino_file=None
 
 tune_val_atten_image_file=None
+tune_val_act_recon1_file=None
+tune_val_act_recon2_file=None
 
 ## Unlikely to Change ##
 tune_storage_dirName='searches'     # Create tuning folders (one for each experiment, each of which contains multiple trials) in this directory. Leave blank ('') to place search files in project directory
@@ -199,6 +202,8 @@ qa_act_sino_file='QA-NEMA-highCountSino-bilinear-288x218.npy'
 #qa_act_sino_file='QA-NEMA-highCountSino-pool-288x257.npy'
 #qa_act_sino_file='QA-NEMA-highCountSino-pool-288x171.npy'
 qa_act_image_file='QA-NEMA-actMap.npy'
+qa_act_recon1_file=None
+qa_act_recon2_file=None
 qa_atten_image_file=None
 qa_atten_sino_file=None
 
@@ -277,6 +282,8 @@ train_val_act_sino_file='val-highCountSino-bilinear-288x218.npy'
 
 train_val_act_image_file='val-actMap.npy'     # Validation/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
 #train_val_act_image_file=None     # Validation/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
+train_val_act_recon1_file=None
+train_val_act_recon2_file=None
 train_val_atten_sino_file=None    # Validation/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
 train_val_atten_image_file=None   # Validation/monitoring attenuation image (optional, for CONCAT/frozen flow).
 

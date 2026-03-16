@@ -369,7 +369,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 if run_mode == 'tune' and session is not None:
                     report_cross_validation_metrics(
                         (gen_act, gen_atten), paths, config, settings, tune_dataframe, tune_dataframe_path,
-                        train_SI_act, tune_dataframe_fraction, tune_max_t, report_num,
+                        tune_dataframe_fraction, tune_max_t, report_num,
                         example_num, batch_step, epoch, device
                     )
                     report_num += 1
@@ -413,11 +413,12 @@ def run_trainable_frozen_flow(config, paths, settings):
                 # ===== TRAINING SPLIT (always available) =====
                 train_batch = load_eval_batch('train', paths, config, settings)
                 train_metrics = evaluate_metrics(
-                    (gen_act, gen_atten), train_batch, device, train_SI_act, config['network_type'],
+                    (gen_act, gen_atten), train_batch, device,
                     tune_metric='MSE',  # Metric doesn't matter for train split, we'll compute all standard metrics
                     evaluate_on='val',
                     run_mode='train',
-                    compute_standard_metrics=True  # Always compute MSE/SSIM/CUSTOM for CSV consistency
+                    compute_standard_metrics=True,  # Always compute MSE/SSIM/CUSTOM for CSV consistency
+                    config=config
                 )
                 train_dataframe = append_train_learning_curve_row(
                     train_dataframe, train_dataframe_path, train_metrics,
@@ -428,11 +429,12 @@ def run_trainable_frozen_flow(config, paths, settings):
                 if available['holdout']:
                     holdout_batch = load_eval_batch('holdout', paths, config, settings)
                     holdout_metrics = evaluate_metrics(
-                        (gen_act, gen_atten), holdout_batch, device, train_SI_act, config['network_type'],
+                        (gen_act, gen_atten), holdout_batch, device,
                         tune_metric='MSE',
                         evaluate_on='val',
                         run_mode='train',
-                        compute_standard_metrics=True  # Always compute standard metrics for CSV consistency
+                        compute_standard_metrics=True,  # Always compute standard metrics for CSV consistency
+                        config=config
                     )
                     train_dataframe = append_train_learning_curve_row(
                         train_dataframe, train_dataframe_path, holdout_metrics,
@@ -443,11 +445,12 @@ def run_trainable_frozen_flow(config, paths, settings):
                 if available['qa']:
                     qa_batch = load_eval_batch('qa', paths, config, settings, augment=('SI', True))
                     qa_metrics = evaluate_metrics(
-                        (gen_act, gen_atten), qa_batch, device, train_SI_act, config['network_type'],
+                        (gen_act, gen_atten), qa_batch, device,
                         tune_metric='MSE',
                         evaluate_on='val',  # Force validation metrics for learning curves
                         run_mode='train',
-                        compute_standard_metrics=True  # Always compute standard metrics for CSV consistency
+                        compute_standard_metrics=True,  # Always compute standard metrics for CSV consistency
+                        config=config
                     )
                     train_dataframe = append_train_learning_curve_row(
                         train_dataframe, train_dataframe_path, qa_metrics,

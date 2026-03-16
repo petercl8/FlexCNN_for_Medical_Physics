@@ -39,7 +39,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 #   act_recon2_array:    (optional) reconstruction 2 array
 #   config:              configuration dictionary with network_type, train_SI, gen_image_size, gen_sino_size,
 #                        gen_image_channels, gen_sino_channels, SI_normalize, SI_fixedScale, IS_normalize, IS_fixedScale
-#   augment:             augmentation type: 'SI', 'II', None, or False
+#   augment:             augmentation tuple: ('SI', flip_bool), ('II', flip_bool), or (None, False)
 #   index:               data sample index to extract
 #   device:              'cuda' or 'cpu'
 #   sino_resize_type:    sinogram resize method: 'pool' or 'bilinear' (default: 'pool')
@@ -54,7 +54,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 #   sino_init_vert_cut:  symmetrically crop sinograms to this height before resizing (None = no initial crop, default: None)
 
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
-                        config, settings, augment=False, index=0, device='cuda',
+                        config, settings, augment=(None, False), index=0, device='cuda',
                         sino_resize_type='pool',  # 'pool' or 'bilinear'. If you set to 'pool' but set vert_pool_size = horiz_pool_size = 1, it will do no pooling and leave the target alone.
                         sino_pad_type='sinogram',  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
                         image_pad_type='zeros',  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
@@ -297,7 +297,7 @@ class NpArrayDataSet(Dataset):
     #   ATTEN network:   act_sino_path=None, act_image_path=None, atten_image_path, atten_sino_path
     #   CONCAT network:  act_sino_path, act_image_path, atten_image_path, atten_sino_path
 
-    def __init__(self, act_sino_path, act_image_path, atten_image_path, atten_sino_path, act_recon1_path, act_recon2_path, config, settings, augment=False, offset=0, num_examples=-1, sample_division=1, device='cuda'):
+    def __init__(self, act_sino_path, act_image_path, atten_image_path, atten_sino_path, act_recon1_path, act_recon2_path, config, settings, augment=(None, False), offset=0, num_examples=-1, sample_division=1, device='cuda'):
 
         # ========================================================================================
         # SUBSECTION: Load Data to Arrays

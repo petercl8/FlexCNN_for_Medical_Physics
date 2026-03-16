@@ -24,6 +24,7 @@ from working.tuned_config_dicts.tuned_ACT_SI import config_ACT_SI
 from working.tuned_config_dicts.tuned_ACT_IS import config_ACT_IS
 from working.tuned_config_dicts.tuned_ATTEN_SI import config_ATTEN_SI
 from working.tuned_config_dicts.tuned_ATTEN_IS import config_ATTEN_IS
+from working.tuned_config_dicts.tuned_DENOISE_SI import config_DENOISE_SI
 from working.tuned_config_dicts.tuned_CONCAT import config_CONCAT
 from working.tuned_config_dicts.tuned_FROZEN_COFLOW import config_FROZEN_COFLOW
 from working.tuned_config_dicts.tuned_FROZEN_COUNTERFLOW import config_FROZEN_COUNTERFLOW
@@ -92,11 +93,15 @@ def build_all_dicts(params):
         'tune_atten_sino_file': params['tune_atten_sino_file'],
         'tune_val_act_sino_file': params['tune_val_act_sino_file'],
         'tune_val_act_image_file': params['tune_val_act_image_file'],
+        'tune_val_act_recon1_file': params.get('tune_val_act_recon1_file'),
+        'tune_val_act_recon2_file': params.get('tune_val_act_recon2_file'),
         'tune_val_atten_image_file': params['tune_val_atten_image_file'],
         'tune_val_atten_sino_file': params['tune_val_atten_sino_file'],
         # QA parameters (consolidated, used by both tune and train modes)
         'qa_act_sino_file': params['qa_act_sino_file'],
         'qa_act_image_file': params['qa_act_image_file'],
+        'qa_act_recon1_file': params['qa_act_recon1_file'],
+        'qa_act_recon2_file': params['qa_act_recon2_file'],
         'qa_hotMask_file': params['qa_hotMask_file'],
         'qa_hotBackgroundMask_file': params['qa_hotBackgroundMask_file'],
         'qa_coldMask_file': params['qa_coldMask_file'],
@@ -112,6 +117,8 @@ def build_all_dicts(params):
         'train_atten_sino_file': params['train_atten_sino_file'],
         'train_val_act_sino_file': params['train_val_act_sino_file'],
         'train_val_act_image_file': params['train_val_act_image_file'],
+        'train_val_act_recon1_file': params.get('train_val_act_recon1_file'),
+        'train_val_act_recon2_file': params.get('train_val_act_recon2_file'),
         'train_val_atten_image_file': params['train_val_atten_image_file'],
         'train_val_atten_sino_file': params['train_val_atten_sino_file'],
         'test_act_sino_file': params['test_act_sino_file'],
@@ -147,6 +154,7 @@ def build_all_dicts(params):
         'gen_sino_channels': params['gen_sino_channels'],
         'SI_normalize': params['SI_normalize'],
         'IS_normalize': params['IS_normalize'],
+        'recon_variant': params['recon_variant'],
     }
     
     qa_opts = {
@@ -253,6 +261,7 @@ def build_all_dicts(params):
         config_ACT_IS=config_ACT_IS,
         config_ATTEN_SI=config_ATTEN_SI,
         config_ATTEN_IS=config_ATTEN_IS,
+        config_DENOISE_SI=config_DENOISE_SI,
         config_CONCAT=config_CONCAT,
         config_FROZEN_COFLOW=config_FROZEN_COFLOW,
         config_FROZEN_COUNTERFLOW=config_FROZEN_COUNTERFLOW,

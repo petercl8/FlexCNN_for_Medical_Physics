@@ -317,6 +317,14 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         input = tensors['act_sino_tensor']
     elif network_type == 'ATTEN':
         input = tensors['atten_sino_tensor']
+    elif network_type == 'DENOISE':
+        recon_variant = int(config.get('recon_variant', 1))
+        if recon_variant == 1:
+            input = tensors['recon1_tensor']
+        elif recon_variant == 2:
+            input = tensors['recon2_tensor']
+        else:
+            raise ValueError(f"Invalid recon_variant={recon_variant}. Expected 1 or 2.")
     elif network_type == 'CONCAT':
         # Concatenate activity and attenuation sinograms along channel dim
         input = torch.cat([tensors['act_sino_tensor'], tensors['atten_sino_tensor']], dim=1)
@@ -328,7 +336,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         raise ValueError(f"Unknown network_type: {network_type}")
 
     cnn_output = None
-    if network_type == 'ACT' or network_type == 'ATTEN' or network_type == 'CONCAT':
+    if network_type in ('ACT', 'ATTEN', 'DENOISE', 'CONCAT'):
         cnn_output = cnn_reconstruct_single(input, config, paths, device, checkpoint_name)
     elif network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
         cnn_output = cnn_reconstruct_dual(input[0], input[1], config, paths, device, checkpoint_name)

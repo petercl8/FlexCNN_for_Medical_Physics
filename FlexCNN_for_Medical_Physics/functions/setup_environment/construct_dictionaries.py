@@ -23,6 +23,7 @@ def construct_config(
     config_ACT_IS=None,
     config_ATTEN_SI=None,
     config_ATTEN_IS=None,
+    config_DENOISE_SI=None,
     config_CONCAT=None,
     config_FROZEN_COFLOW=None,
     config_FROZEN_COUNTERFLOW=None,
@@ -63,6 +64,7 @@ def construct_config(
     gen_sino_channels = network_opts['gen_sino_channels']
     SI_normalize = network_opts['SI_normalize']
     IS_normalize = network_opts['IS_normalize']
+    recon_variant = network_opts.get('recon_variant', 1)
 
     # If not tuning (or forcing tuning with a fixed config for debugging), choose config dictionary based on run_mode and network_type
     if run_mode in ['train', 'test', 'visualize', 'none'] or tune_opts.get('tune_force_fixed_config')==True:
@@ -70,6 +72,8 @@ def construct_config(
             config = config_ACT_SI if train_SI else config_ACT_IS
         elif network_type == 'ATTEN':
             config = config_ATTEN_SI if train_SI else config_ATTEN_IS
+        elif network_type == 'DENOISE':
+            config = config_DENOISE_SI
         elif network_type == 'CONCAT':
             config = config_CONCAT
         elif network_type == 'FROZEN_COFLOW':
@@ -134,6 +138,11 @@ def construct_config(
                 config = {**config_RAY_SI, **config_RAY_SI_fixedScale ,**config_RAY_SUP}
             else:
                 config = {**config_RAY_SI, **config_RAY_SI_learnScale ,**config_RAY_SUP}
+        elif network_type == 'DENOISE':
+            if SI_normalize:
+                config = {**config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP}
+            else:
+                config = {**config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP}
         elif network_type == 'FROZEN_COFLOW':
             if SI_normalize:
                 config = {**_prefix_config_keys(config_ATTEN_SI, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
@@ -167,8 +176,11 @@ def construct_config(
         config['gen_sino_size'] = gen_sino_size
         config['gen_image_channels'] = gen_image_channels
         config['gen_sino_channels'] = gen_sino_channels
+
     else:
         raise ValueError(f"Unknown run_mode '{run_mode}'.")
+
+    config['recon_variant'] = recon_variant
 
 
     ## Overrides ##
@@ -237,10 +249,14 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['tune_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_sino_file']) if data_files['tune_atten_sino_file'] is not None else None
     paths['tune_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_act_sino_file']) if data_files['tune_val_act_sino_file'] is not None else None
     paths['tune_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_act_image_file']) if data_files['tune_val_act_image_file'] is not None else None
+    paths['tune_val_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files.get('tune_val_act_recon1_file')) if data_files.get('tune_val_act_recon1_file') is not None else None
+    paths['tune_val_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files.get('tune_val_act_recon2_file')) if data_files.get('tune_val_act_recon2_file') is not None else None
     paths['tune_val_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_image_file']) if data_files['tune_val_atten_image_file'] is not None else None
     paths['tune_val_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_sino_file']) if data_files['tune_val_atten_sino_file'] is not None else None
     paths['qa_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_sino_file']) if data_files['qa_act_sino_file'] is not None else None
     paths['qa_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_image_file']) if data_files['qa_act_image_file'] is not None else None
+    paths['qa_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_recon1_file']) if data_files['qa_act_recon1_file'] is not None else None
+    paths['qa_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_recon2_file']) if data_files['qa_act_recon2_file'] is not None else None
     paths['qa_backMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_backMask_file']) if data_files['qa_backMask_file'] is not None else None
     paths['qa_hotMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_hotMask_file']) if data_files['qa_hotMask_file'] is not None else None
     paths['qa_hotBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_hotBackgroundMask_file']) if data_files['qa_hotBackgroundMask_file'] is not None else None
@@ -256,6 +272,8 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['train_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_sino_file']) if data_files['train_atten_sino_file'] is not None else None
     paths['train_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_act_sino_file']) if data_files['train_val_act_sino_file'] is not None else None
     paths['train_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_act_image_file']) if data_files['train_val_act_image_file'] is not None else None
+    paths['train_val_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files.get('train_val_act_recon1_file')) if data_files.get('train_val_act_recon1_file') is not None else None
+    paths['train_val_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files.get('train_val_act_recon2_file')) if data_files.get('train_val_act_recon2_file') is not None else None
     paths['train_val_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_atten_image_file']) if data_files['train_val_atten_image_file'] is not None else None
     paths['train_val_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_atten_sino_file']) if data_files['train_val_atten_sino_file'] is not None else None
     paths['test_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_sino_file'])
@@ -278,17 +296,23 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     if run_mode == 'tune':
         paths['eval_holdout_act_sino_path'] = paths['tune_val_act_sino_path']
         paths['eval_holdout_act_image_path'] = paths['tune_val_act_image_path']
+        paths['eval_holdout_act_recon1_path'] = paths['tune_val_act_recon1_path']
+        paths['eval_holdout_act_recon2_path'] = paths['tune_val_act_recon2_path']
         paths['eval_holdout_atten_sino_path'] = paths['tune_val_atten_sino_path']
         paths['eval_holdout_atten_image_path'] = paths['tune_val_atten_image_path']
     elif run_mode == 'train':
         paths['eval_holdout_act_sino_path'] = paths['train_val_act_sino_path']
         paths['eval_holdout_act_image_path'] = paths['train_val_act_image_path']
+        paths['eval_holdout_act_recon1_path'] = paths['train_val_act_recon1_path']
+        paths['eval_holdout_act_recon2_path'] = paths['train_val_act_recon2_path']
         paths['eval_holdout_atten_sino_path'] = paths['train_val_atten_sino_path']
         paths['eval_holdout_atten_image_path'] = paths['train_val_atten_image_path']
     
     # eval_qa_* aliases for unified QA split naming (consistent across tune/train modes)
     paths['eval_qa_act_sino_path'] = paths['qa_act_sino_path']
     paths['eval_qa_act_image_path'] = paths['qa_act_image_path']
+    paths['eval_qa_act_recon1_path'] = paths['qa_act_recon1_path']
+    paths['eval_qa_act_recon2_path'] = paths['qa_act_recon2_path']
     paths['eval_qa_atten_sino_path'] = paths['qa_atten_sino_path']
     paths['eval_qa_atten_image_path'] = paths['qa_atten_image_path']
     paths['eval_qa_hotMask_path'] = paths['qa_hotMask_path']
@@ -301,16 +325,16 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     if run_mode == 'tune':
         paths['act_sino_path'] = paths['tune_act_sino_path']
         paths['act_image_path'] = paths['tune_act_image_path']
-        paths['act_recon1_path'] = None # We do not use recon paths during tuning
-        paths['act_recon2_path'] = None
+        paths['act_recon1_path'] = paths['tune_act_recon1_path']
+        paths['act_recon2_path'] = paths['tune_act_recon2_path']
         paths['atten_image_path'] = paths['tune_atten_image_path']
         paths['atten_sino_path'] = paths['tune_atten_sino_path']
         checkpoint_file = ''
     elif run_mode == 'train':
         paths['act_sino_path'] = paths['train_act_sino_path']
         paths['act_image_path'] = paths['train_act_image_path']
-        paths['act_recon1_path'] = None # We do not use recon paths during training
-        paths['act_recon2_path'] = None
+        paths['act_recon1_path'] = paths['train_act_recon1_path']
+        paths['act_recon2_path'] = paths['train_act_recon2_path']
         paths['atten_image_path'] = paths['train_atten_image_path']
         paths['atten_sino_path'] = paths['train_atten_sino_path']
         checkpoint_file = mode_files['train_checkpoint_file']

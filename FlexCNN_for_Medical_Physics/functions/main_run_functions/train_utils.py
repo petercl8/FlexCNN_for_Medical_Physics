@@ -432,15 +432,16 @@ def visualize_visualize(batch_data, visualize_batch_size, visualize_offset):
             show_multiple_matched_tensors(target[0:visualize_batch_size], CNN_output[0:visualize_batch_size])
 
 
-def route_batch_inputs(train_SI, batch_tensors, network_type=None):
+def route_batch_inputs(train_SI, batch_tensors, network_type=None, recon_variant=1):
     """
     Route batch inputs to correct input/target based on domain and direction.
     For CONCAT networks, concatenates activity and attenuation sinograms.
     
     Args:
         train_SI: Boolean indicating sinogram->image direction (only checked if network_type is not ATTEN)
-        batch_tensors: Dict with 'sino_scaled', 'act_map_scaled', 'atten_sino_scaled', 'atten_image_scaled'
+        batch_tensors: Dict with activity, attenuation, and optional reconstruction tensors
         network_type: String indicating network type (enables CONCAT concatenation)
+        recon_variant: Reconstruction selector for network types that consume recon inputs (1 or 2)
     
     Returns:
         Tuple of (input_, target)
@@ -466,6 +467,18 @@ def route_batch_inputs(train_SI, batch_tensors, network_type=None):
         else:
             input_ = batch_tensors['act_image_scaled']
             target = batch_tensors['act_sino_scaled']
+    elif network_type == 'DENOISE':
+        # DENOISE always maps selected reconstruction input to activity image target
+        if recon_variant == 1:
+            input_ = batch_tensors.get('act_recon1_scaled')
+        elif recon_variant == 2:
+            input_ = batch_tensors.get('act_recon2_scaled')
+        else:
+            raise ValueError(f"Invalid recon_variant={recon_variant}. Expected 1 or 2.")
+
+        if input_ is None:
+            raise ValueError(f"DENOISE requested recon_variant={recon_variant}, but selected reconstruction tensor is None")
+        target = batch_tensors['act_image_scaled']
     else:
         raise ValueError(f"Invalid network_type='{network_type}' for routing batch inputs")
     
@@ -539,7 +552,7 @@ def compute_test_metrics(network_type, input_, CNN_output, target, act_image_sca
 # TRAINING LEARNING CURVE PATH MANAGEMENT HELPERS
 # ========================================================================================
 
-def check_eval_paths_provided(paths, network_type, require_qa_masks=False):
+def check_eval_paths_provided(paths, network_type, require_qa_masks=False, config=None):
     """
     Check which evaluation splits (holdout/qa) have required paths provided.
     
@@ -548,7 +561,7 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False):
     paths : dict
         Paths dictionary containing eval_holdout_* and eval_qa_* keys
     network_type : str
-        Network type ('ATTEN', 'ACT', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW')
+        Network type ('ATTEN', 'ACT', 'DENOISE', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW')
     require_qa_masks : bool, optional
         If True, QA availability requires hot-region masks. If False, masks are not required
         (useful when only standard metrics are computed).
@@ -558,11 +571,23 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False):
     dict
         {'holdout': bool, 'qa': bool} indicating path availability for each split
     """
+    recon_variant = 1
+    if config is not None:
+        recon_variant = int(config.get('recon_variant', 1))
+
+    holdout_recon_key = 'eval_holdout_act_recon1_path' if recon_variant == 1 else 'eval_holdout_act_recon2_path'
+    qa_recon_key = 'eval_qa_act_recon1_path' if recon_variant == 1 else 'eval_qa_act_recon2_path'
+
     # Check holdout split (validation/test set)
     if network_type == 'ATTEN':
         holdout_available = (
             paths.get('eval_holdout_atten_sino_path') is not None and
             paths.get('eval_holdout_atten_image_path') is not None
+        )
+    elif network_type == 'DENOISE':
+        holdout_available = (
+            paths.get('eval_holdout_act_image_path') is not None and
+            paths.get(holdout_recon_key) is not None
         )
     elif network_type in ('ACT', 'GAN'):
         holdout_available = (
@@ -589,6 +614,11 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False):
         qa_available = (
             paths.get('eval_qa_atten_sino_path') is not None and
             paths.get('eval_qa_atten_image_path') is not None
+        )
+    elif network_type == 'DENOISE':
+        qa_available = (
+            paths.get('eval_qa_act_image_path') is not None and
+            paths.get(qa_recon_key) is not None
         )
     elif network_type in ('ACT', 'GAN'):
         qa_available = (
