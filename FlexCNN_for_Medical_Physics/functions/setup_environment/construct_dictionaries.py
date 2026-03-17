@@ -24,6 +24,8 @@ def construct_config(
     config_ATTEN_SI=None,
     config_ATTEN_IS=None,
     config_DENOISE_SI=None,
+    config_RECON_SINO_SI=None,
+    config_RECON_SINO_IS=None,
     config_CONCAT=None,
     config_FROZEN_COFLOW=None,
     config_FROZEN_COUNTERFLOW=None,
@@ -74,6 +76,8 @@ def construct_config(
             config = config_ATTEN_SI if train_SI else config_ATTEN_IS
         elif network_type == 'DENOISE':
             config = config_DENOISE_SI
+        elif network_type == 'RECON_SINO':
+            config = config_RECON_SINO_SI if train_SI else config_RECON_SINO_IS
         elif network_type == 'CONCAT':
             config = config_CONCAT
         elif network_type == 'FROZEN_COFLOW':
@@ -143,6 +147,17 @@ def construct_config(
                 config = {**config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP}
             else:
                 config = {**config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP}
+        elif network_type == 'RECON_SINO':
+            if train_SI:
+                if SI_normalize:
+                    config = {**config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP}
+                else:
+                    config = {**config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP}
+            else:
+                if IS_normalize:
+                    config = {**config_RAY_IS, **config_RAY_IS_fixedScale, **config_RAY_SUP}
+                else:
+                    config = {**config_RAY_IS, **config_RAY_IS_learnScale, **config_RAY_SUP}
         elif network_type == 'FROZEN_COFLOW':
             if SI_normalize:
                 config = {**_prefix_config_keys(config_ATTEN_SI, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}

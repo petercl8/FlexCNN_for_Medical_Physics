@@ -479,6 +479,25 @@ def route_batch_inputs(train_SI, batch_tensors, network_type=None, recon_variant
         if input_ is None:
             raise ValueError(f"DENOISE requested recon_variant={recon_variant}, but selected reconstruction tensor is None")
         target = batch_tensors['act_image_scaled']
+    elif network_type == 'RECON_SINO':
+        if recon_variant == 1:
+            recon_tensor = batch_tensors.get('act_recon1_scaled')
+        elif recon_variant == 2:
+            recon_tensor = batch_tensors.get('act_recon2_scaled')
+        else:
+            raise ValueError(f"Invalid recon_variant={recon_variant}. Expected 1 or 2.")
+
+        if recon_tensor is None:
+            raise ValueError(f"RECON_SINO requested recon_variant={recon_variant}, but selected reconstruction tensor is None")
+
+        # Follow existing SI/IS direction semantics:
+        # train_SI=True uses sinogram as input; train_SI=False uses reconstruction as input.
+        if train_SI:
+            input_ = batch_tensors['act_sino_scaled']
+            target = recon_tensor
+        else:
+            input_ = recon_tensor
+            target = batch_tensors['act_sino_scaled']
     else:
         raise ValueError(f"Invalid network_type='{network_type}' for routing batch inputs")
     
@@ -530,8 +549,8 @@ def compute_test_metrics(network_type, input_, CNN_output, target, act_image_sca
         Tuple of (test_dataframe, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM, recon1_output, recon2_output)
     """
 
-    if network_type == 'ATTEN':
-        # Attenuation: no recon comparisons; compute network metrics only
+    if network_type in ('ATTEN', 'RECON_SINO'):
+        # ATTEN/RECON_SINO: no activity-image reconstruction comparisons; compute network metrics only
         mean_CNN_MSE = calculate_metric(target, CNN_output, MSE)
         mean_CNN_SSIM = calculate_metric(target, CNN_output, SSIM)
         recon1_output = None
@@ -561,7 +580,7 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False, confi
     paths : dict
         Paths dictionary containing eval_holdout_* and eval_qa_* keys
     network_type : str
-        Network type ('ATTEN', 'ACT', 'DENOISE', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW')
+        Network type ('ATTEN', 'ACT', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', or 'FROZEN_COUNTERFLOW')
     require_qa_masks : bool, optional
         If True, QA availability requires hot-region masks. If False, masks are not required
         (useful when only standard metrics are computed).
@@ -587,6 +606,11 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False, confi
     elif network_type == 'DENOISE':
         holdout_available = (
             paths.get('eval_holdout_act_image_path') is not None and
+            paths.get(holdout_recon_key) is not None
+        )
+    elif network_type == 'RECON_SINO':
+        holdout_available = (
+            paths.get('eval_holdout_act_sino_path') is not None and
             paths.get(holdout_recon_key) is not None
         )
     elif network_type in ('ACT', 'GAN'):
@@ -620,6 +644,9 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False, confi
             paths.get('eval_qa_act_image_path') is not None and
             paths.get(qa_recon_key) is not None
         )
+    elif network_type == 'RECON_SINO':
+        # RECON_SINO currently logs holdout learning curves; QA split is not used.
+        qa_available = False
     elif network_type in ('ACT', 'GAN'):
         qa_available = (
             paths.get('eval_qa_act_sino_path') is not None and

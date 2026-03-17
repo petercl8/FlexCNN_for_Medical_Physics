@@ -245,6 +245,14 @@ def run_trainable(config, paths, settings):
         paths['tune_val_atten_sino_path'] = None
         paths['tune_qa_atten_path'] = None
         paths['tune_qa_atten_image_path'] = None
+    elif network_type == 'RECON_SINO':
+        # RECON_SINO: attenuation paths are not required
+        paths['atten_image_path'] = None
+        paths['atten_sino_path'] = None
+        paths['tune_val_atten_image_path'] = None
+        paths['tune_val_atten_sino_path'] = None
+        paths['tune_qa_atten_path'] = None
+        paths['tune_qa_atten_image_path'] = None
 
 
     # ========================================================================================
@@ -263,6 +271,16 @@ def run_trainable(config, paths, settings):
     if network_type == 'DENOISE':
         # Require activity image target and selected reconstruction input
         require_path('act_image_path')
+        recon_variant = int(config.get('recon_variant'))
+        if recon_variant == 1:
+            require_path('act_recon1_path')
+        elif recon_variant == 2:
+            require_path('act_recon2_path')
+        else:
+            raise ValueError(f"Invalid recon_variant={recon_variant}. Expected 1 or 2.")
+    if network_type == 'RECON_SINO':
+        # Require activity sinogram and selected reconstruction path
+        require_path('act_sino_path')
         recon_variant = int(config.get('recon_variant'))
         if recon_variant == 1:
             require_path('act_recon1_path')

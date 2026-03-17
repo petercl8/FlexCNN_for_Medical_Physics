@@ -201,6 +201,9 @@ def load_eval_batch(split, paths, config, settings, augment=None):
                 'eval_qa_hotMask_path',
                 'eval_qa_hotBackgroundMask_path'
             ]
+        elif network_type == 'RECON_SINO':
+            # QA split currently targets ROI-mask workflows; RECON_SINO uses holdout learning curves.
+            raise ValueError("split='qa' is not supported for network_type='RECON_SINO' in runtime evaluation")
         else:
             required_qa_paths = [
                 'eval_qa_act_sino_path', 'eval_qa_act_image_path', 'eval_qa_hotMask_path',
@@ -324,7 +327,7 @@ def evaluate_metrics(generators, batch, device, tune_metric='SSIM', evaluate_on=
                - 'hotMask', 'hotBackgroundMask' (for QA modes)
          device: torch device to move tensors to
          config: dict, must include at least:
-             - 'network_type': one of 'ACT', 'ATTEN', 'CONCAT', 'DENOISE', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'
+             - 'network_type': one of 'ACT', 'ATTEN', 'CONCAT', 'DENOISE', 'RECON_SINO', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'
              - 'train_SI': bool, True for sino→image, False for image→sino
              - optional 'recon_variant' for DENOISE input routing
         tune_metric: str, which metric to optimize ('MSE', 'SSIM', 'CUSTOM', 'qa-simple', 'qa-nema')

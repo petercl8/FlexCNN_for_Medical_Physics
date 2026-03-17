@@ -33,7 +33,7 @@ def run_pipeline(
         run_mode = settings['run_mode']
         network_type = config['network_type']
 
-        allowed_types = ('ACT', 'ATTEN', 'DENOISE', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW', 'CYCLEGAN', 'GAN')
+        allowed_types = ('ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW', 'CYCLEGAN', 'GAN')
         if network_type not in allowed_types:
             raise ValueError(f"Unknown network_type '{network_type}'.")
 

@@ -81,7 +81,7 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     # SECTION 2: Set Normalization Variables
     # ========================================================================================
     # Normalization direction (SI vs IS) depends on network and training mode
-    if network_type in ('GAN', 'ATTEN', 'ACT', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'): # supervisory network
+    if network_type in ('GAN', 'ATTEN', 'ACT', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'): # supervisory network
         if train_SI==True:
             SI_normalize=config['SI_normalize']
             SI_fixedScale=config['SI_fixedScale']

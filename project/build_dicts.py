@@ -25,6 +25,8 @@ from working.tuned_config_dicts.tuned_ACT_IS import config_ACT_IS
 from working.tuned_config_dicts.tuned_ATTEN_SI import config_ATTEN_SI
 from working.tuned_config_dicts.tuned_ATTEN_IS import config_ATTEN_IS
 from working.tuned_config_dicts.tuned_DENOISE_SI import config_DENOISE_SI
+from working.tuned_config_dicts.tuned_RECON_SINO_SI import config_RECON_SINO_SI
+from working.tuned_config_dicts.tuned_RECON_SINO_IS import config_RECON_SINO_IS
 from working.tuned_config_dicts.tuned_CONCAT import config_CONCAT
 from working.tuned_config_dicts.tuned_FROZEN_COFLOW import config_FROZEN_COFLOW
 from working.tuned_config_dicts.tuned_FROZEN_COUNTERFLOW import config_FROZEN_COUNTERFLOW
@@ -262,6 +264,8 @@ def build_all_dicts(params):
         config_ATTEN_SI=config_ATTEN_SI,
         config_ATTEN_IS=config_ATTEN_IS,
         config_DENOISE_SI=config_DENOISE_SI,
+        config_RECON_SINO_SI=config_RECON_SINO_SI,
+        config_RECON_SINO_IS=config_RECON_SINO_IS,
         config_CONCAT=config_CONCAT,
         config_FROZEN_COFLOW=config_FROZEN_COFLOW,
         config_FROZEN_COUNTERFLOW=config_FROZEN_COUNTERFLOW,
