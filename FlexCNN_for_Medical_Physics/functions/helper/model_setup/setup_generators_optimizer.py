@@ -162,31 +162,41 @@ def instantiate_dual_generators(config, device, flow_mode):
         flow_mode (str): 'coflow' or 'counterflow'.
 
     Returns:
-        (gen_atten, gen_act): Tuple of instantiated generators.
+        (gen_frozen, gen_act): Tuple of instantiated generators.
 
     Example:
-        gen_atten, gen_act = instantiate_dual_generators(config, device, flow_mode)
+        gen_frozen, gen_act = instantiate_dual_generators(config, device, flow_mode)
     """
     # Extract frozen network config by stripping FROZEN_ prefix
-    atten_config = _extract_frozen_config(config)
-    atten_config['train_SI'] = True if flow_mode == 'coflow' else False  # Guarantee network direction regardless of value set in notebook
-    gen_atten = create_generator(atten_config, device, gen_skip_handling='1x1Conv', gen_flow_mode='coflow', frozen_enc_channels=None, frozen_dec_channels=None)  # Always 'coflow' to match standalone training
+    frozen_config = _extract_frozen_config(config)
+    frozen_variant = str(config.get('frozen_variant')).upper()
+    if frozen_variant not in ('ATTEN', 'RECON_SINO'):
+        raise ValueError(f"Invalid frozen_variant='{config.get('frozen_variant')}'. Expected ATTEN or RECON_SINO.")
+    expected_frozen_type = 'ATTEN' if frozen_variant == 'ATTEN' else 'RECON_SINO'
+    loaded_frozen_type = str(frozen_config.get('network_type')).upper()
+    if loaded_frozen_type != expected_frozen_type:
+        raise ValueError(
+            f"Frozen config mismatch: loaded frozen network_type='{loaded_frozen_type}' "
+            f"but frozen_variant='{frozen_variant}'."
+        )
+    frozen_config['train_SI'] = True if flow_mode == 'coflow' else False  # Guarantee network direction regardless of value set in notebook
+    gen_frozen = create_generator(frozen_config, device, gen_skip_handling='1x1Conv', gen_flow_mode='coflow', frozen_enc_channels=None, frozen_dec_channels=None)  # Always 'coflow' to match standalone training
 
     # Extract encoder/decoder channel tuples for injection into activity network
-    enc_inject_ch = gen_atten.enc_stage_channels
-    dec_inject_ch = gen_atten.dec_stage_channels
+    enc_inject_ch = gen_frozen.enc_stage_channels
+    dec_inject_ch = gen_frozen.dec_stage_channels
 
     # Create trainable activity generator with unprefixed SI_* keys from original config
     act_config = dict(config)
     act_config['train_SI'] = True
     
     gen_act = create_generator(act_config, device, gen_skip_handling='1x1Conv', gen_flow_mode=flow_mode, frozen_enc_channels=enc_inject_ch, frozen_dec_channels=dec_inject_ch)
-    return gen_atten, gen_act
+    return gen_frozen, gen_act
 
 
 def load_dual_generator_checkpoints(
     gen_act,
-    gen_atten,
+    gen_frozen,
     act_ckpt,
     atten_ckpt,
     load_state,
@@ -197,14 +207,14 @@ def load_dual_generator_checkpoints(
     Loads or initializes checkpoints/weights for dual-generator setup (activity and attenuation networks).
     Args:
         gen_act: Activity generator model (trainable)
-        gen_atten: Attenuation generator model (frozen)
+        gen_frozen: Frozen generator model
         act_ckpt: Checkpoint path for activity generator
         atten_ckpt: Checkpoint path for attenuation generator
         load_state: Whether to load activity generator state
         run_mode: Current run mode (train/test/visualize/tune)
         device: Torch device
     Returns:
-        gen_act, gen_atten
+        gen_act, gen_frozen
     """
     # Activity generator: load or randomize weights
     if act_ckpt is not None and load_state and os.path.exists(act_ckpt):
@@ -216,17 +226,17 @@ def load_dual_generator_checkpoints(
     else:
         gen_act = gen_act.apply(weights_init_he)
 
-    # Always load attenuation checkpoint if available
+    # Always load frozen checkpoint if available
     if atten_ckpt is not None and os.path.exists(atten_ckpt):
         atten_checkpoint = torch.load(atten_ckpt, map_location=device)
-        gen_atten.load_state_dict(atten_checkpoint['gen_state_dict'])
+        gen_frozen.load_state_dict(atten_checkpoint['gen_state_dict'])
     else:
-        raise FileNotFoundError(f"Attenuation checkpoint not found at '{atten_ckpt}' for {run_mode}.")
+        raise FileNotFoundError(f"Frozen checkpoint not found at '{atten_ckpt}' for {run_mode}.")
     
-    gen_atten.eval()
+    gen_frozen.eval()
 
     # Set eval mode for test/visualize/plotting
     if run_mode in ('test', 'visualize'):
         gen_act.eval()
 
-    return gen_act, gen_atten
+    return gen_act, gen_frozen

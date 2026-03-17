@@ -150,6 +150,7 @@ def build_all_dicts(params):
     network_opts = {
         'network_type': params['network_type'],
         'train_SI': params['train_SI'],
+        'frozen_variant': params.get('frozen_variant', 'ATTEN'),
         'gen_image_size': params['gen_image_size'],
         'gen_sino_size': params['gen_sino_size'],
         'gen_image_channels': params['gen_image_channels'],

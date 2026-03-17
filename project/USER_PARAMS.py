@@ -33,6 +33,7 @@ run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('
 network_type='ACT'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 recon_variant=1       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
+frozen_variant='ATTEN'  # Frozen backbone type for FROZEN_* runs: 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'
 
 ## See note below for info about these options ##
 #gen_sino_channels=1       # Number of sinogram channels for network currently being trained.
@@ -102,8 +103,8 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 # NOTE: The concatenation network type introduces a fundamental problem: the sinogram input to the generator has channel numbers not corresponding 
 # to either the attenuation or the activity sinogram. My solution is to let the dataloader handle its own business (detect data structure sizes, 
 # since it has access to them) but let the user determine the number of generator channels, since the generator does not see the data until after 
-# it has been instantiated. Also, the user only determines channels for currently trained network. Any frozen networks are always an attenuation network, 
-# so I hardcode channel information for dataloader and generator accordingly. 
+# it has been instantiated. Also, the user only determines channels for currently trained network. Frozen backbones can use attenuation
+# or RECON_SINO variants (set by frozen_variant), while trainable channels remain controlled here.
 # CONCLUSION: sino_channels and image_channels represent the input and output channels for the generator for the currently trained network only.
 
 
@@ -220,7 +221,7 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 ##############
 
 #####
-# NOTE: For dual network training, checkpoints are autmatically appended suffixes of -atten and -act.
+# NOTE: For dual network training, checkpoints are automatically appended suffixes of -frozen and -act.
 #####
 
 train_checkpoint_file='checkpoint-ACT-288-bilinear-288x218-padSino-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.

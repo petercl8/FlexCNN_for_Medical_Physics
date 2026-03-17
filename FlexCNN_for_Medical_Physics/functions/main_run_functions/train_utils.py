@@ -305,11 +305,11 @@ def visualize_train(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM
 def visualize_train_frozen(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM,
                            epoch, batch_step, example_num):
     """
-    Display training progress for frozen-flow models, including attenuation panels.
+    Display training progress for frozen-flow models, including frozen backbone panels.
 
     Args:
         batch_data: Dict with 'input', 'target', 'CNN_output', 'recon1_output', 'recon2_output',
-                    'atten_input', 'atten_output'
+                    'frozen_input', 'frozen_output'
         mean_gen_loss: Mean generator loss over display_step (accumulated from training batches)
         current_CNN_MSE: MSE on current batch only
         current_CNN_SSIM: SSIM on current batch only
@@ -322,16 +322,16 @@ def visualize_train_frozen(batch_data, mean_gen_loss, current_CNN_MSE, current_C
     CNN_output = batch_data['CNN_output']
     recon1_output = batch_data['recon1_output']
     recon2_output = batch_data['recon2_output']
-    atten_input = batch_data['atten_input']
-    atten_output = batch_data['atten_output']
+    frozen_input = batch_data['frozen_input']
+    frozen_output = batch_data['frozen_output']
 
-    print('ATTENUATION INPUT')
-    show_single_unmatched_tensor(atten_input[0:4], fig_size=2)
-    print(atten_input.shape)
+    print('FROZEN INPUT')
+    show_single_unmatched_tensor(frozen_input[0:4], fig_size=2)
+    print(frozen_input.shape)
 
-    print('ATTENUATION OUTPUT')
-    show_single_unmatched_tensor(atten_output[0:4], fig_size=2)
-    print(atten_output.shape)
+    print('FROZEN OUTPUT')
+    show_single_unmatched_tensor(frozen_output[0:4], fig_size=2)
+    print(frozen_output.shape)
 
     print('================Training===================')
     print(f'CURRENT PROGRESS: epoch: {epoch} / batch_step: {batch_step} / image #: {example_num}')

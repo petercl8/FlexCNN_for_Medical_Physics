@@ -67,6 +67,9 @@ def construct_config(
     SI_normalize = network_opts['SI_normalize']
     IS_normalize = network_opts['IS_normalize']
     recon_variant = network_opts.get('recon_variant', 1)
+    frozen_variant = str(network_opts.get('frozen_variant', 'ATTEN')).upper()
+    if frozen_variant not in ('ATTEN', 'RECON_SINO'):
+        raise ValueError(f"Invalid frozen_variant='{network_opts.get('frozen_variant')}'. Expected 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'.")
 
     # If not tuning (or forcing tuning with a fixed config for debugging), choose config dictionary based on run_mode and network_type
     if run_mode in ['train', 'test', 'visualize', 'none'] or tune_opts.get('tune_force_fixed_config')==True:
@@ -111,6 +114,14 @@ def construct_config(
             error_msg += "Mismatches found:\n" + "\n".join(f"  • {m}" for m in mismatches)
             error_msg += f"\n\nPlease update your network_opts to match the trained network, or use a different checkpoint."
             raise ValueError(error_msg)
+
+        if network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
+            loaded_frozen_type = str(config.get('FROZEN_network_type')).upper()
+            if loaded_frozen_type != frozen_variant:
+                raise ValueError(
+                    f"Frozen config mismatch: loaded FROZEN_network_type='{loaded_frozen_type}' "
+                    f"but frozen_variant='{frozen_variant}'. Update frozen_variant or load matching frozen config."
+                )
 
     # If tuning, we need to construct the dictionary from smaller pieces
     elif run_mode == 'tune':
@@ -159,15 +170,17 @@ def construct_config(
                 else:
                     config = {**config_RAY_IS, **config_RAY_IS_learnScale, **config_RAY_SUP}
         elif network_type == 'FROZEN_COFLOW':
+            frozen_base_config = config_ATTEN_SI if frozen_variant == 'ATTEN' else config_RECON_SINO_SI
             if SI_normalize:
-                config = {**_prefix_config_keys(config_ATTEN_SI, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+                config = {**_prefix_config_keys(frozen_base_config, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
             else:
-                config = {**_prefix_config_keys(config_ATTEN_SI, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+                config = {**_prefix_config_keys(frozen_base_config, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
         elif network_type == 'FROZEN_COUNTERFLOW':
+            frozen_base_config = config_ATTEN_IS if frozen_variant == 'ATTEN' else config_RECON_SINO_IS
             if SI_normalize:
-                config = {**_prefix_config_keys(config_ATTEN_IS, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+                config = {**_prefix_config_keys(frozen_base_config, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_fixedScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
             else:
-                config = {**_prefix_config_keys(config_ATTEN_IS, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
+                config = {**_prefix_config_keys(frozen_base_config, 'FROZEN'), **config_RAY_SI, **config_RAY_SI_learnScale, **config_RAY_SUP, **config_RAY_SUP_FROZEN}
         elif network_type == 'GAN':
             if train_SI:
                 if SI_normalize:
@@ -196,6 +209,7 @@ def construct_config(
         raise ValueError(f"Unknown run_mode '{run_mode}'.")
 
     config['recon_variant'] = recon_variant
+    config['frozen_variant'] = frozen_variant
 
 
     ## Overrides ##

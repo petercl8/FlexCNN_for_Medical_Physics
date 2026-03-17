@@ -350,7 +350,7 @@ def evaluate_metrics(generators, batch, device, tune_metric='SSIM', evaluate_on=
     Args:
         generators: Tuple containing:
                    - (gen,) for simple networks (ACT, ATTEN, CONCAT)
-                   - (gen_act, gen_atten) for frozen flow networks (FROZEN_COFLOW, FROZEN_COUNTERFLOW)
+                   - (gen_act, gen_frozen) for frozen flow networks (FROZEN_COFLOW, FROZEN_COUNTERFLOW)
         batch: dict with tensors (on CPU). Expected keys:
                - 'act_sino_scaled', 'act_image_scaled' (always present)
                - 'atten_sino_scaled' or 'atten_image_scaled' (for attenuation networks)
@@ -388,7 +388,8 @@ def evaluate_metrics(generators, batch, device, tune_metric='SSIM', evaluate_on=
         flow_mode = 'coflow' if network_type == 'FROZEN_COFLOW' else 'counterflow'
         return _evaluate_metrics_frozen(generators, batch, device, flow_mode, 
                                         tune_metric=tune_metric, evaluate_on=evaluate_on, 
-                                        run_mode=run_mode, compute_standard_metrics=compute_standard_metrics)
+                                        run_mode=run_mode, compute_standard_metrics=compute_standard_metrics,
+                                        config=config)
     else:
         # Simple network path  
         return _evaluate_metrics_simple(generators, batch, device, train_SI, network_type,
@@ -468,14 +469,16 @@ def _evaluate_metrics_simple(generators, batch, device, train_SI, network_type, 
     else:
         raise ValueError(f"Unknown evaluate_on='{evaluate_on}' (expected 'val' or 'qa')")
 
-def _evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='SSIM', evaluate_on='val', run_mode='tune', compute_standard_metrics=False):
+def _evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='SSIM', evaluate_on='val', run_mode='tune', compute_standard_metrics=False, config=None):
     """
     Evaluate frozen flow network on batch.
     
     Internal implementation for frozen flow networks; called by evaluate_metrics().
     """
     # Unpack generators
-    gen_act, gen_atten = generators
+    gen_act, gen_frozen = generators
+    frozen_variant = 'ATTEN' if config is None else str(config.get('frozen_variant')).upper()
+    recon_variant = 1 if config is None else int(config.get('recon_variant'))
     
     # Validate required data
     if 'act_sino_scaled' not in batch or batch['act_sino_scaled'] is None:
@@ -487,21 +490,34 @@ def _evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='
     eval_act_sino = batch['act_sino_scaled'].to(device)
     eval_act_image = batch['act_image_scaled'].to(device)
     
-    # Determine attenuation input based on flow mode
-    if flow_mode == 'coflow':
-        if 'atten_sino_scaled' not in batch or batch['atten_sino_scaled'] is None:
-            raise ValueError("COFLOW mode requires 'atten_sino_scaled' data")
-        atten_input = batch['atten_sino_scaled'].to(device)
-    elif flow_mode == 'counterflow':
-        if 'atten_image_scaled' not in batch or batch['atten_image_scaled'] is None:
-            raise ValueError("COUNTERFLOW mode requires 'atten_image_scaled' data")
-        atten_input = batch['atten_image_scaled'].to(device)
+    # Determine frozen input based on backbone variant and flow mode.
+    if frozen_variant == 'ATTEN':
+        if flow_mode == 'coflow':
+            if 'atten_sino_scaled' not in batch or batch['atten_sino_scaled'] is None:
+                raise ValueError("COFLOW mode with ATTEN frozen backbone requires 'atten_sino_scaled' data")
+            frozen_input = batch['atten_sino_scaled'].to(device)
+        elif flow_mode == 'counterflow':
+            if 'atten_image_scaled' not in batch or batch['atten_image_scaled'] is None:
+                raise ValueError("COUNTERFLOW mode with ATTEN frozen backbone requires 'atten_image_scaled' data")
+            frozen_input = batch['atten_image_scaled'].to(device)
+        else:
+            raise ValueError(f"Invalid flow_mode='{flow_mode}' (expected 'coflow' or 'counterflow')")
+    elif frozen_variant == 'RECON_SINO':
+        if flow_mode == 'coflow':
+            frozen_input = eval_act_sino
+        elif flow_mode == 'counterflow':
+            recon_key = 'act_recon1_scaled' if recon_variant == 1 else 'act_recon2_scaled'
+            if recon_key not in batch or batch[recon_key] is None:
+                raise ValueError(f"COUNTERFLOW mode with RECON_SINO frozen backbone requires '{recon_key}' data")
+            frozen_input = batch[recon_key].to(device)
+        else:
+            raise ValueError(f"Invalid flow_mode='{flow_mode}' (expected 'coflow' or 'counterflow')")
     else:
-        raise ValueError(f"Invalid flow_mode='{flow_mode}' (expected 'coflow' or 'counterflow')")
+        raise ValueError(f"Invalid frozen_variant='{frozen_variant}'. Expected ATTEN or RECON_SINO.")
     
     # Run frozen attenuation network to get features
     with torch.no_grad():
-        result = gen_atten(atten_input, return_features=True)
+        result = gen_frozen(frozen_input, return_features=True)
         frozen_enc_feats = result['encoder']
         frozen_dec_feats = result['decoder']
         
@@ -537,7 +553,7 @@ def _evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='
             }
         
         # Explicit cleanup
-        del eval_act_sino, eval_act_image, atten_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output
+        del eval_act_sino, eval_act_image, frozen_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output
         
         return metrics
     
@@ -550,13 +566,13 @@ def _evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='
         if tune_metric == 'qa-simple':
             # QA Simple mode: compute simple ROI metrics
             cr_metrics = ROI_simple_phantom(eval_act_image, eval_qa_output, hotMask)
-            del eval_act_sino, eval_act_image, atten_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output, hotMask, eval_qa_output
+            del eval_act_sino, eval_act_image, frozen_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output, hotMask, eval_qa_output
             return cr_metrics
         elif tune_metric == 'qa-nema':
             # QA NEMA mode: compute NEMA ROI metrics
             hotBackgroundMask = batch['hotBackgroundMask'].to(device)
             nema_hot_metric = ROI_NEMA_hot(eval_act_image, eval_qa_output, hotBackgroundMask, hotMask)
-            del eval_act_sino, eval_act_image, atten_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output, hotMask, hotBackgroundMask, eval_qa_output
+            del eval_act_sino, eval_act_image, frozen_input, frozen_enc_feats, frozen_dec_feats, eval_target, eval_output, hotMask, hotBackgroundMask, eval_qa_output
             return {'NEMA_hot': nema_hot_metric}
         else:
             raise ValueError(f"Invalid tune_metric='{tune_metric}' for QA mode (expected 'qa-simple' or 'qa-nema')")
@@ -574,7 +590,7 @@ def report_cross_validation_metrics(generators, paths, config, settings, tune_da
     Args:
         generators: Tuple of generator model(s):
                     - (gen,) for simple networks (ACT, ATTEN, CONCAT)
-                    - (gen_act, gen_atten) for frozen flow networks
+                    - (gen_act, gen_frozen) for frozen flow networks
                     All generators will be set to eval mode and restored to train mode
         paths: Path dictionary with validation/QA data paths
         config: Configuration dictionary

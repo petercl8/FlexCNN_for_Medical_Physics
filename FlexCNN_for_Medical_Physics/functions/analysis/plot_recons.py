@@ -129,17 +129,17 @@ def cnn_reconstruct_single(input_tensor, config, paths, device, checkpoint_name)
 
 # Dual-network reconstruction (FROZEN_COFLOW, FROZEN_COUNTERFLOW)
 def cnn_reconstruct_dual(
-    attenuation_input,
-    activity_input,
+    frozen_input,
+    act_input,
     config,
     paths,
     device,
     checkpoint_name
 ):
     """
-    Dual-network reconstruction using frozen attenuation and trainable activity generators.
-    attenuation_input: input for the attenuation network (atten_sino for coflow, atten_image for counterflow)
-    activity_input: input for the activity network (always act_sino)
+    Dual-network reconstruction using frozen backbone and trainable activity generators.
+    frozen_input: input for the frozen backbone network
+    act_input: input for the activity network (always act_sino)
     """
     if config['network_type'] == 'FROZEN_COFLOW':
         flow_mode = 'coflow'
@@ -149,32 +149,32 @@ def cnn_reconstruct_dual(
         raise ValueError(f"Invalid network_type '{config['network_type']}' for dual-generator reconstruction.")
 
     # Instantiate both generators
-    gen_atten, gen_act = instantiate_dual_generators(config, device, flow_mode)
+    gen_frozen, gen_act = instantiate_dual_generators(config, device, flow_mode)
 
     # Build checkpoint paths
     checkpoint_path_act = os.path.join(paths['checkpoint_dirPath'], checkpoint_name + '-act')
-    checkpoint_path_atten = os.path.join(paths['checkpoint_dirPath'], checkpoint_name + '-atten')
+    checkpoint_path_frozen = os.path.join(paths['checkpoint_dirPath'], checkpoint_name + '-frozen')
 
     # Load checkpoints
-    gen_act, gen_atten = load_dual_generator_checkpoints(
+    gen_act, gen_frozen = load_dual_generator_checkpoints(
         gen_act,
-        gen_atten,
+        gen_frozen,
         checkpoint_path_act,
-        checkpoint_path_atten,
+        checkpoint_path_frozen,
         load_state=True, # Loads both activity & attenuation states as long as checkpoints exist
         run_mode='test', # Puts activity network in eval mode
         device=device,
     )
 
-    # Forward pass: get features from frozen attenuation network
+    # Forward pass: get features from frozen backbone network
     with torch.no_grad():
-        atten_result = gen_atten(attenuation_input, return_features=True)
-        frozen_enc_feats = atten_result['encoder']
-        frozen_dec_feats = atten_result['decoder']
+        frozen_result = gen_frozen(frozen_input, return_features=True)
+        frozen_enc_feats = frozen_result['encoder']
+        frozen_dec_feats = frozen_result['decoder']
 
         # Activity network forward pass with injected features
         recon = gen_act(
-            activity_input,
+            act_input,
             frozen_encoder_features=frozen_enc_feats,
             frozen_decoder_features=frozen_dec_feats,
         ).detach()
@@ -202,7 +202,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         Sample indices to load and reconstruct from the dataset.
     checkpoint_name : str
         Name of the checkpoint file (without extension) to load. For dual-network types,
-        expects checkpoints named '{checkpoint_name}-act' and '{checkpoint_name}-atten'.
+        expects checkpoints named '{checkpoint_name}-act' and '{checkpoint_name}-frozen'.
     network_type : str
         Network architecture type. Options:
         - 'ACT': Activity network (sinogram -> image)
@@ -328,10 +328,20 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     elif network_type == 'CONCAT':
         # Concatenate activity and attenuation sinograms along channel dim
         input = torch.cat([tensors['act_sino_tensor'], tensors['atten_sino_tensor']], dim=1)
-    elif network_type == 'FROZEN_COFLOW':
-        input = (tensors['atten_sino_tensor'], tensors['act_sino_tensor'])
-    elif network_type == 'FROZEN_COUNTERFLOW':
-        input = (tensors['atten_image_tensor'], tensors['act_sino_tensor'])
+    elif network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
+        frozen_variant = str(config.get('frozen_variant', 'ATTEN')).upper()
+        if network_type == 'FROZEN_COFLOW':
+            if frozen_variant == 'RECON_SINO':
+                frozen_input = tensors['act_sino_tensor']
+            else:  # ATTEN
+                frozen_input = tensors['atten_sino_tensor']
+        else:  # FROZEN_COUNTERFLOW
+            if frozen_variant == 'RECON_SINO':
+                recon_variant = int(config.get('recon_variant', 1))
+                frozen_input = tensors['recon1_tensor'] if recon_variant == 1 else tensors['recon2_tensor']
+            else:  # ATTEN
+                frozen_input = tensors['atten_image_tensor']
+        input = (frozen_input, tensors['act_sino_tensor'])
     else:
         raise ValueError(f"Unknown network_type: {network_type}")
 

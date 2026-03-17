@@ -65,6 +65,16 @@ def run_trainable_frozen_flow(config, paths, settings):
     # Determine flow mode and always use sino->image for activity network
     flow_mode = 'coflow' if config['network_type'] == 'FROZEN_COFLOW' else 'counterflow'
     train_SI_act = True  # Activity network is always sino->image
+    frozen_variant = str(config.get('frozen_variant')).upper()
+    if frozen_variant not in ('ATTEN', 'RECON_SINO'):
+        raise ValueError(f"Invalid frozen_variant='{config.get('frozen_variant')}'. Expected ATTEN or RECON_SINO.")
+    loaded_frozen_type = str(config.get('FROZEN_network_type')).upper()
+    if loaded_frozen_type != frozen_variant:
+        raise ValueError(
+            f"Frozen config mismatch: loaded FROZEN_network_type='{loaded_frozen_type}' "
+            f"but frozen_variant='{frozen_variant}'."
+        )
+    recon_variant = int(config.get('recon_variant'))
 
     # Data loading and augmentation settings
     augment = settings['augment']
@@ -140,20 +150,20 @@ def run_trainable_frozen_flow(config, paths, settings):
     # SECTION 4: INSTANTIATE MODELS (FROZEN ATTENUATION + TRAINABLE ACTIVITY)
     # ========================================================================================
     # Instantiate both generators using helper function
-    gen_atten, gen_act = instantiate_dual_generators(config, device, flow_mode)
+    gen_frozen, gen_act = instantiate_dual_generators(config, device, flow_mode)
     gen_act_opt = create_optimizer(gen_act, config)
     
     # ========================================================================================
     # SECTION 5: LOAD OR INITIALIZE CHECKPOINTS AND WEIGHTS
     # ========================================================================================
     act_ckpt = checkpoint_path + '-act' if checkpoint_path is not None else None
-    atten_ckpt = checkpoint_path + '-atten' if checkpoint_path is not None else None
+    frozen_ckpt = checkpoint_path + '-frozen' if checkpoint_path is not None else None
 
-    gen_act, gen_atten = load_dual_generator_checkpoints(
+    gen_act, gen_frozen = load_dual_generator_checkpoints(
         gen_act,
-        gen_atten,
+        gen_frozen,
         act_ckpt,
-        atten_ckpt,
+        frozen_ckpt,
         load_state,
         run_mode,
         device,
@@ -206,15 +216,24 @@ def run_trainable_frozen_flow(config, paths, settings):
     # SECTION 7A: FILTER PATHS BY NETWORK TYPE (avoid loading unnecessary data)
     # ========================================================================================
     # Set unneeded training data paths to None
-    if config['network_type'] == 'FROZEN_COFLOW':
-        # Coflow uses attenuation sinogram input only
+    if frozen_variant == 'ATTEN':
+        if config['network_type'] == 'FROZEN_COFLOW':
+            # Coflow uses attenuation sinogram input only
+            paths['atten_image_path'] = None
+            paths['tune_val_atten_image_path'] = None
+            paths['tune_qa_atten_image_path'] = None
+        elif config['network_type'] == 'FROZEN_COUNTERFLOW':
+            # Counterflow uses attenuation image input only
+            paths['atten_sino_path'] = None
+            paths['tune_val_atten_sino_path'] = None
+            paths['tune_qa_atten_sino_path'] = None
+    else:
+        # RECON_SINO frozen backbone does not use attenuation-domain inputs.
         paths['atten_image_path'] = None
-        paths['tune_val_atten_image_path'] = None
-        paths['tune_qa_atten_image_path'] = None
-    elif config['network_type'] == 'FROZEN_COUNTERFLOW':
-        # Counterflow uses attenuation image input only
         paths['atten_sino_path'] = None
+        paths['tune_val_atten_image_path'] = None
         paths['tune_val_atten_sino_path'] = None
+        paths['tune_qa_atten_image_path'] = None
         paths['tune_qa_atten_sino_path'] = None
 
 
@@ -226,10 +245,19 @@ def run_trainable_frozen_flow(config, paths, settings):
             raise ValueError(f"Missing required path: '{key}'. Provide act_*/atten_* paths for frozen flow.")
     require_path('act_image_path')
     require_path('act_sino_path')
-    if config['network_type'] == 'FROZEN_COFLOW':
-        require_path('atten_sino_path')
+    if frozen_variant == 'ATTEN':
+        if config['network_type'] == 'FROZEN_COFLOW':
+            require_path('atten_sino_path')
+        else:
+            require_path('atten_image_path')
     else:
-        require_path('atten_image_path')
+        if flow_mode == 'counterflow':
+            if recon_variant == 1:
+                require_path('act_recon1_path')
+            elif recon_variant == 2:
+                require_path('act_recon2_path')
+            else:
+                raise ValueError(f"Invalid recon_variant={recon_variant}. Expected 1 or 2.")
 
     # Build dataloader for joint activity/attenuation batches
     dataloader = DataLoader(
@@ -289,9 +317,22 @@ def run_trainable_frozen_flow(config, paths, settings):
 
             # ----- SUBSECTION 10C: FROZEN ATTENUATION FORWARD PASS -----
             with torch.no_grad():
-                # Use attenuation input based on flow mode
-                atten_input = atten_sino_scaled if flow_mode == 'coflow' else atten_image_scaled
-                result = gen_atten(atten_input, return_features=True)
+                # Select frozen backbone input by variant and flow mode.
+                if frozen_variant == 'ATTEN':
+                    frozen_input = atten_sino_scaled if flow_mode == 'coflow' else atten_image_scaled
+                else:
+                    if flow_mode == 'coflow':
+                        frozen_input = act_sino_scaled
+                    else:
+                        if recon_variant == 1:
+                            frozen_input = act_recon1
+                        elif recon_variant == 2:
+                            frozen_input = act_recon2
+                        else:
+                            raise ValueError(f"Invalid recon_variant={recon_variant}. Expected 1 or 2.")
+                        if frozen_input is None:
+                            raise ValueError(f"RECON_SINO frozen counterflow requires recon_variant={recon_variant} tensor, but it is None")
+                result = gen_frozen(frozen_input, return_features=True)
                 atten_output = result['output']
                 frozen_enc_feats = result['encoder']
                 frozen_dec_feats = result['decoder']
@@ -361,14 +402,14 @@ def run_trainable_frozen_flow(config, paths, settings):
                     'CNN_output': CNN_output,
                     'recon1_output': recon1_output,
                     'recon2_output': recon2_output,
-                    'atten_input': atten_input,
-                    'atten_output': atten_output,
+                    'frozen_input': frozen_input,
+                    'frozen_output': atten_output,
                 }
 
                 # Ray Tune reporting (tune mode)
                 if run_mode == 'tune' and session is not None:
                     report_cross_validation_metrics(
-                        (gen_act, gen_atten), paths, config, settings, tune_dataframe, tune_dataframe_path,
+                        (gen_act, gen_frozen), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         tune_dataframe_fraction, tune_max_t, report_num,
                         example_num, batch_step, epoch, device
                     )
@@ -413,7 +454,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 # ===== TRAINING SPLIT (always available) =====
                 train_batch = load_eval_batch('train', paths, config, settings)
                 train_metrics = evaluate_metrics(
-                    (gen_act, gen_atten), train_batch, device,
+                    (gen_act, gen_frozen), train_batch, device,
                     tune_metric='MSE',  # Metric doesn't matter for train split, we'll compute all standard metrics
                     evaluate_on='val',
                     run_mode='train',
@@ -429,7 +470,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 if available['holdout']:
                     holdout_batch = load_eval_batch('holdout', paths, config, settings)
                     holdout_metrics = evaluate_metrics(
-                        (gen_act, gen_atten), holdout_batch, device,
+                        (gen_act, gen_frozen), holdout_batch, device,
                         tune_metric='MSE',
                         evaluate_on='val',
                         run_mode='train',
@@ -445,7 +486,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 if available['qa']:
                     qa_batch = load_eval_batch('qa', paths, config, settings, augment=('SI', True))
                     qa_metrics = evaluate_metrics(
-                        (gen_act, gen_atten), qa_batch, device,
+                        (gen_act, gen_frozen), qa_batch, device,
                         tune_metric='MSE',
                         evaluate_on='val',  # Force validation metrics for learning curves
                         run_mode='train',
