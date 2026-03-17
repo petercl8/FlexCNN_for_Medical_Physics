@@ -406,7 +406,7 @@ def run_trainable_frozen_flow(config, paths, settings):
             from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluation import load_eval_batch, evaluate_metrics
             
             # Check which splits are available
-            available = check_eval_paths_provided(paths, config['network_type'])
+            available = check_eval_paths_provided(paths, config['network_type'], config=config)
             
             gen_act.eval()
             try:
@@ -457,11 +457,24 @@ def run_trainable_frozen_flow(config, paths, settings):
                         eval_split='QA set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
                     )
                 
-                print(f"[TRAIN LEARNING CURVES] Epoch {epoch+1}: train={train_metrics[list(train_metrics.keys())[0]]:.4f}")
+                print(
+                    f"[TRAIN LEARNING CURVES] Epoch {epoch+1}: "
+                    f"train MSE={train_metrics['MSE']:.4f}, "
+                    f"SSIM={train_metrics['SSIM']:.4f}, "
+                    f"CUSTOM={train_metrics['CUSTOM']:.4f}"
+                )
                 if available['holdout']:
-                    print(f"  holdout={holdout_metrics[list(holdout_metrics.keys())[0]]:.4f}")
+                    print(
+                        f"  holdout MSE={holdout_metrics['MSE']:.4f}, "
+                        f"SSIM={holdout_metrics['SSIM']:.4f}, "
+                        f"CUSTOM={holdout_metrics['CUSTOM']:.4f}"
+                    )
                 if available['qa']:
-                    print(f"  qa={qa_metrics[list(qa_metrics.keys())[0]]:.4f}")
+                    print(
+                        f"  qa MSE={qa_metrics['MSE']:.4f}, "
+                        f"SSIM={qa_metrics['SSIM']:.4f}, "
+                        f"CUSTOM={qa_metrics['CUSTOM']:.4f}"
+                    )
                 
                 # ===== CONDITIONAL SAVE BASED ON HOLDOUT PERFORMANCE =====
                 if save_state and available['holdout']:

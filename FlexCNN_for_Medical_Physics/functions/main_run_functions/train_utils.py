@@ -645,8 +645,10 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False, confi
             paths.get(qa_recon_key) is not None
         )
     elif network_type == 'RECON_SINO':
-        # RECON_SINO currently logs holdout learning curves; QA split is not used.
-        qa_available = False
+            qa_available = (
+                paths.get('eval_qa_act_sino_path') is not None and
+                paths.get(qa_recon_key) is not None
+            )
     elif network_type in ('ACT', 'GAN'):
         qa_available = (
             paths.get('eval_qa_act_sino_path') is not None and

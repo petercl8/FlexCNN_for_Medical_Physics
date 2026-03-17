@@ -190,6 +190,7 @@ def load_eval_batch(split, paths, config, settings, augment=None):
     else:  # split == 'qa'
         network_type = str(config.get('network_type')).upper()
         recon_variant = int(config.get('recon_variant'))
+        qa_uses_masks = network_type != 'RECON_SINO'
 
         # Check required paths
         if network_type == 'DENOISE':
@@ -202,13 +203,18 @@ def load_eval_batch(split, paths, config, settings, augment=None):
                 'eval_qa_hotBackgroundMask_path'
             ]
         elif network_type == 'RECON_SINO':
-            # QA split currently targets ROI-mask workflows; RECON_SINO uses holdout learning curves.
-            raise ValueError("split='qa' is not supported for network_type='RECON_SINO' in runtime evaluation")
+            if recon_variant not in (1, 2):
+                raise ValueError(f"RECON_SINO requires recon_variant to be 1 or 2, got {recon_variant}")
+            required_qa_paths = [
+                'eval_qa_act_sino_path',
+                'eval_qa_act_recon1_path' if recon_variant == 1 else 'eval_qa_act_recon2_path'
+            ]
         else:
             required_qa_paths = [
                 'eval_qa_act_sino_path', 'eval_qa_act_image_path', 'eval_qa_hotMask_path',
                 'eval_qa_hotBackgroundMask_path'
             ]
+        # Check that all required paths for QA evaluation are provided
         if not all(paths.get(p) is not None for p in required_qa_paths):
             raise ValueError(
                 f"split='qa' requires all of {required_qa_paths} to be set."
@@ -228,16 +234,24 @@ def load_eval_batch(split, paths, config, settings, augment=None):
         qa_act_sino_path = paths.get('eval_qa_act_sino_path')
         if network_type == 'DENOISE':
             qa_act_sino_path = paths.get('eval_qa_act_recon1_path' if recon_variant == 1 else 'eval_qa_act_recon2_path')
+        qa_act_image_path = paths.get('eval_qa_act_image_path')
+        qa_recon1_path = paths.get('eval_qa_hotMask_path')
+        qa_recon2_path = paths.get('eval_qa_hotBackgroundMask_path')
+        if network_type == 'RECON_SINO':
+            qa_act_image_path = None
+            qa_recon1_path = paths.get('eval_qa_act_recon1_path') if recon_variant == 1 else None
+            qa_recon2_path = paths.get('eval_qa_act_recon2_path') if recon_variant == 2 else None
         
         global _qa_dataset
 
         # Load QA dataset on first call; reuse on subsequent calls
         if _qa_dataset is None:
             qa_settings = dict(settings)
-            qa_settings['act_recon1_scale'] = 1.0 # We use the recon slots in the dataloader for masks.
-            qa_settings['act_recon2_scale'] = 1.0 # Therefore, set the scales to 1.0 to avoid unintended scaling of the masks.
+            if qa_uses_masks:
+                qa_settings['act_recon1_scale'] = 1.0 # We use the recon slots in the dataloader for masks.
+                qa_settings['act_recon2_scale'] = 1.0 # Therefore, set the scales to 1.0 to avoid unintended scaling of the masks.
             _qa_dataset = NpArrayDataSet(
-                act_image_path=paths['eval_qa_act_image_path'],
+                act_image_path=qa_act_image_path,
                 act_sino_path=qa_act_sino_path,
                 config=config,
                 settings=qa_settings,
@@ -246,8 +260,8 @@ def load_eval_batch(split, paths, config, settings, augment=None):
                 num_examples=-1,
                 sample_division=1,
                 device='cpu',
-                act_recon1_path=paths['eval_qa_hotMask_path'],
-                act_recon2_path=paths['eval_qa_hotBackgroundMask_path'],
+                act_recon1_path=qa_recon1_path,
+                act_recon2_path=qa_recon2_path,
                 atten_image_path=paths.get('eval_qa_atten_image_path'),
                 atten_sino_path=paths.get('eval_qa_atten_sino_path')
             )
@@ -266,16 +280,25 @@ def load_eval_batch(split, paths, config, settings, augment=None):
         act_image_batch = []
         hotMask_batch = []
         hotBackgroundMask_batch = []
+        recon1_batch = []
+        recon2_batch = []
         atten_sino_batch = []
         atten_image_batch = []
         for idx in indices:
             act_data, atten_data, recon_data = _qa_dataset[idx]
             act_sino, act_image = act_data
-            hotMask, hotBackgroundMask = recon_data
+            recon1_data, recon2_data = recon_data
             act_sino_batch.append(act_sino)
-            act_image_batch.append(act_image)
-            hotMask_batch.append(hotMask)
-            hotBackgroundMask_batch.append(hotBackgroundMask)
+            if act_image is not None:
+                act_image_batch.append(act_image)
+            if qa_uses_masks:
+                hotMask_batch.append(recon1_data)
+                hotBackgroundMask_batch.append(recon2_data)
+            else:
+                if recon1_data is not None:
+                    recon1_batch.append(recon1_data)
+                if recon2_data is not None:
+                    recon2_batch.append(recon2_data)
             
             if atten_data is not None:
                 atten_sino, atten_image = atten_data
@@ -284,16 +307,23 @@ def load_eval_batch(split, paths, config, settings, augment=None):
                 if atten_image is not None:
                     atten_image_batch.append(atten_image)
         
-        result = {
-            'act_image_scaled': torch.stack(act_image_batch),
-            'hotMask': torch.stack(hotMask_batch),
-            'hotBackgroundMask': torch.stack(hotBackgroundMask_batch),
-        }
+        result = {}
+        if act_image_batch:
+            result['act_image_scaled'] = torch.stack(act_image_batch)
+        if qa_uses_masks:
+            result['hotMask'] = torch.stack(hotMask_batch)
+            result['hotBackgroundMask'] = torch.stack(hotBackgroundMask_batch)
         # For DENOISE, store the recon input in the correct slot so route_batch_inputs
         # sees it the same way for all splits (train, holdout, QA).
         if network_type == 'DENOISE':
             recon_key = 'act_recon1_scaled' if recon_variant == 1 else 'act_recon2_scaled'
             result[recon_key] = torch.stack(act_sino_batch)
+        elif network_type == 'RECON_SINO':
+            result['act_sino_scaled'] = torch.stack(act_sino_batch)
+            if recon_variant == 1:
+                result['act_recon1_scaled'] = torch.stack(recon1_batch)
+            else:
+                result['act_recon2_scaled'] = torch.stack(recon2_batch)
         else:
             result['act_sino_scaled'] = torch.stack(act_sino_batch)
         
