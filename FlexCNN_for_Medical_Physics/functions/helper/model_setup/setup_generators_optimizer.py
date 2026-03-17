@@ -154,7 +154,7 @@ def _extract_frozen_config(config):
 
 def instantiate_dual_generators(config, device, flow_mode):
     """
-    Instantiate frozen attenuation and trainable activity generators for dual-network setup.
+    Instantiate frozen backbone and trainable activity generators for dual-network setup.
 
     Args:
         config (dict): Model configuration dictionary with FROZEN_* prefixed keys for frozen network.
@@ -198,18 +198,18 @@ def load_dual_generator_checkpoints(
     gen_act,
     gen_frozen,
     act_ckpt,
-    atten_ckpt,
+    frozen_ckpt,
     load_state,
     run_mode,
     device,
 ):
     """
-    Loads or initializes checkpoints/weights for dual-generator setup (activity and attenuation networks).
+    Loads or initializes checkpoints/weights for dual-generator setup (activity and frozen backbone networks).
     Args:
         gen_act: Activity generator model (trainable)
         gen_frozen: Frozen generator model
         act_ckpt: Checkpoint path for activity generator
-        atten_ckpt: Checkpoint path for attenuation generator
+        frozen_ckpt: Checkpoint path for frozen backbone generator
         load_state: Whether to load activity generator state
         run_mode: Current run mode (train/test/visualize/tune)
         device: Torch device
@@ -227,11 +227,11 @@ def load_dual_generator_checkpoints(
         gen_act = gen_act.apply(weights_init_he)
 
     # Always load frozen checkpoint if available
-    if atten_ckpt is not None and os.path.exists(atten_ckpt):
-        atten_checkpoint = torch.load(atten_ckpt, map_location=device)
-        gen_frozen.load_state_dict(atten_checkpoint['gen_state_dict'])
+    if frozen_ckpt is not None and os.path.exists(frozen_ckpt):
+        frozen_checkpoint = torch.load(frozen_ckpt, map_location=device)
+        gen_frozen.load_state_dict(frozen_checkpoint['gen_state_dict'])
     else:
-        raise FileNotFoundError(f"Frozen checkpoint not found at '{atten_ckpt}' for {run_mode}.")
+        raise FileNotFoundError(f"Frozen checkpoint not found at '{frozen_ckpt}' for {run_mode}.")
     
     gen_frozen.eval()
 

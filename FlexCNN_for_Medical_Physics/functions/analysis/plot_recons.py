@@ -208,8 +208,8 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         - 'ACT': Activity network (sinogram -> image)
         - 'ATTEN': Attenuation network (sino -> atten image)
         - 'CONCAT': Concatenated dual-input network
-        - 'FROZEN_COFLOW': Frozen attenuation + trainable activity (coflow configuration)
-        - 'FROZEN_COUNTERFLOW': Frozen attenuation + trainable activity (counterflow configuration)
+        - 'FROZEN_COFLOW': Frozen backbone + trainable activity (coflow configuration)
+        - 'FROZEN_COUNTERFLOW': Frozen backbone + trainable activity (counterflow configuration)
         If None, uses config['network_type'].
     config : dict
         Hyperparameter dictionary containing network configuration (gen_sino_size, channels, 
@@ -276,7 +276,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     - Config parameters are automatically materialized (string activations converted to objects).
     - Generator classes are force-reloaded to handle Jupyter caching issues.
     - Config must match the checkpoint's original training config for successful loading.
-    - For dual-network types, frozen attenuation features are passed to the activity network.
+    - For dual-network types, frozen backbone features are passed to the activity network.
     - Large datasets should use device='cpu' if memory-constrained.
     
     Raises
@@ -317,8 +317,8 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         input = tensors['act_sino_tensor']
     elif network_type == 'ATTEN':
         input = tensors['atten_sino_tensor']
-    elif network_type == 'DENOISE':
-        recon_variant = int(config.get('recon_variant', 1))
+    elif network_type in ('DENOISE', 'RECON_SINO'):
+        recon_variant = int(config.get('recon_variant'))
         if recon_variant == 1:
             input = tensors['recon1_tensor']
         elif recon_variant == 2:
@@ -329,16 +329,21 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         # Concatenate activity and attenuation sinograms along channel dim
         input = torch.cat([tensors['act_sino_tensor'], tensors['atten_sino_tensor']], dim=1)
     elif network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
-        frozen_variant = str(config.get('frozen_variant', 'ATTEN')).upper()
-        if network_type == 'FROZEN_COFLOW':
+        frozen_variant = str(config.get('frozen_variant')).upper()
+        if network_type == 'FROZEN_COFLOW':  # FROZEN_COFLOW
             if frozen_variant == 'RECON_SINO':
                 frozen_input = tensors['act_sino_tensor']
             else:  # ATTEN
                 frozen_input = tensors['atten_sino_tensor']
         else:  # FROZEN_COUNTERFLOW
             if frozen_variant == 'RECON_SINO':
-                recon_variant = int(config.get('recon_variant', 1))
-                frozen_input = tensors['recon1_tensor'] if recon_variant == 1 else tensors['recon2_tensor']
+                recon_variant = int(config.get('recon_variant'))
+                if recon_variant == 1:
+                    frozen_input = tensors['recon1_tensor']
+                elif recon_variant == 2:
+                    frozen_input = tensors['recon2_tensor']
+                else:
+                    raise ValueError(f"Invalid recon_variant={recon_variant}. Expected 1 or 2.")
             else:  # ATTEN
                 frozen_input = tensors['atten_image_tensor']
         input = (frozen_input, tensors['act_sino_tensor'])
@@ -346,7 +351,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         raise ValueError(f"Unknown network_type: {network_type}")
 
     cnn_output = None
-    if network_type in ('ACT', 'ATTEN', 'DENOISE', 'CONCAT'):
+    if network_type in ('ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT'):
         cnn_output = cnn_reconstruct_single(input, config, paths, device, checkpoint_name)
     elif network_type in ('FROZEN_COFLOW', 'FROZEN_COUNTERFLOW'):
         cnn_output = cnn_reconstruct_dual(input[0], input[1], config, paths, device, checkpoint_name)

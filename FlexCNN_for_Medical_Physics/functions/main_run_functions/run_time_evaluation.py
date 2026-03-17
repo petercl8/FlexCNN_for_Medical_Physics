@@ -515,7 +515,7 @@ def _evaluate_metrics_frozen(generators, batch, device, flow_mode, tune_metric='
     else:
         raise ValueError(f"Invalid frozen_variant='{frozen_variant}'. Expected ATTEN or RECON_SINO.")
     
-    # Run frozen attenuation network to get features
+    # Run frozen backbone network to get features
     with torch.no_grad():
         result = gen_frozen(frozen_input, return_features=True)
         frozen_enc_feats = result['encoder']

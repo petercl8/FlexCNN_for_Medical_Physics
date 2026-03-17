@@ -56,6 +56,7 @@ config_FROZEN_COUNTERFLOW= { # SAMPLE
   "gen_sino_channels": 3,
   "gen_sino_size": 256,
   "network_type": "FROZEN_COUNTERFLOW",
+  "frozen_variant": "ATTEN",
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }

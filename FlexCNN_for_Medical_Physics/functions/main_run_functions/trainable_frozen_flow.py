@@ -46,7 +46,7 @@ logging.basicConfig(level=logging.INFO)
 
 def run_trainable_frozen_flow(config, paths, settings):
     """
-    Train, test, or visualize a network using a frozen attenuation network (backbone)
+    Train, test, or visualize a network using a frozen backbone network
     guiding a trainable activity network. Handles coflow/counterflow feature injection.
     """
     # Materialize config (convert string references to objects for consistency)
@@ -147,7 +147,7 @@ def run_trainable_frozen_flow(config, paths, settings):
             train_dataframe = pd.DataFrame(columns=['epoch', 'batch_step', 'example_num', 'eval_split', 'MSE', 'SSIM', 'CUSTOM'])
 
     # ========================================================================================
-    # SECTION 4: INSTANTIATE MODELS (FROZEN ATTENUATION + TRAINABLE ACTIVITY)
+    # SECTION 4: INSTANTIATE MODELS (FROZEN BACKBONE + TRAINABLE ACTIVITY)
     # ========================================================================================
     # Instantiate both generators using helper function
     gen_frozen, gen_act = instantiate_dual_generators(config, device, flow_mode)
@@ -315,7 +315,7 @@ def run_trainable_frozen_flow(config, paths, settings):
             _ = display_times('loader time', time_init_loader, show_times)
             time_init_full = display_times('FULL STEP TIME', time_init_full, show_times)
 
-            # ----- SUBSECTION 10C: FROZEN ATTENUATION FORWARD PASS -----
+            # ----- SUBSECTION 10C: FROZEN BACKBONE FORWARD PASS -----
             with torch.no_grad():
                 # Select frozen backbone input by variant and flow mode.
                 if frozen_variant == 'ATTEN':
@@ -333,7 +333,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                         if frozen_input is None:
                             raise ValueError(f"RECON_SINO frozen counterflow requires recon_variant={recon_variant} tensor, but it is None")
                 result = gen_frozen(frozen_input, return_features=True)
-                atten_output = result['output']
+                frozen_output = result['output']
                 frozen_enc_feats = result['encoder']
                 frozen_dec_feats = result['decoder']
 
@@ -403,7 +403,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                     'recon1_output': recon1_output,
                     'recon2_output': recon2_output,
                     'frozen_input': frozen_input,
-                    'frozen_output': atten_output,
+                    'frozen_output': frozen_output,
                 }
 
                 # Ray Tune reporting (tune mode)
