@@ -1,7 +1,6 @@
 AFTER TRAINING
 ==============
-set train_save_state = False (to avoid accidental overwrite)
-
+set train_save_state/train_load_state = False (to avoid accidental overwrite)
 
 
 SETUP TUNING OR TRAINING OR TESTING
@@ -14,7 +13,6 @@ QA phantoms settings
 
 search_spaces.py (if tuning)
 ----------------------------
-correct counts/Bq (switch if targets are annhilation maps)
 correct search space (including 'stats' and 'fill' options)
 
 config net dicts (if training/testing)
@@ -24,3 +22,7 @@ correct tuned config
 dataset_classes.py
 ------------------
 correct data loading parameters
+
+Other
+-----
+correct counts/Bq (switch if targets are annhilation maps)

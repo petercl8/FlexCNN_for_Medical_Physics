@@ -7,6 +7,7 @@ visualization functions, batch collation, and shared utilities for training pipe
 Runtime evaluation functions (tuning/training metrics reporting) have been moved to run_time_evaluation module.
 """
 import os
+import math
 import torch
 import logging
 
@@ -19,6 +20,48 @@ from FlexCNN_for_Medical_Physics.functions.helper.image_processing.reconstructio
 
 # Module logger for optional Tune debug output
 logger = logging.getLogger(__name__)
+
+
+def compute_frozen_feature_drop_prob(run_mode, epoch, report_num, num_epochs, tune_max_t, p_min, p_max, test_frozen_drop=False):
+    """Compute frozen-feature drop probability for train/tune/test modes."""
+    p_min = max(0.0, min(1.0, float(p_min)))
+    p_max = max(0.0, min(1.0, float(p_max)))
+    if p_min > p_max:
+        p_min, p_max = p_max, p_min
+
+    if run_mode == 'test':
+        return 1.0 if test_frozen_drop else 0.0
+    if run_mode == 'tune':
+        t = int(report_num)
+        horizon = max(1, int(tune_max_t))
+    elif run_mode == 'train':
+        t = int(epoch)
+        horizon = max(1, int(num_epochs))
+    else:
+        return 0.0
+
+    t = min(max(t, 0), horizon)
+    return p_min + 0.5 * (p_max - p_min) * (1 + math.cos(math.pi * t / horizon))
+
+
+def maybe_zero_frozen_features(frozen_enc_feats, frozen_dec_feats, run_mode, p_drop, test_frozen_drop=False):
+    """Optionally zero frozen feature tuples and return (enc, dec, dropped_this_batch)."""
+    if run_mode == 'test':
+        dropped_this_batch = bool(test_frozen_drop)
+    elif run_mode in ('train', 'tune'):
+        dropped_this_batch = torch.rand(1).item() < float(p_drop)
+    else:
+        dropped_this_batch = False
+
+    if not dropped_this_batch:
+        return frozen_enc_feats, frozen_dec_feats, dropped_this_batch
+
+    def _zero_feature_tuple(features):
+        if features is None:
+            return None
+        return tuple(torch.zeros_like(feat) for feat in features)
+
+    return _zero_feature_tuple(frozen_enc_feats), _zero_feature_tuple(frozen_dec_feats), dropped_this_batch
 
 
 def compute_and_validate_moment_weights(stats_criterion, config, prefix):
@@ -303,7 +346,7 @@ def visualize_train(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM
 
 
 def visualize_train_frozen(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM,
-                           epoch, batch_step, example_num):
+                           epoch, batch_step, example_num, p_drop):
     """
     Display training progress for frozen-flow models, including frozen backbone panels.
 
@@ -338,6 +381,7 @@ def visualize_train_frozen(batch_data, mean_gen_loss, current_CNN_MSE, current_C
     print(f'mean_gen_loss: {mean_gen_loss}')
     print(f'current_CNN_MSE : {current_CNN_MSE}')
     print(f'current_CNN_SSIM: {current_CNN_SSIM}')
+    print(f'p_dropped: {p_drop}')
     print('=======================')
     print('Current Batch LDM: ', patchwise_moment_metric(target, CNN_output, return_per_moment=True))
 

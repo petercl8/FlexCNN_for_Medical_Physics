@@ -29,6 +29,8 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     init_checkpoint_state,
     compute_and_validate_moment_weights,
     check_eval_paths_provided,
+    compute_frozen_feature_drop_prob,
+    maybe_zero_frozen_features,
 )
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluation import report_cross_validation_metrics
@@ -57,6 +59,9 @@ def run_trainable_frozen_flow(config, paths, settings):
     # ========================================================================================
     run_mode = settings['run_mode']
     device = settings['device']
+    frozen_features_drop_max_prob = float(settings.get('frozen_features_drop_max_prob', 0.0))
+    frozen_features_drop_min_prob = float(settings.get('frozen_features_drop_min_prob', 0.0))
+    test_frozen_drop = bool(settings.get('test_frozen_drop', False))
     tune_debug = settings.get('tune_debug', False)
     if tune_debug:
         logger.setLevel(logging.DEBUG)
@@ -92,11 +97,12 @@ def run_trainable_frozen_flow(config, paths, settings):
     # Tuning-specific settings
     if run_mode == 'tune':
         tune_dataframe_fraction = settings['tune_dataframe_fraction']
-        tune_max_t = settings['tune_max_t']
         tune_restore = settings['tune_restore']
         tune_dataframe_path = paths['tune_dataframe_path']
     elif run_mode == 'train':
         train_dataframe_path = paths.get('train_dataframe_path')
+
+    tune_max_t = int(settings.get('tune_max_t', 1))
 
     # Checkpoint path
     checkpoint_path = paths['checkpoint_path']
@@ -337,6 +343,25 @@ def run_trainable_frozen_flow(config, paths, settings):
                 frozen_enc_feats = result['encoder']
                 frozen_dec_feats = result['decoder']
 
+            # Prepare injected features for activity network according to run mode.
+            p_drop = compute_frozen_feature_drop_prob(
+                run_mode=run_mode,
+                epoch=epoch,
+                report_num=report_num,
+                num_epochs=num_epochs,
+                tune_max_t=tune_max_t,
+                p_min=frozen_features_drop_min_prob,
+                p_max=frozen_features_drop_max_prob,
+                test_frozen_drop=test_frozen_drop,
+            )
+            injected_enc_feats, injected_dec_feats, dropped_this_batch = maybe_zero_frozen_features(
+                frozen_enc_feats,
+                frozen_dec_feats,
+                run_mode=run_mode,
+                p_drop=p_drop,
+                test_frozen_drop=test_frozen_drop,
+            )
+
             # ----- SUBSECTION 10D: ACTIVITY NETWORK FORWARD/BACKWARD PASS -----
             
             input_ = act_sino_scaled
@@ -348,8 +373,8 @@ def run_trainable_frozen_flow(config, paths, settings):
                 gen_act_opt.zero_grad()
                 CNN_output = gen_act(
                     input_,
-                    frozen_encoder_features=frozen_enc_feats,
-                    frozen_decoder_features=frozen_dec_feats,
+                    frozen_encoder_features=injected_enc_feats,
+                    frozen_decoder_features=injected_dec_feats,
                 )
 
                 gen_loss = hybrid_loss(CNN_output, target)
@@ -365,8 +390,8 @@ def run_trainable_frozen_flow(config, paths, settings):
                 # Test/visualize: forward only
                 CNN_output = gen_act(
                     input_,
-                    frozen_encoder_features=frozen_enc_feats,
-                    frozen_decoder_features=frozen_dec_feats,
+                    frozen_encoder_features=injected_enc_feats,
+                    frozen_decoder_features=injected_dec_feats,
                 ).detach()
 
             # _____ SUBSECTION 10E: INCREMENT BATCH COUNTER _____
@@ -407,7 +432,9 @@ def run_trainable_frozen_flow(config, paths, settings):
                 }
 
                 # Ray Tune reporting (tune mode)
-                if run_mode == 'tune' and session is not None:
+                if run_mode == 'tune':
+                    print(f'report_num/tune_max_t : {report_num / max(1, tune_max_t)}')
+                    print(f'p_drop/dropped_this_batch : {p_drop} / {dropped_this_batch}')
                     report_cross_validation_metrics(
                         (gen_act, gen_frozen), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         tune_dataframe_fraction, tune_max_t, report_num,
@@ -420,10 +447,12 @@ def run_trainable_frozen_flow(config, paths, settings):
                     print('Flow mode: ', flow_mode)
                     current_CNN_SSIM = calculate_metric(target, CNN_output, SSIM)
                     current_CNN_MSE = calculate_metric(target, CNN_output, MSE)
-                    visualize_train_frozen(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM, epoch, batch_step, example_num)
+                    visualize_train_frozen(batch_data, mean_gen_loss, current_CNN_MSE, current_CNN_SSIM, epoch, batch_step, example_num, p_drop)
 
                 # Test visualization
                 if run_mode == 'test':
+                    print(f'report_num/tune_max_t : {report_num / max(1, tune_max_t)}')
+                    print(f'p_drop/dropped_this_batch : {p_drop} / {dropped_this_batch}')
                     visualize_test(batch_data, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM)
 
                 # Visualization mode (display input, output, recons)

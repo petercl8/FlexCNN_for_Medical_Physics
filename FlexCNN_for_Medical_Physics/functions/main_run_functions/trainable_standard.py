@@ -432,7 +432,7 @@ def run_trainable(config, paths, settings):
                 }
 
                 # _____ REPORTING: Ray Tune Validation (tune mode) _____
-                if run_mode == 'tune' and session is not None:
+                if run_mode == 'tune':
                     report_cross_validation_metrics(
                         (gen,), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         tune_dataframe_fraction, tune_max_t, report_num,

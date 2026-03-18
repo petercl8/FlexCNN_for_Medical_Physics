@@ -65,6 +65,8 @@ def build_all_dicts(params):
         'run_mode': params['run_mode'],
         'device': params['device_opt'],  # Note: this should be set to actual device before passing
         'num_examples': params['num_examples'],
+        'frozen_features_drop_max_prob': params.get('frozen_features_drop_max_prob', 0.0),
+        'frozen_features_drop_min_prob': params.get('frozen_features_drop_min_prob', 0.0),
         'act_recon1_scale': params['act_recon1_scale'],
         'act_recon2_scale': params['act_recon2_scale'],
         'act_sino_scale': params['act_sino_scale'],
@@ -214,6 +216,7 @@ def build_all_dicts(params):
         'testset_size': params['testset_size'],
         'test_begin_at': params['test_begin_at'],
         'test_compute_MLEM': params['test_compute_MLEM'],
+        'test_frozen_drop': params.get('test_frozen_drop', False),
         'test_merge_dataframes': params['test_merge_dataframes'],
         'test_csv_file': params['test_csv_file'],
         'test_show_times': params['test_show_times'],

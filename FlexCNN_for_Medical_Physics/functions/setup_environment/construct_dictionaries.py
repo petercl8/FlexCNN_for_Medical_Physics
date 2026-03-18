@@ -427,6 +427,8 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
     settings['run_mode'] = run_mode
     settings['device'] = common_settings['device']
     settings['num_examples'] = common_settings['num_examples']
+    settings['frozen_features_drop_max_prob'] = common_settings.get('frozen_features_drop_max_prob', 0.0)
+    settings['frozen_features_drop_min_prob'] = common_settings.get('frozen_features_drop_min_prob', 0.0)
     settings['act_sino_scale'] = common_settings['act_sino_scale']
     settings['act_recon1_scale'] = common_settings['act_recon1_scale']
     settings['act_recon2_scale'] = common_settings['act_recon2_scale']
@@ -511,6 +513,7 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         settings['load_state'] = True
         settings['save_state'] = False
         settings['offset'] = 0
+        settings['test_frozen_drop'] = bool(test_opts.get('test_frozen_drop', False))
         settings['show_times'] = test_opts['test_show_times']
         settings['sample_division'] = test_opts['test_sample_division']
         settings['test_display_step'] = test_opts['test_display_step'] # Used in compute_display_step()
@@ -524,6 +527,7 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         settings['save_state'] = False
         settings['show_times'] = False
         settings['offset'] = viz_opts['visualize_offset']
+        settings['test_frozen_drop'] = False
         settings['sample_division'] = 1
         #settings['visualize_batch_size'] = viz_opts['visualize_batch_size']
     else:

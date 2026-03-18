@@ -13,6 +13,47 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
+
+
+# 288x257, SINOGRAM padded to 288x288, tuned SSIM, DROPOUT added 
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded sinoram-style horizontally to 288
+config_ACT_SI = { 
+  "SI_alpha_min": -1,
+  "SI_dropout": True,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 20,
+  "SI_gen_mult": 2.1572554323300173,
+  "SI_gen_neck": "wide",
+  "SI_gen_z_dim": 1939,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 4.981741020141211,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 4.290911545096751,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "conv",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.19220905219147658,
+  "gen_b2": 0.1767702014809058,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.000330514188658911,
+  "gen_sino_channels": 3,
+  "gen_sino_size": 288,
+  "network_type": "ACT",
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+
+
+
+'''
 # 288x218, SINOGRAM padded to 288x288, tuned SSIM 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 218.
 # results in 288x218 size which is then sinogram padded horizontally to 288
@@ -48,9 +89,9 @@ config_ACT_SI = {
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
 '''
-# 288x188, SINOGRAM padded to 288x288, tuned SSIM 
+'''
+# 288x180, SINOGRAM padded to 288x288, tuned SSIM 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 180.
 # results in 288x180 size which is then sinogram padded horizontally to 288
 config_ACT_SI = { 
