@@ -160,7 +160,7 @@ def run_trainable_frozen_flow(config, paths, settings):
     gen_act_opt = create_optimizer(gen_act, config)
     
     # ========================================================================================
-    # SECTION 5: LOAD OR INITIALIZE CHECKPOINTS AND WEIGHTS
+    # SECTION 5: LOAD OR INITIALIZE CHECKPOINTS AND WEIGHTS AND SETUP LR SCHEDULER
     # ========================================================================================
     act_ckpt = checkpoint_path + '-act' if checkpoint_path is not None else None
     frozen_ckpt = checkpoint_path + '-frozen' if checkpoint_path is not None else None
