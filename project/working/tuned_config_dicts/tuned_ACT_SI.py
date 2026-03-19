@@ -14,6 +14,50 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 '''
 
 
+# (I) 320x320 Network. Data: 288x257, SINOGRAM padded to 288x288, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded sinoram-style horizontally to 288
+config_ACT_SI = {
+  "SI_alpha_min": -1,
+  "SI_disc_adv_criterion": 1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 27,
+  "SI_gen_mult": 2.346554155198677,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 1275,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 22.311191399467425,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 1.1652951981214295,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.16376752129041514,
+  "gen_b2": 0.6314511499737464,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.00021715942590932197,
+  "gen_sino_channels": 3,
+  "gen_sino_size": 320,
+  "network_type": "ACT",
+  "recon_variant": 1,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+
+#####################################
+### 288x288 Network Tunings Below ###
+#####################################
+
+'''
 # (H) 288x257, SINOGRAM padded to 288x288, tuned SSIM, DROPOUT=True enforced 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 288
@@ -51,7 +95,7 @@ config_ACT_SI = {
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
+'''
 
 '''
 # (G) 288x180, SINOGRAM padded to 288x288, tuned SSIM 
