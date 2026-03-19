@@ -13,7 +13,8 @@ QA phantoms settings
 
 search_spaces.py (if tuning)
 ----------------------------
-correct search space (including 'stats' and 'fill' options)
+correct search space
+    *including 'stats', 'fill', and 'dropout' (IS and SI) options
 
 config net dicts (if training/testing)
 --------------------------------------

@@ -29,11 +29,11 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 recon_variant=1       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
-frozen_variant='ATTEN'  # Frozen backbone type for FROZEN_* runs: 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'
+frozen_variant='RECON_SINO'  # Frozen backbone type for FROZEN_* runs: 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'
 frozen_features_drop_max_prob=0.0  # For frozen-flow tune/train: cosine-scheduled max probability of dropping injected frozen features.
 frozen_features_drop_min_prob=0.0  # For frozen-flow tune/train: cosine-scheduled min probability of dropping injected frozen features.
 
@@ -42,7 +42,7 @@ frozen_features_drop_min_prob=0.0  # For frozen-flow tune/train: cosine-schedule
 gen_sino_channels=3
 
 gen_image_channels=1      # Number of image channels for network currently being trained (generally 1)
-gen_sino_size=288         # Options: 180, 256, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
+gen_sino_size=320         # Options: 180, 256, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 90). Images are square.
 
 SI_normalize=False    # For sino-->image mappings: normalize CNN outputs (images), iterative recons, and ground truths from dataset. You can then adjust the scale factor in the search dictionaries.
@@ -114,24 +114,23 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ## Tuning ##
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
-#tune_csv_file='frame-CONCAT-256-bilinear-largePadSinos-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='frame-ACT-288-bilinear-288x218-padSino-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-320-bilinear-288x257-padSino-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='temp'
 
-tune_exp_name='search-ACT-288-bilinear-288x218-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='temp'
 
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
 tune_restore=False           # Resume a terminated run (loads tune_exp_name from tune_storage_dirPath). If False, deletes any existing tune_exp_name folder and starts fresh.
-tune_minutes = 12*60           # How long to run RayTune. 240 minutes is good for a simple 256x256 network.
+tune_minutes = 24*60           # How long to run RayTune. 240 minutes is good for a simple 256x256 network.
 tune_metric = 'SSIM'         # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). 
                             # For QA set to 'qa-simple' for simple phantom CR metrics. Set to 'qa-nema' for NEMA hot contrast recovery.
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=15   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
 
 tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
-tune_max_t = 48              # Maximum number of reports before terminating a trial (48 is good)
+tune_max_t = 36              # Maximum number of reports before terminating a trial (48 is good)
 
 tune_grace_period=4          # Minimum number of reports before terminating a trial
 tune_eval_batch_size=64      # If tuning on validation or QA set, what is the batch size to evaluate?
@@ -146,8 +145,8 @@ tune_search_alg='optuna'     # 'optuna' or 'hyperopt'
 ## -------------- ##
 #tune_act_sino_file ='train-highCountSino-382x513.npy'
 #tune_act_sino_file='train-highCountSino-pool-288x257.npy'
-#tune_act_sino_file='train-highCountSino-bilinear-288x257.npy'
-tune_act_sino_file='train-highCountSino-bilinear-288x218.npy'
+tune_act_sino_file='train-highCountSino-bilinear-288x257.npy'
+#tune_act_sino_file='train-highCountSino-bilinear-288x218.npy'
 #tune_act_sino_file='train-highCountSino-128x128.npy'
 #tune_act_sino_file='train-highCountImage.npy'
 #tune_act_sino_file='train-obliqueImage.npy'
@@ -171,7 +170,7 @@ tune_act_recon2_file=None
 ## Cross Validation Set ##
 ## -------------------- ##
 #tune_val_act_sino_file='val-highCountSino-382x513.npy'
-tune_val_act_sino_file='val-highCountSino-bilinear-288x218.npy'
+tune_val_act_sino_file='val-highCountSino-bilinear-288x257.npy'
 
 #tune_val_act_sino_file='val-highCountSino-180x180.npy'
 #tune_val_act_sino_file='val-highCountSino-128x128.npy'
@@ -224,10 +223,10 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are automatically appended suffixes of -frozen and -act.
 #####
 
-train_checkpoint_file='checkpoint-ACT-288-bilinear-288x257-padSino-tunedSSIM-dropoutAdded-0p3lr-800epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-ACT-288-pool-288x257-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='temp'  # Checkpoint file to load or save to.
-train_csv_file='frame-ACT-288-bilinear-288x257-padSino-tunedSSIM-dropoutAdded-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='frame-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 
 train_load_state=False   # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
