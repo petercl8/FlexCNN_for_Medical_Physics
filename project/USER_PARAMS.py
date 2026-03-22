@@ -29,7 +29,7 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='RECON_SINO'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 train_SI=False         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 recon_variant=1       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
@@ -149,8 +149,8 @@ tune_act_sino_file='train-highCountSino-bilinear-288x257.npy'
 #tune_act_sino_file='train-highCountSino-bilinear-288x218.npy'
 #tune_act_sino_file='train-highCountSino-bilinear-180x180.npy'
 
-tune_act_image_file='train-actMap.npy'
-
+#tune_act_image_file='train-actMap.npy'
+tune_act_image_file=None
 
 #tune_atten_sino_file='train-attenSino-382x513.npy'
 #tune_atten_sino_file='train-attenSino-288x180.npy'
@@ -169,20 +169,18 @@ tune_act_recon2_file=None
 ## -------------------- ##
 #tune_val_act_sino_file='val-highCountSino-382x513.npy'
 tune_val_act_sino_file='val-highCountSino-bilinear-288x257.npy'
-
 #tune_val_act_sino_file='val-highCountSino-180x180.npy'
 #tune_val_act_sino_file='val-highCountSino-128x128.npy'
 
-tune_val_act_image_file='val-actMap.npy'
-
+#tune_val_act_image_file='val-actMap.npy'
+tune_val_act_image_file=None
 
 #tune_val_atten_sino_file='val-attenSino-180x180.npy'
-#tune_val_act_sino_file='val-highCountImage.npy'
-#tune_val_act_sino_file='val-obliqueImage.npy'
 tune_val_atten_sino_file=None
 
 tune_val_atten_image_file=None
-tune_val_act_recon1_file=None
+
+tune_val_act_recon1_file='val-highCountImage.npy'
 tune_val_act_recon2_file=None
 
 ## Unlikely to Change ##
@@ -200,18 +198,16 @@ qa_hot_weight=0.5            # A weighted contrast recovery coefficient as follo
 ## QA Files ##
 qa_act_sino_file='QA-NEMA-highCountSino-bilinear-288x257.npy'
 qa_act_image_file='QA-NEMA-actMap.npy'
-qa_act_recon1_file='QA-NEMA-highCountImage.npy'
-qa_act_recon2_file=None
 qa_atten_image_file=None
 qa_atten_sino_file=None
+qa_act_recon1_file='QA-NEMA-highCountImage.npy'
+qa_act_recon2_file=None
 
 qa_hotMask_file='QA-NEMA-hotMask_17mm.npy'
 qa_hotBackgroundMask_file='QA-NEMA-backMask_17mm.npy'
 qa_coldMask_file='QA-NEMA-coldMask_37mm.npy'
 qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 
-
-"""## Training"""
 
 ##############
 ## Training ##

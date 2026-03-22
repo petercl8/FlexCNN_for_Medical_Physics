@@ -63,8 +63,10 @@ def _extract_standard_eval_batch(dataset, indices):
         act_data, atten_data, recon_data = dataset[idx]
         if act_data is not None:
             act_sino, act_image = act_data
-            act_sino_batch.append(act_sino)
-            act_image_batch.append(act_image)
+            if act_sino is not None:
+                act_sino_batch.append(act_sino)
+            if act_image is not None:
+                act_image_batch.append(act_image)
         if recon_data is not None:
             recon1, recon2 = recon_data
             if recon1 is not None:

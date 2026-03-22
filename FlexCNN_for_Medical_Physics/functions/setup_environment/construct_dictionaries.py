@@ -249,6 +249,9 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     """
 
     paths = {}
+
+    def join_if_present(root_path, file_name):
+        return os.path.join(root_path, file_name) if file_name is not None else None
     
     # Base directories
     paths['plot_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['plot_dirName'])
@@ -270,53 +273,53 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         paths['data_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['data_dirName'])
     
     # Mode-specific data file paths (activity domain renamed to act_*)
-    paths['tune_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_sino_file'])
-    paths['tune_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_image_file'])
-    paths['tune_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_recon1_file']) if data_files['tune_act_recon1_file'] is not None else None
-    paths['tune_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['tune_act_recon2_file']) if data_files['tune_act_recon2_file'] is not None else None
-    paths['tune_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_image_file']) if data_files['tune_atten_image_file'] is not None else None
-    paths['tune_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_atten_sino_file']) if data_files['tune_atten_sino_file'] is not None else None
-    paths['tune_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_act_sino_file']) if data_files['tune_val_act_sino_file'] is not None else None
-    paths['tune_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_act_image_file']) if data_files['tune_val_act_image_file'] is not None else None
-    paths['tune_val_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files.get('tune_val_act_recon1_file')) if data_files.get('tune_val_act_recon1_file') is not None else None
-    paths['tune_val_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files.get('tune_val_act_recon2_file')) if data_files.get('tune_val_act_recon2_file') is not None else None
-    paths['tune_val_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_image_file']) if data_files['tune_val_atten_image_file'] is not None else None
-    paths['tune_val_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['tune_val_atten_sino_file']) if data_files['tune_val_atten_sino_file'] is not None else None
-    paths['qa_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_sino_file']) if data_files['qa_act_sino_file'] is not None else None
-    paths['qa_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_image_file']) if data_files['qa_act_image_file'] is not None else None
-    paths['qa_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_recon1_file']) if data_files['qa_act_recon1_file'] is not None else None
-    paths['qa_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['qa_act_recon2_file']) if data_files['qa_act_recon2_file'] is not None else None
-    paths['qa_backMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_backMask_file']) if data_files['qa_backMask_file'] is not None else None
-    paths['qa_hotMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_hotMask_file']) if data_files['qa_hotMask_file'] is not None else None
-    paths['qa_hotBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_hotBackgroundMask_file']) if data_files['qa_hotBackgroundMask_file'] is not None else None
-    paths['qa_coldMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_coldMask_file']) if data_files['qa_coldMask_file'] is not None else None
-    paths['qa_coldBackgroundMask_path'] = os.path.join(paths['data_dirPath'], data_files['qa_coldBackgroundMask_file']) if data_files['qa_coldBackgroundMask_file'] is not None else None
-    paths['qa_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['qa_atten_image_file']) if data_files['qa_atten_image_file'] is not None else None
-    paths['qa_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['qa_atten_sino_file']) if data_files['qa_atten_sino_file'] is not None else None
-    paths['train_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_sino_file'])
-    paths['train_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_image_file'])
-    paths['train_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_recon1_file']) if data_files['train_act_recon1_file'] is not None else None
-    paths['train_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['train_act_recon2_file']) if data_files['train_act_recon2_file'] is not None else None
-    paths['train_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_image_file']) if data_files['train_atten_image_file'] is not None else None
-    paths['train_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_atten_sino_file']) if data_files['train_atten_sino_file'] is not None else None
-    paths['train_val_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_act_sino_file']) if data_files['train_val_act_sino_file'] is not None else None
-    paths['train_val_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_act_image_file']) if data_files['train_val_act_image_file'] is not None else None
-    paths['train_val_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files.get('train_val_act_recon1_file')) if data_files.get('train_val_act_recon1_file') is not None else None
-    paths['train_val_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files.get('train_val_act_recon2_file')) if data_files.get('train_val_act_recon2_file') is not None else None
-    paths['train_val_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_atten_image_file']) if data_files['train_val_atten_image_file'] is not None else None
-    paths['train_val_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['train_val_atten_sino_file']) if data_files['train_val_atten_sino_file'] is not None else None
-    paths['test_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_sino_file'])
-    paths['test_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_image_file'])
-    paths['test_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_recon1_file']) if data_files['test_act_recon1_file'] is not None else None
-    paths['test_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['test_act_recon2_file']) if data_files['test_act_recon2_file'] is not None else None
-    paths['test_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['test_atten_image_file']) if data_files['test_atten_image_file'] is not None else None
-    paths['test_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['test_atten_sino_file']) if data_files['test_atten_sino_file'] is not None else None
-    paths['visualize_act_sino_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_act_sino_file'])
-    paths['visualize_act_image_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_act_image_file'])
-    paths['visualize_act_recon1_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_act_recon1_file']) if data_files['visualize_act_recon1_file'] is not None else None
-    paths['visualize_act_recon2_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_act_recon2_file']) if data_files['visualize_act_recon2_file'] is not None else None
-    paths['visualize_atten_image_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_atten_image_file']) if data_files['visualize_atten_image_file'] is not None else None
-    paths['visualize_atten_sino_path'] = os.path.join(paths['data_dirPath'], data_files['visualize_atten_sino_file']) if data_files['visualize_atten_sino_file'] is not None else None
+    paths['tune_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['tune_act_sino_file'])
+    paths['tune_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['tune_act_image_file'])
+    paths['tune_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files['tune_act_recon1_file'])
+    paths['tune_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files['tune_act_recon2_file'])
+    paths['tune_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['tune_atten_image_file'])
+    paths['tune_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['tune_atten_sino_file'])
+    paths['tune_val_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_act_sino_file'])
+    paths['tune_val_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_act_image_file'])
+    paths['tune_val_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files.get('tune_val_act_recon1_file'))
+    paths['tune_val_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files.get('tune_val_act_recon2_file'))
+    paths['tune_val_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_atten_image_file'])
+    paths['tune_val_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_atten_sino_file'])
+    paths['qa_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['qa_act_sino_file'])
+    paths['qa_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['qa_act_image_file'])
+    paths['qa_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files['qa_act_recon1_file'])
+    paths['qa_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files['qa_act_recon2_file'])
+    paths['qa_backMask_path'] = join_if_present(paths['data_dirPath'], data_files['qa_backMask_file'])
+    paths['qa_hotMask_path'] = join_if_present(paths['data_dirPath'], data_files['qa_hotMask_file'])
+    paths['qa_hotBackgroundMask_path'] = join_if_present(paths['data_dirPath'], data_files['qa_hotBackgroundMask_file'])
+    paths['qa_coldMask_path'] = join_if_present(paths['data_dirPath'], data_files['qa_coldMask_file'])
+    paths['qa_coldBackgroundMask_path'] = join_if_present(paths['data_dirPath'], data_files['qa_coldBackgroundMask_file'])
+    paths['qa_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['qa_atten_image_file'])
+    paths['qa_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['qa_atten_sino_file'])
+    paths['train_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['train_act_sino_file'])
+    paths['train_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['train_act_image_file'])
+    paths['train_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files['train_act_recon1_file'])
+    paths['train_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files['train_act_recon2_file'])
+    paths['train_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['train_atten_image_file'])
+    paths['train_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['train_atten_sino_file'])
+    paths['train_val_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_act_sino_file'])
+    paths['train_val_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_act_image_file'])
+    paths['train_val_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files.get('train_val_act_recon1_file'))
+    paths['train_val_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files.get('train_val_act_recon2_file'))
+    paths['train_val_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_atten_image_file'])
+    paths['train_val_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_atten_sino_file'])
+    paths['test_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['test_act_sino_file'])
+    paths['test_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['test_act_image_file'])
+    paths['test_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files['test_act_recon1_file'])
+    paths['test_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files['test_act_recon2_file'])
+    paths['test_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['test_atten_image_file'])
+    paths['test_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['test_atten_sino_file'])
+    paths['visualize_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['visualize_act_sino_file'])
+    paths['visualize_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['visualize_act_image_file'])
+    paths['visualize_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files['visualize_act_recon1_file'])
+    paths['visualize_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files['visualize_act_recon2_file'])
+    paths['visualize_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['visualize_atten_image_file'])
+    paths['visualize_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['visualize_atten_sino_file'])
     
     # Backward-compatible note: attenuation image/sinogram paths already assigned above for each mode
     
@@ -490,16 +493,6 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         # Validate train_save_on setting
         if settings['train_save_on'] not in ['always', 'SSIM', 'MSE', 'CUSTOM']:
             raise ValueError(f"Invalid train_save_on='{settings['train_save_on']}'. Must be: 'always', 'SSIM', 'MSE', or 'CUSTOM'")
-        
-        # If metric-based saving is requested, ensure holdout files are provided
-        if settings['train_save_on'] in ['SSIM', 'MSE', 'CUSTOM']:
-            if (train_opts.get('train_val_act_sino_file') is None or 
-                train_opts.get('train_val_act_image_file') is None):
-                raise ValueError(
-                    f"train_save_on='{settings['train_save_on']}' requires holdout (validation) files. "
-                    f"Set train_val_act_sino_file and train_val_act_image_file in user_params.py, "
-                    f"or change train_save_on to 'always'."
-                )
         
         # QA phantom settings (shared with tune mode via qa_opts)
         settings['qa_load_mode'] = qa_opts.get('qa_load_mode', 'random')

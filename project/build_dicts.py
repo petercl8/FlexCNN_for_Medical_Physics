@@ -35,6 +35,7 @@ from FlexCNN_for_Medical_Physics.config_net_dicts.search_spaces import (
     config_RAY_IS, config_RAY_IS_learnScale, config_RAY_IS_fixedScale,
     config_RAY_SUP, config_RAY_SUP_FROZEN
 )
+from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import check_eval_paths_provided
 
 
 def build_all_dicts(params):
@@ -286,6 +287,17 @@ def build_all_dicts(params):
         config_RAY_GAN=None,
         config_RAY_GAN_CYCLE=None,
     )
+
+    # Validate metric-based train saving against network-aware holdout requirements.
+    if params['run_mode'] == 'train' and settings.get('train_save_on') in ['SSIM', 'MSE', 'CUSTOM']:
+        available = check_eval_paths_provided(paths, network_opts['network_type'], config=config)
+        if not available['holdout']:
+            raise ValueError(
+                f"train_save_on='{settings['train_save_on']}' requires holdout (validation) files for "
+                f"network_type='{network_opts['network_type']}'. "
+                f"Provide the required train_val_* files for this network/recon_variant, "
+                f"or set train_save_on='always'."
+            )
     
     return {
         'common_settings': common_settings,

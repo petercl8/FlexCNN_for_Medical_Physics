@@ -1,0 +1,2 @@
+IS_dropout,IS_exp_kernel,IS_gen_fill,IS_gen_hidden_dim,IS_gen_neck,IS_layer_norm,IS_normalize,IS_pad_mode,batch_size,gen_lr,num_params,MSE,SSIM
+0.0,3.0,0.0,15.0,medium,instance,0.0,zeros,32.0,0.001639718201006799,507580.0,57658.666325092316,0.0354434772489185

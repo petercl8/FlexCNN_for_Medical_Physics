@@ -119,6 +119,7 @@ def run_trainable(config, paths, settings):
     # SECTION 3: INITIALIZE DATAFRAMES (for tune/test modes)
     # ========================================================================================
     if run_mode == 'tune':
+        tune_prefix = 'SI' if train_SI else 'IS'
         if tune_restore == False:
             if os.path.exists(tune_dataframe_path):
                 # Preserve rows written by previous trials in the same Ray Tune run
@@ -126,8 +127,8 @@ def run_trainable(config, paths, settings):
             else:
                 # Create new tuning dataframe
                 tune_dataframe = pd.DataFrame({
-                    'SI_dropout': [], 'SI_exp_kernel': [], 'SI_gen_fill': [], 'SI_gen_hidden_dim': [],
-                    'SI_gen_neck': [], 'SI_layer_norm': [], 'SI_normalize': [], 'SI_pad_mode': [],
+                    f'{tune_prefix}_dropout': [], f'{tune_prefix}_exp_kernel': [], f'{tune_prefix}_gen_fill': [], f'{tune_prefix}_gen_hidden_dim': [],
+                    f'{tune_prefix}_gen_neck': [], f'{tune_prefix}_layer_norm': [], f'{tune_prefix}_normalize': [], f'{tune_prefix}_pad_mode': [],
                     'batch_size': [], 'gen_lr': [], 'num_params': []
                 })
                 tune_dataframe.to_csv(tune_dataframe_path, index=False)

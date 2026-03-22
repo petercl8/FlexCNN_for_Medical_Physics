@@ -112,15 +112,35 @@ def update_tune_dataframe(tune_dataframe, tune_dataframe_path, model, config, me
     metrics             dictionary of metrics returned by evaluate_val() or evaluate_qa()
 
     '''
-    # Extract values from config dictionary
-    SI_dropout =        config['SI_dropout']
-    SI_exp_kernel =     config['SI_exp_kernel']
-    SI_gen_fill =       config['SI_gen_fill']
-    SI_gen_hidden_dim = config['SI_gen_hidden_dim']
-    SI_gen_neck =       config['SI_gen_neck']
-    SI_layer_norm =     config['SI_layer_norm']
-    SI_normalize =      config['SI_normalize']
-    SI_pad_mode =       config['SI_pad_mode']
+    # Extract direction-prefixed hyperparameters from config dictionary
+    if 'train_SI' not in config:
+        raise ValueError("Missing required config key 'train_SI' for tune dataframe logging.")
+
+    prefix = 'SI' if bool(config['train_SI']) else 'IS'
+    required_prefixed_keys = [
+        f'{prefix}_dropout',
+        f'{prefix}_exp_kernel',
+        f'{prefix}_gen_fill',
+        f'{prefix}_gen_hidden_dim',
+        f'{prefix}_gen_neck',
+        f'{prefix}_layer_norm',
+        f'{prefix}_normalize',
+        f'{prefix}_pad_mode',
+    ]
+    missing_prefixed_keys = [k for k in required_prefixed_keys if k not in config]
+    if missing_prefixed_keys:
+        raise ValueError(
+            f"Config/train_SI mismatch for tune dataframe logging. Missing keys for prefix '{prefix}': {missing_prefixed_keys}"
+        )
+
+    dropout =        config[f'{prefix}_dropout']
+    exp_kernel =     config[f'{prefix}_exp_kernel']
+    gen_fill =       config[f'{prefix}_gen_fill']
+    gen_hidden_dim = config[f'{prefix}_gen_hidden_dim']
+    gen_neck =       config[f'{prefix}_gen_neck']
+    layer_norm =     config[f'{prefix}_layer_norm']
+    normalize =      config[f'{prefix}_normalize']
+    pad_mode =       config[f'{prefix}_pad_mode']
     batch_size =        config['batch_size']
     gen_lr =            config['gen_lr']
 
@@ -129,14 +149,14 @@ def update_tune_dataframe(tune_dataframe, tune_dataframe_path, model, config, me
 
     # Build hyperparameters dict
     hyperparams = {
-        'SI_dropout': SI_dropout,
-        'SI_exp_kernel': SI_exp_kernel,
-        'SI_gen_fill': SI_gen_fill,
-        'SI_gen_hidden_dim': SI_gen_hidden_dim,
-        'SI_gen_neck': SI_gen_neck,
-        'SI_layer_norm': SI_layer_norm,
-        'SI_normalize': SI_normalize,
-        'SI_pad_mode': SI_pad_mode,
+        f'{prefix}_dropout': dropout,
+        f'{prefix}_exp_kernel': exp_kernel,
+        f'{prefix}_gen_fill': gen_fill,
+        f'{prefix}_gen_hidden_dim': gen_hidden_dim,
+        f'{prefix}_gen_neck': gen_neck,
+        f'{prefix}_layer_norm': layer_norm,
+        f'{prefix}_normalize': normalize,
+        f'{prefix}_pad_mode': pad_mode,
         'batch_size': batch_size,
         'gen_lr': gen_lr,
         'num_params': num_params
