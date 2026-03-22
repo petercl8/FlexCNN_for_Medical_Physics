@@ -10,26 +10,40 @@ from ..image_processing.cropping import crop_image_tensor_with_corner
 ## Metrics which take only single images as inputs ##
 ## ----------------------------------------------- ##
 def SSIM(image_A, image_B, win_size=-1):
-    '''
-    Function to return the SSIM for two 2D images.
-
-    image_A:        pytorch tensor for a single image
-    image_B:        pytorch tensor for a single image
-    win_size:       window size to use when computing the SSIM. This must be an odd number. If =-1, the full size of the image is used (or full size-1 so it's odd).
-    '''
-
-    if win_size == -1:   # The default shape of the window size is the same size as the image.
+    if win_size == -1:
         x = image_A.shape[2]
-        win_size = (x if x % 2 == 1 else x-1) # Guarantees the window size is odd.
+        win_size = (x if x % 2 == 1 else x - 1)
 
     image_A_npy = image_A.detach().squeeze().cpu().numpy()
     image_B_npy = image_B.detach().squeeze().cpu().numpy()
 
-    max_value = max([np.amax(image_A_npy, axis=(0,1)), np.amax(image_B_npy, axis=(0,1))])   # Find maximum among the images
-    min_value = min([np.amin(image_A_npy, axis=(0,1)), np.amin(image_B_npy, axis=(0,1))])   # Find minimum among the images
-    data_range = max_value-min_value
+    # If multi-channel [C, H, W], select the middle channel (requires odd C).
+    if image_A_npy.ndim == 3:
+        num_channels = image_A_npy.shape[0]
+        if num_channels % 2 == 0:
+            raise ValueError(
+                f"SSIM middle-channel mode requires odd channel count, got {num_channels}."
+            )
+        mid_channel = num_channels // 2
+        image_A_npy = image_A_npy[mid_channel, :, :]
+        image_B_npy = image_B_npy[mid_channel, :, :]
+    elif image_A_npy.ndim != 2:
+        raise ValueError(
+            f"SSIM expected 2D image or [C,H,W] tensor after squeeze, got shape {image_A_npy.shape}."
+        )
 
-    SSIM_image = structural_similarity(image_A_npy, image_B_npy, data_range=data_range, gaussian_weights=False, use_sample_covariance=False, win_size=win_size)
+    max_value = max(float(np.max(image_A_npy)), float(np.max(image_B_npy)))
+    min_value = min(float(np.min(image_A_npy)), float(np.min(image_B_npy)))
+    data_range = max_value - min_value
+
+    SSIM_image = structural_similarity(
+        image_A_npy,
+        image_B_npy,
+        data_range=data_range,
+        gaussian_weights=False,
+        use_sample_covariance=False,
+        win_size=win_size
+    )
 
     return SSIM_image
 

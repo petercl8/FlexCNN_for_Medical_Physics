@@ -13,13 +13,11 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-
 # (I) 320x320 Network. Data: 288x257, SINOGRAM padded to 288x288, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 288
 config_ACT_SI = {
   "SI_alpha_min": -1,
-  "SI_disc_adv_criterion": 1,
   "SI_dropout": False,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
