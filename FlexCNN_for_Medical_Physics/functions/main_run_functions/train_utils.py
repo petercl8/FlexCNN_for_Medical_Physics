@@ -541,7 +541,9 @@ def route_batch_inputs(train_SI, batch_tensors, network_type=None, recon_variant
             target = recon_tensor
         else:
             input_ = recon_tensor
-            target = batch_tensors['act_sino_scaled']
+            act_sino = batch_tensors['act_sino_scaled']
+            center_channel = act_sino.shape[1] // 2
+            target = act_sino[:, center_channel:center_channel + 1, :, :]
     else:
         raise ValueError(f"Invalid network_type='{network_type}' for routing batch inputs")
     

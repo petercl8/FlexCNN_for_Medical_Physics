@@ -29,7 +29,7 @@ def sort_DataSet(
     ----------
     config : dict
         Must contain: 'train_SI', 'SI_fixedScale', 'SI_fixedScale', 'SI_normalize', 'IS_normalize',
-        'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels'.
+        'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels_SI'/'gen_sino_channels_IS'.
     load_image_path : str
         Path to source image .npy file.
     load_sino_path : str

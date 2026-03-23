@@ -158,7 +158,7 @@ def load_eval_batch(split, paths, config, settings, augment=None):
                - 'train': needs 'act_sino_path', 'act_image_path', 'atten_image_path', 'atten_sino_path' (from training set)
                - 'holdout': needs 'eval_holdout_act_sino_path', 'eval_holdout_act_image_path', etc.
                - 'qa': needs 'eval_qa_*' paths and mask paths
-        config: dict with 'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels'
+        config: dict with 'gen_image_size', 'gen_sino_size', 'gen_image_channels', 'gen_sino_channels_SI'/'gen_sino_channels_IS'
         settings: dict with 'eval_batch_size', and for QA: 'qa_load_mode', optional 'qa_slice_range'
         augment: tuple (type, flip_bool) or None. Only used for QA split in random mode; holdout/train always no augment
     

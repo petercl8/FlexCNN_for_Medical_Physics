@@ -48,7 +48,7 @@ def construct_config(
     
     Args:
         run_mode: 'tune', 'train', 'test', or 'visualize'
-        network_opts: dict with keys: network_type, train_SI, gen_image_size, gen_sino_size, gen_image_channels, gen_sino_channels
+        network_opts: dict with keys: network_type, train_SI, gen_image_size, gen_sino_size, gen_image_channels, gen_sino_channels_SI, gen_sino_channels_IS
         tune_opts: dict with keys: tune_debug, etc.
         test_opts: dict with keys: test_batch_size, etc.
         viz_opts: dict with keys: visualize_batch_size, etc.
@@ -63,13 +63,23 @@ def construct_config(
     gen_image_size = network_opts['gen_image_size']
     gen_sino_size = network_opts['gen_sino_size']
     gen_image_channels = network_opts['gen_image_channels']
-    gen_sino_channels = network_opts['gen_sino_channels']
+    gen_sino_channels_SI = network_opts['gen_sino_channels_SI']
+    gen_sino_channels_IS = network_opts['gen_sino_channels_IS']
     SI_normalize = network_opts['SI_normalize']
     IS_normalize = network_opts['IS_normalize']
     recon_variant = network_opts.get('recon_variant', 1)
     frozen_variant = str(network_opts.get('frozen_variant', 'ATTEN')).upper()
     if frozen_variant not in ('ATTEN', 'RECON_SINO'):
         raise ValueError(f"Invalid frozen_variant='{network_opts.get('frozen_variant')}'. Expected 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'.")
+
+    if gen_sino_channels_IS != 1:
+        raise ValueError(
+            f"Invalid gen_sino_channels_IS={gen_sino_channels_IS}. "
+            "Image->sinogram runs must use exactly one sinogram channel."
+        )
+
+    active_sino_channels_key = 'gen_sino_channels_SI' if train_SI else 'gen_sino_channels_IS'
+    active_sino_channels = gen_sino_channels_SI if train_SI else gen_sino_channels_IS
 
     # If not tuning (or forcing tuning with a fixed config for debugging), choose config dictionary based on run_mode and network_type
     if run_mode in ['train', 'test', 'visualize', 'none'] or tune_opts.get('tune_force_fixed_config')==True:
@@ -103,8 +113,11 @@ def construct_config(
             mismatches.append(f"gen_sino_size: config has {config.get('gen_sino_size')}, but network_opts specifies {gen_sino_size}")
         if config.get('gen_image_channels') != gen_image_channels:
             mismatches.append(f"gen_image_channels: config has {config.get('gen_image_channels')}, but network_opts specifies {gen_image_channels}")
-        if config.get('gen_sino_channels') != gen_sino_channels:
-            mismatches.append(f"gen_sino_channels: config has {config.get('gen_sino_channels')}, but network_opts specifies {gen_sino_channels}")
+        if config.get(active_sino_channels_key) != active_sino_channels:
+            mismatches.append(
+                f"{active_sino_channels_key}: config has {config.get(active_sino_channels_key)}, "
+                f"but network_opts specifies {active_sino_channels}"
+            )
         if config.get('network_type') != network_type:
             mismatches.append(f"network_type: config has {config.get('network_type')}, but network_opts specifies {network_type}")
 
@@ -203,7 +216,8 @@ def construct_config(
         config['gen_image_size'] = gen_image_size
         config['gen_sino_size'] = gen_sino_size
         config['gen_image_channels'] = gen_image_channels
-        config['gen_sino_channels'] = gen_sino_channels
+        config['gen_sino_channels_SI'] = gen_sino_channels_SI
+        config['gen_sino_channels_IS'] = gen_sino_channels_IS
 
     else:
         raise ValueError(f"Unknown run_mode '{run_mode}'.")

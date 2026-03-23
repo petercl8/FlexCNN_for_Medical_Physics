@@ -24,7 +24,7 @@ config_CONCAT = {
   "gen_image_channels": 1,
   "gen_image_size": 180,
   "gen_lr": 0.0004300814461678685,
-  "gen_sino_channels": 4,
+  "gen_sino_channels_SI": 4,
   "gen_sino_size": 256, #256
   "network_type": "CONCAT",
   "sup_base_criterion": "MSELoss",

@@ -12,7 +12,7 @@ class Disc_S_90(nn.Module):
     def __init__(self, config):
         super(Disc_S_90, self).__init__()
 
-        input_channels = config['gen_sino_channels']
+        input_channels = config['gen_sino_channels_IS']
         hidden_dim = config['IS_disc_hidden_dim']
         patchGAN = config['IS_disc_patchGAN']
 

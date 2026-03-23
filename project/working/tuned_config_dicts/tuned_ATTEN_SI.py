@@ -24,7 +24,7 @@ config_ATTEN_SI= { # SAMPLE
   "gen_image_channels": 1,
   "gen_image_size": 180,
   "gen_lr": 0.00011584402663085701,
-  "gen_sino_channels": 1,
+  "gen_sino_channels_SI": 1,
   "gen_sino_size": 256,
   "network_type": "ATTEN",
   "sup_base_criterion": "MSELoss",

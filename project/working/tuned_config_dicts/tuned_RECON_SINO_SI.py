@@ -25,7 +25,7 @@ config_RECON_SINO_SI = {
   "gen_image_channels": 1,
   "gen_image_size": 180,
   "gen_lr": 0.00021715942590932197,
-  "gen_sino_channels": 3,
+  "gen_sino_channels_SI": 3,
   "gen_sino_size": 320,
   "network_type": "RECON_SINO",
   "recon_variant": 1,

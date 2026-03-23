@@ -38,7 +38,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 #   act_recon1_array:    (optional) reconstruction 1 array
 #   act_recon2_array:    (optional) reconstruction 2 array
 #   config:              configuration dictionary with network_type, train_SI, gen_image_size, gen_sino_size,
-#                        gen_image_channels, gen_sino_channels, SI_normalize, SI_fixedScale, IS_normalize, IS_fixedScale
+#                        gen_image_channels, gen_sino_channels_SI/gen_sino_channels_IS, SI_normalize, SI_fixedScale, IS_normalize, IS_fixedScale
 #   augment:             augmentation tuple: ('SI', flip_bool), ('II', flip_bool), or (None, False)
 #   index:               data sample index to extract
 #   device:              'cuda' or 'cpu'
@@ -75,7 +75,7 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     gen_image_size = config['gen_image_size']
     gen_sino_size = config['gen_sino_size']
     gen_image_channels = config['gen_image_channels']
-    gen_sino_channels = config['gen_sino_channels']
+    gen_sino_channels = config['gen_sino_channels_SI'] if train_SI else config['gen_sino_channels_IS']
 
     # ========================================================================================
     # SECTION 2: Set Normalization Variables

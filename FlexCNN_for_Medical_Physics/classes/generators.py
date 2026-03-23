@@ -40,7 +40,7 @@ class Generator_288(nn.Module):
         
         Args:
             config: Dictionary with network hyperparameters and data dimensions:
-                - gen_sino_size, gen_sino_channels, gen_image_size, gen_image_channels
+                - gen_sino_size, gen_sino_channels_SI/gen_sino_channels_IS, gen_image_size, gen_image_channels
                 - {SI,IS}_gen_neck: 'narrow'/'medium'/'wide'
                 - {SI,IS}_exp_kernel: 3 or 4 (expand kernel size)
                 - {SI,IS}_gen_z_dim: Channels in narrowest bottleneck
@@ -219,7 +219,7 @@ class Generator_288(nn.Module):
         if gen_SI:
             return {
                 'input_size': config['gen_sino_size'],
-                'input_channels': config['gen_sino_channels'],
+                'input_channels': config['gen_sino_channels_SI'],
                 'output_size': config['gen_image_size'],
                 'output_channels': config['gen_image_channels'],
                 'neck': config['SI_gen_neck'],
@@ -242,7 +242,7 @@ class Generator_288(nn.Module):
                 'input_size': config['gen_image_size'],
                 'input_channels': config['gen_image_channels'],
                 'output_size': config['gen_sino_size'],
-                'output_channels': config['gen_sino_channels'],
+                'output_channels': config['gen_sino_channels_IS'],
                 'neck': config['IS_gen_neck'],
                 'exp_kernel': config['IS_exp_kernel'],
                 'z_dim': config['IS_gen_z_dim'],
@@ -738,7 +738,7 @@ class Generator_256(nn.Module):
         
         Args:
             config: Dictionary with network hyperparameters and data dimensions:
-                - gen_sino_size, gen_sino_channels, gen_image_size, gen_image_channels
+                - gen_sino_size, gen_sino_channels_SI/gen_sino_channels_IS, gen_image_size, gen_image_channels
                 - {SI,IS}_gen_neck: 'narrow'/'medium'/'wide'
                 - {SI,IS}_exp_kernel: 3 or 4 (expand kernel size)
                 - {SI,IS}_gen_z_dim: Channels in narrowest bottleneck
@@ -911,7 +911,7 @@ class Generator_256(nn.Module):
         if gen_SI:
             return {
                 'input_size': config['gen_sino_size'],
-                'input_channels': config['gen_sino_channels'],
+                'input_channels': config['gen_sino_channels_SI'],
                 'output_size': config['gen_image_size'],
                 'output_channels': config['gen_image_channels'],
                 'neck': config['SI_gen_neck'],
@@ -934,7 +934,7 @@ class Generator_256(nn.Module):
                 'input_size': config['gen_image_size'],
                 'input_channels': config['gen_image_channels'],
                 'output_size': config['gen_sino_size'],
-                'output_channels': config['gen_sino_channels'],
+                'output_channels': config['gen_sino_channels_IS'],
                 'neck': config['IS_gen_neck'],
                 'exp_kernel': config['IS_exp_kernel'],
                 'z_dim': config['IS_gen_z_dim'],
@@ -978,13 +978,13 @@ class Generator_256(nn.Module):
         
         Controls information flow at the network's narrowest point. Three modes control
         spatial compression and capacity:
-        - 'narrow': 8→4→2→1→2→4→8 (aggressive compression, dense bottleneck)
-        - 'medium': 8→4→4→4→4→4→8 (moderate compression, constant 4x4 processing)
-        - 'wide': 8→8→8→8→8→8 (no compression, spatial information preserved)
+        - 'narrow': 10→5→3→1→3→5→10 (aggressive compression, dense bottleneck)
+        - 'medium': 10→5→5→5→5→5→10 (moderate compression, constant 5x5 processing)
+        - 'wide': 10→10→10→10→10→10 (no compression, spatial information preserved)
         
         Args:
             neck: Bottleneck mode {'narrow', 'medium', 'wide'}
-            dim_4: Channels at encoder output (scale 8)
+            dim_4: Channels at encoder output (scale 10)
             dim_5: Channels at intermediate bottleneck stage
             dim_6: Channels at deepest bottleneck stage
             z_dim: Channels at 1x1 spatial bottleneck (narrow mode only)
@@ -1434,7 +1434,7 @@ class Generator_320(nn.Module):
         
         Args:
             config: Dictionary with network hyperparameters and data dimensions:
-                - gen_sino_size, gen_sino_channels, gen_image_size, gen_image_channels
+                - gen_sino_size, gen_sino_channels_SI/gen_sino_channels_IS, gen_image_size, gen_image_channels
                 - {SI,IS}_gen_neck: 'narrow'/'medium'/'wide'
                 - {SI,IS}_exp_kernel: 3 or 4 (expand kernel size)
                 - {SI,IS}_gen_z_dim: Channels in narrowest bottleneck
@@ -1607,7 +1607,7 @@ class Generator_320(nn.Module):
         if gen_SI:
             return {
                 'input_size': config['gen_sino_size'],
-                'input_channels': config['gen_sino_channels'],
+                'input_channels': config['gen_sino_channels_SI'],
                 'output_size': config['gen_image_size'],
                 'output_channels': config['gen_image_channels'],
                 'neck': config['SI_gen_neck'],
@@ -1630,7 +1630,7 @@ class Generator_320(nn.Module):
                 'input_size': config['gen_image_size'],
                 'input_channels': config['gen_image_channels'],
                 'output_size': config['gen_sino_size'],
-                'output_channels': config['gen_sino_channels'],
+                'output_channels': config['gen_sino_channels_IS'],
                 'neck': config['IS_gen_neck'],
                 'exp_kernel': config['IS_exp_kernel'],
                 'z_dim': config['IS_gen_z_dim'],
@@ -1674,13 +1674,13 @@ class Generator_320(nn.Module):
         
         Controls information flow at the network's narrowest point. Three modes control
         spatial compression and capacity:
-        - 'narrow': 8→4→2→1→2→4→8 (aggressive compression, dense bottleneck)
-        - 'medium': 8→4→4→4→4→4→8 (moderate compression, constant 4x4 processing)
-        - 'wide': 8→8→8→8→8→8 (no compression, spatial information preserved)
+        - 'narrow': 10→5→3→1→3→5→10 (aggressive compression, dense bottleneck)
+        - 'medium': 10→5→5→5→5→5→10 (moderate compression, constant 5x5 processing)
+        - 'wide': 10→10→10→10→10→10 (no compression, spatial information preserved)
         
         Args:
             neck: Bottleneck mode {'narrow', 'medium', 'wide'}
-            dim_4: Channels at encoder output (scale 8)
+            dim_4: Channels at encoder output (scale 10)
             dim_5: Channels at intermediate bottleneck stage
             dim_6: Channels at deepest bottleneck stage
             z_dim: Channels at 1x1 spatial bottleneck (narrow mode only)
@@ -1692,36 +1692,36 @@ class Generator_320(nn.Module):
         Returns:
             nn.Sequential: Bottleneck network module
         """
-        # neck='narrow': Narrowest bottleneck (1x1), upsamples back to 8x8 for skip merge
+        # neck='narrow': Narrowest bottleneck (1x1), upsamples back to 10x10 for skip merge
         if neck == 'narrow':
             return nn.Sequential(
-                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 8->4
-                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->2
-                contract_block(dim_6, z_dim, 2, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),       # 2->1
-                expand_block(z_dim, dim_6, 2, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 1->2
-                expand_block(dim_6, dim_5, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 2->4
-                expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 4->8
+                contract_block(dim_4, dim_5, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 10->5
+                contract_block(dim_5, dim_6, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 5->3
+                contract_block(dim_6, z_dim, 3, stride=1, padding=0, padding_mode=pad, fill=0, norm='batch', drop=False),        # 3->1
+                expand_block(z_dim, dim_6, 3, stride=2, padding=0, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 1->3
+                expand_block(dim_6, dim_5, 3, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 3->5
+                expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 5->10
             )
 
-        # neck='medium': Medium bottleneck (4x4 spatial), constant-size convs; upsamples back to 8x8 for skip merge
+        # neck='medium': Medium bottleneck (5x5 spatial), constant-size convs; upsamples back to 10x10 for skip merge
         if neck == 'medium':
             return nn.Sequential(
-                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 8->4
-                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->4
-                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->4
-                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->4
-                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 4->4
-                expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 4->8
+                contract_block(dim_4, dim_5, 4, stride=2, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 10->5
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 5->5
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 5->5
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 5->5
+                contract_block(dim_5, dim_5, 3, stride=1, padding=1, padding_mode=pad, fill=fill, norm='batch', drop=drop),      # 5->5
+                expand_block(dim_5, dim_4, 4, stride=2, padding=1, output_padding=0, padding_mode='replicate', fill=fill, norm='batch', drop=drop),  # 5->10
             )
 
-        # neck='wide': Widest bottleneck (8x8 spatial), constant-size layers with kernel=5 for spatial information flow
+        # neck='wide': Widest bottleneck (10x10 spatial), constant-size layers with kernel=5 for spatial information flow
         if neck == 'wide':
             return nn.Sequential(
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
-                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 8->8 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 10->10 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 10->10 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 10->10 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 10->10 (constant)
+                contract_block(dim_4, dim_4, kernel_size=5, stride=1, padding=2, padding_mode=pad, fill=fill, norm='batch', drop=drop),  # 10->10 (constant)
             )
 
         raise ValueError('neck must be one of {narrow, medium, wide} for Generator_320')
@@ -2130,7 +2130,7 @@ class Generator_180(nn.Module):
         
         Args:
             config: Dictionary with network hyperparameters and data dimensions:
-                - gen_sino_size, gen_sino_channels, gen_image_size, gen_image_channels
+                - gen_sino_size, gen_sino_channels_SI/gen_sino_channels_IS, gen_image_size, gen_image_channels
                 - {SI,IS}_gen_neck: 'narrow'/'medium'/'wide'
                 - {SI,IS}_exp_kernel: 3 or 4 (expand kernel size)
                 - {SI,IS}_gen_z_dim: Channels in narrowest bottleneck
@@ -2302,7 +2302,7 @@ class Generator_180(nn.Module):
         if gen_SI:
             return {
                 'input_size': config['gen_sino_size'],
-                'input_channels': config['gen_sino_channels'],
+                'input_channels': config['gen_sino_channels_SI'],
                 'output_size': config['gen_image_size'],
                 'output_channels': config['gen_image_channels'],
                 'neck': config['SI_gen_neck'],
@@ -2325,7 +2325,7 @@ class Generator_180(nn.Module):
                 'input_size': config['gen_image_size'],
                 'input_channels': config['gen_image_channels'],
                 'output_size': config['gen_sino_size'],
-                'output_channels': config['gen_sino_channels'],
+                'output_channels': config['gen_sino_channels_IS'],
                 'neck': config['IS_gen_neck'],
                 'exp_kernel': config['IS_exp_kernel'],
                 'z_dim': config['IS_gen_z_dim'],

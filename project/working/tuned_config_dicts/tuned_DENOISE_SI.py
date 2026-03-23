@@ -24,7 +24,7 @@ config_DENOISE_SI = {
   "gen_image_channels": 1,
   "gen_image_size": 180,
   "gen_lr": 0.0003521818874320586,
-  "gen_sino_channels": 1,
+  "gen_sino_channels_SI": 1,
   "gen_sino_size": 288,
   "network_type": "DENOISE",
   "sup_base_criterion": "MSELoss",
