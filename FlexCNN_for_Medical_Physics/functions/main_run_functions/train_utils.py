@@ -637,8 +637,10 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False, confi
         {'holdout': bool, 'qa': bool} indicating path availability for each split
     """
     recon_variant = 1
+    frozen_variant = 'ATTEN'
     if config is not None:
         recon_variant = int(config.get('recon_variant', 1))
+        frozen_variant = str(config.get('frozen_variant', 'ATTEN')).upper()
 
     holdout_recon_key = 'eval_holdout_act_recon1_path' if recon_variant == 1 else 'eval_holdout_act_recon2_path'
     qa_recon_key = 'eval_qa_act_recon1_path' if recon_variant == 1 else 'eval_qa_act_recon2_path'
@@ -664,18 +666,37 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False, confi
             paths.get('eval_holdout_act_sino_path') is not None and
             paths.get('eval_holdout_act_image_path') is not None
         )
-    elif network_type in ('CONCAT', 'FROZEN_COFLOW'):
+    elif network_type == 'CONCAT':
         holdout_available = (
             paths.get('eval_holdout_act_sino_path') is not None and
             paths.get('eval_holdout_act_image_path') is not None and
             paths.get('eval_holdout_atten_sino_path') is not None
         )
-    elif network_type == 'FROZEN_COUNTERFLOW':
+    elif network_type == 'FROZEN_COFLOW':
+        # COFLOW always needs activity sino + activity image for supervised target.
         holdout_available = (
             paths.get('eval_holdout_act_sino_path') is not None and
-            paths.get('eval_holdout_act_image_path') is not None and
-            paths.get('eval_holdout_atten_image_path') is not None
+            paths.get('eval_holdout_act_image_path') is not None
         )
+        if frozen_variant == 'ATTEN':
+            holdout_available = holdout_available and (paths.get('eval_holdout_atten_sino_path') is not None)
+        elif frozen_variant == 'RECON_SINO':
+            # RECON_SINO frozen path reuses activity sinogram context; no extra holdout key required.
+            holdout_available = holdout_available
+        else:
+            raise ValueError(f"Unknown frozen_variant '{frozen_variant}' for network_type 'FROZEN_COFLOW'.")
+    elif network_type == 'FROZEN_COUNTERFLOW':
+        # COUNTERFLOW always needs activity sino + activity image.
+        holdout_available = (
+            paths.get('eval_holdout_act_sino_path') is not None and
+            paths.get('eval_holdout_act_image_path') is not None
+        )
+        if frozen_variant == 'ATTEN':
+            holdout_available = holdout_available and (paths.get('eval_holdout_atten_image_path') is not None)
+        elif frozen_variant == 'RECON_SINO':
+            holdout_available = holdout_available and (paths.get(holdout_recon_key) is not None)
+        else:
+            raise ValueError(f"Unknown frozen_variant '{frozen_variant}' for network_type 'FROZEN_COUNTERFLOW'.")
     else:
         raise ValueError(f"Unknown network_type '{network_type}' for evaluation path checks.")
     
@@ -700,18 +721,37 @@ def check_eval_paths_provided(paths, network_type, require_qa_masks=False, confi
             paths.get('eval_qa_act_sino_path') is not None and
             paths.get('eval_qa_act_image_path') is not None
         )
-    elif network_type in ('CONCAT', 'FROZEN_COFLOW'):
+    elif network_type == 'CONCAT':
         qa_available = (
             paths.get('eval_qa_act_sino_path') is not None and
             paths.get('eval_qa_act_image_path') is not None and
             paths.get('eval_qa_atten_sino_path') is not None
         )
-    elif network_type == 'FROZEN_COUNTERFLOW':
+    elif network_type == 'FROZEN_COFLOW':
+        # COFLOW always needs activity sino + activity image for supervised target.
         qa_available = (
             paths.get('eval_qa_act_sino_path') is not None and
-            paths.get('eval_qa_act_image_path') is not None and
-            paths.get('eval_qa_atten_image_path') is not None
+            paths.get('eval_qa_act_image_path') is not None
         )
+        if frozen_variant == 'ATTEN':
+            qa_available = qa_available and (paths.get('eval_qa_atten_sino_path') is not None)
+        elif frozen_variant == 'RECON_SINO':
+            # RECON_SINO frozen path reuses activity sinogram context; no extra QA key required.
+            qa_available = qa_available
+        else:
+            raise ValueError(f"Unknown frozen_variant '{frozen_variant}' for network_type 'FROZEN_COFLOW'.")
+    elif network_type == 'FROZEN_COUNTERFLOW':
+        # COUNTERFLOW always needs activity sino + activity image.
+        qa_available = (
+            paths.get('eval_qa_act_sino_path') is not None and
+            paths.get('eval_qa_act_image_path') is not None
+        )
+        if frozen_variant == 'ATTEN':
+            qa_available = qa_available and (paths.get('eval_qa_atten_image_path') is not None)
+        elif frozen_variant == 'RECON_SINO':
+            qa_available = qa_available and (paths.get(qa_recon_key) is not None)
+        else:
+            raise ValueError(f"Unknown frozen_variant '{frozen_variant}' for network_type 'FROZEN_COUNTERFLOW'.")
     else:
         raise ValueError(f"Unknown network_type '{network_type}' for evaluation path checks.")
 

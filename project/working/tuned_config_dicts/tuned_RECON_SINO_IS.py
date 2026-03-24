@@ -4,7 +4,7 @@
 # Data: 288x257, SINOGRAM padded to 288x288, tuned SSIM
 #       Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 #       results in 288x257 size which is then padded sinoram-style horizontally to 288
-# Network then maps FORE reconstructions to FORE sinograms 
+# Network then maps FORE reconstructions to FORE sinograms
 config_RECON_SINO_IS = {
   "IS_alpha_min": -1,
   "IS_dropout": False,

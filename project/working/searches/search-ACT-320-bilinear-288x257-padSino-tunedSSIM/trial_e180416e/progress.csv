@@ -1,0 +1,2 @@
+MSE,SSIM,example_num,batch_step,epoch,timestamp,checkpoint_dir_name,done,training_iteration,trial_id,date,time_this_iter_s,time_total_s,pid,hostname,node_ip,time_since_restore,iterations_since_restore
+91970.93431854248,0.0035479546047554322,1024,32,0,1774333714,,False,1,e180416e,2026-03-24_01-28-34,7.816495656967163,7.816495656967163,38388,DESKTOP-6E08LRQ,127.0.0.1,7.816495656967163,1
