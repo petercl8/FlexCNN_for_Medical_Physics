@@ -231,7 +231,7 @@ train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320-bilinear-288x257-padSino
 train_csv_file='temp'
 
 train_load_state=False  # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
+train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
 train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
 train_epochs = 50        # Number of training epochs.
 train_display_step=10     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
