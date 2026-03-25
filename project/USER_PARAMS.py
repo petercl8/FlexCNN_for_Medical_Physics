@@ -29,16 +29,16 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
-network_type='ACT'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
+run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+#network_type='ACT'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 #network_type='RECON_SINO'
-#network_type='FROZEN_COUNTERFLOW'
+network_type='FROZEN_COUNTERFLOW'
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 #train_SI=False
 recon_variant=1       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
 frozen_variant='RECON_SINO'  # Frozen backbone type for FROZEN_* runs: 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'
-frozen_features_drop_max_prob=0.75  # For frozen-flow tune/train: cosine-scheduled max probability of dropping injected frozen features.
-frozen_features_drop_min_prob=0.25  # For frozen-flow tune/train: cosine-scheduled min probability of dropping injected frozen features.
+frozen_features_drop_max_prob=0.2  # For frozen-flow tune/train: cosine-scheduled max probability of dropping injected frozen feature channels.
+frozen_features_drop_min_prob=0.2  # For frozen-flow tune/train: cosine-scheduled min probability of dropping injected frozen feature channels.
 
 ## See note below for info about these options ##
 gen_sino_channels_SI=3       # Number of sinogram channels for sinogram->image runs.
@@ -225,15 +225,16 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 
 #train_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-RECON_SINO_IS-320-FORE_recon-bilinear-288x257-padSino-tunedSSIM-0p3lr-50epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-FROZEN_COUNTERFLOW-RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr'
+train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-inject50_50'
 #train_csv_file='frame-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
-train_csv_file='frame-FROZEN_COUNTERFLOW-RECON-320-bilinear-288x257-padSino-0p3lr-tunedSSIM-0p3lr'   # CSV filename for training learning curves (without .csv extension; will be appended).
+#train_csv_file='frame-COUNTERFLOW_RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-inject50_50'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='temp'
 
 train_load_state=False  # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
 train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
 train_epochs = 50        # Number of training epochs.
-train_display_step=100     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=10     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_eval_batch_size=1024           # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
@@ -294,6 +295,7 @@ test_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3l
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
 
+test_frozen_drop=False      # For frozen-flow test ablation: if True, inject zero frozen features instead of frozen backbone features.
 test_display_step=15        # Make this a larger number to save bit of time (displays images/metrics less often)
 test_batch_size=25          # This doesn't affect the final metrics, just the displayed metrics as testing procedes
 test_chunk_size=None       # How many examples do you want to test at once? # This should be a multiple of test_batch_size AND also go into the test set size evenly.
@@ -302,7 +304,6 @@ testset_size=-1          # Size of the set to test. This must be <= the number o
 test_begin_at=0             # Begin testing at this example number.
 test_compute_MLEM=False      # Compute a simple MLEM reconstruction from the sinograms when running testing.
                             # This takes a lot longer. If set to false, only FBP is calculated.
-test_frozen_drop=False      # For frozen-flow test ablation: if True, inject zero frozen features instead of frozen backbone features.
 test_merge_dataframes=True  # Merge the smaller/chunked dataframes at the end of the test run into one large dataframe?
 test_show_times=False       # Show calculation times?
 test_shuffle=False
@@ -347,6 +348,7 @@ visualize_batch_size = 10   # Set value to exactly 120 to see a large grid of im
                             #  and ground truth with matched color scales
 visualize_offset=0          # Image to begin at. Set to 0 to start at beginning.
 visualize_shuffle=True      # Shuffle data set when visualizing?
+visualize_frozen_drop=False # For frozen-flow visualization: if True, inject zero frozen features instead of frozen backbone features.
 
 def get_params():
     """

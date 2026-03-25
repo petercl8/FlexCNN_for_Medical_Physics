@@ -30,7 +30,7 @@ from FlexCNN_for_Medical_Physics.functions.main_run_functions.train_utils import
     compute_and_validate_moment_weights,
     check_eval_paths_provided,
     compute_frozen_feature_drop_prob,
-    maybe_zero_frozen_features,
+    optionally_drop_some_channels,
 )
 
 from FlexCNN_for_Medical_Physics.functions.main_run_functions.run_time_evaluation import report_cross_validation_metrics
@@ -354,12 +354,12 @@ def run_trainable_frozen_flow(config, paths, settings):
                 p_max=frozen_features_drop_max_prob,
                 test_frozen_drop=test_frozen_drop,
             )
-            injected_enc_feats, injected_dec_feats, dropped_this_batch = maybe_zero_frozen_features(
+            injected_enc_feats, injected_dec_feats, dropped_channel_percent = optionally_drop_some_channels(
                 frozen_enc_feats,
                 frozen_dec_feats,
                 run_mode=run_mode,
                 p_drop=p_drop,
-                test_frozen_drop=test_frozen_drop,
+                frozen_drop_toggle=settings.get('frozen_drop_toggle'),
             )
 
             # ----- SUBSECTION 10D: ACTIVITY NETWORK FORWARD/BACKWARD PASS -----
@@ -434,7 +434,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 # Ray Tune reporting (tune mode)
                 if run_mode == 'tune':
                     print(f'report_num/tune_max_t : {report_num / max(1, tune_max_t)}')
-                    print(f'p_drop/dropped_this_batch : {p_drop} / {dropped_this_batch}')
+                    print(f'p_drop/dropped_channel_percent : {p_drop:.4f} / {dropped_channel_percent:.1f}%')
                     report_cross_validation_metrics(
                         (gen_act, gen_frozen), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         tune_dataframe_fraction, tune_max_t, report_num,
@@ -452,7 +452,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 # Test visualization
                 if run_mode == 'test':
                     print(f'report_num/tune_max_t : {report_num / max(1, tune_max_t)}')
-                    print(f'p_drop/dropped_this_batch : {p_drop} / {dropped_this_batch}')
+                    print(f'p_drop/dropped_channel_percent : {p_drop:.4f} / {dropped_channel_percent:.1f}%')
                     visualize_test(batch_data, mean_CNN_MSE, mean_CNN_SSIM, mean_recon1_MSE, mean_recon1_SSIM, mean_recon2_MSE, mean_recon2_SSIM)
 
                 # Visualization mode (display input, output, recons)
@@ -478,106 +478,131 @@ def run_trainable_frozen_flow(config, paths, settings):
             # Check which splits are available
             available = check_eval_paths_provided(paths, config['network_type'], config=config)
             
+            # Initialize metrics to None (in case splits fail, we still need these variables)
+            train_metrics = None
+            holdout_metrics = None
+            qa_metrics = None
+            
             gen_act.eval()
+            
+            # ===== TRAINING SPLIT (always available) =====
             try:
-                # ===== TRAINING SPLIT (always available) =====
                 train_batch = load_eval_batch('train', paths, config, settings)
                 train_metrics = evaluate_metrics(
                     (gen_act, gen_frozen), train_batch, device,
-                    tune_metric='MSE',  # Metric doesn't matter for train split, we'll compute all standard metrics
+                    tune_metric='MSE',
                     evaluate_on='val',
                     run_mode='train',
-                    compute_standard_metrics=True,  # Always compute MSE/SSIM/CUSTOM for CSV consistency
+                    compute_standard_metrics=True,
                     config=config
                 )
                 train_dataframe = append_train_learning_curve_row(
                     train_dataframe, train_dataframe_path, train_metrics,
                     eval_split='training set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
                 )
-                
-                # ===== HOLDOUT SPLIT (conditional) =====
-                if available['holdout']:
+            except FileNotFoundError:
+                raise
+            except Exception as e:
+                print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch+1} train split evaluation failed: {str(e)}")
+            
+            # ===== HOLDOUT SPLIT (conditional) =====
+            if available['holdout']:
+                try:
+                    # DEBUG: Check recon paths
+                    print(f"[DEBUG HOLDOUT FROZEN] eval_holdout_act_recon1_path = {paths.get('eval_holdout_act_recon1_path')}")
+                    print(f"[DEBUG HOLDOUT FROZEN] train_val_act_recon1_path = {paths.get('train_val_act_recon1_path')}")
+                    print(f"[DEBUG HOLDOUT FROZEN] Available eval_holdout paths: {[k for k in paths.keys() if 'eval_holdout' in k]}")
+                    print(f"[DEBUG HOLDOUT FROZEN] network_type={config['network_type']}, frozen_variant={config.get('frozen_variant', 'N/A')}, recon_variant={config.get('recon_variant', 'N/A')}")
+                    
                     holdout_batch = load_eval_batch('holdout', paths, config, settings)
                     holdout_metrics = evaluate_metrics(
                         (gen_act, gen_frozen), holdout_batch, device,
                         tune_metric='MSE',
                         evaluate_on='val',
                         run_mode='train',
-                        compute_standard_metrics=True,  # Always compute standard metrics for CSV consistency
+                        compute_standard_metrics=True,
                         config=config
                     )
                     train_dataframe = append_train_learning_curve_row(
                         train_dataframe, train_dataframe_path, holdout_metrics,
                         eval_split='holdout set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
                     )
-                
-                # ===== QA SPLIT (conditional) =====
-                if available['qa']:
+                except FileNotFoundError:
+                    raise
+                except Exception as e:
+                    print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch+1} holdout split evaluation failed: {str(e)}")
+                    holdout_metrics = None
+            
+            # ===== QA SPLIT (conditional) =====
+            if available['qa']:
+                try:
                     qa_batch = load_eval_batch('qa', paths, config, settings, augment=('SI', True))
                     qa_metrics = evaluate_metrics(
                         (gen_act, gen_frozen), qa_batch, device,
                         tune_metric='MSE',
-                        evaluate_on='val',  # Force validation metrics for learning curves
+                        evaluate_on='val',
                         run_mode='train',
-                        compute_standard_metrics=True,  # Always compute standard metrics for CSV consistency
+                        compute_standard_metrics=True,
                         config=config
                     )
                     train_dataframe = append_train_learning_curve_row(
                         train_dataframe, train_dataframe_path, qa_metrics,
                         eval_split='QA set', epoch=epoch+1, batch_step=batch_step, example_num=batch_step
                     )
-                
+                except FileNotFoundError:
+                    raise
+                except Exception as e:
+                    print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch+1} QA split evaluation failed: {str(e)}")
+                    qa_metrics = None
+            
+            # ===== PRINT LEARNING CURVE SUMMARY (robust to missing metrics) =====
+            if train_metrics is not None:
                 print(
                     f"[TRAIN LEARNING CURVES] Epoch {epoch+1}: "
                     f"train MSE={train_metrics['MSE']:.4f}, "
                     f"SSIM={train_metrics['SSIM']:.4f}, "
                     f"CUSTOM={train_metrics['CUSTOM']:.4f}"
                 )
-                if available['holdout']:
-                    print(
-                        f"  holdout MSE={holdout_metrics['MSE']:.4f}, "
-                        f"SSIM={holdout_metrics['SSIM']:.4f}, "
-                        f"CUSTOM={holdout_metrics['CUSTOM']:.4f}"
-                    )
-                if available['qa']:
-                    print(
-                        f"  qa MSE={qa_metrics['MSE']:.4f}, "
-                        f"SSIM={qa_metrics['SSIM']:.4f}, "
-                        f"CUSTOM={qa_metrics['CUSTOM']:.4f}"
-                    )
+            if holdout_metrics is not None:
+                print(
+                    f"  holdout MSE={holdout_metrics['MSE']:.4f}, "
+                    f"SSIM={holdout_metrics['SSIM']:.4f}, "
+                    f"CUSTOM={holdout_metrics['CUSTOM']:.4f}"
+                )
+            if qa_metrics is not None:
+                print(
+                    f"  qa MSE={qa_metrics['MSE']:.4f}, "
+                    f"SSIM={qa_metrics['SSIM']:.4f}, "
+                    f"CUSTOM={qa_metrics['CUSTOM']:.4f}"
+                )
+            
+            # ===== CONDITIONAL SAVE BASED ON HOLDOUT PERFORMANCE (independent of QA) =====
+            if save_state and holdout_metrics is not None:
+                should_save = False
+                if settings['train_save_on'] == 'always':
+                    should_save = True
+                else:
+                    # Get the metric specified by train_save_on ('SSIM', 'MSE', or 'CUSTOM')
+                    metric_value = holdout_metrics[settings['train_save_on']]
+                    
+                    if settings['train_save_on'] == 'SSIM':
+                        # Maximize: save if new value is higher
+                        should_save = metric_value > best_holdout_metrics.get(settings['train_save_on'], -float('inf'))
+                    elif settings['train_save_on'] in ['MSE', 'CUSTOM']:
+                        # Minimize: save if new value is lower
+                        should_save = metric_value < best_holdout_metrics.get(settings['train_save_on'], float('inf'))
                 
-                # ===== CONDITIONAL SAVE BASED ON HOLDOUT PERFORMANCE =====
-                if save_state and available['holdout']:
-                    if settings['train_save_on'] == 'always':
-                        should_save = True
-                    else:
-                        # Get the metric specified by train_save_on ('SSIM', 'MSE', or 'CUSTOM')
-                        metric_value = holdout_metrics[settings['train_save_on']]
-                        
-                        if settings['train_save_on'] == 'SSIM':
-                            # Maximize: save if new value is higher
-                            should_save = metric_value > best_holdout_metrics.get(settings['train_save_on'], -float('inf'))
-                        elif settings['train_save_on'] in ['MSE', 'CUSTOM']:
-                            # Minimize: save if new value is lower
-                            should_save = metric_value < best_holdout_metrics.get(settings['train_save_on'], float('inf'))
-                    
-                    if should_save:
-                        best_holdout_metrics[settings['train_save_on']] = metric_value
-                        save_lr = gen_act_opt.param_groups[0]['lr']
-                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                        print(f'💾 Saving model! New best {settings["train_save_on"]}: {metric_value:.6f}')
-                        print(f'[LR] Save-time LR: {save_lr:.6e}')
-                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                        checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch+1, batch_step, scheduler=lr_scheduler)
-                        save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
-                    
-            except FileNotFoundError:
-                raise
-            except Exception as e:
-                print(f"[TRAIN LEARNING CURVES] Warning: epoch {epoch+1} evaluation failed: {str(e)}")
-                print("  Continuing training without learning curve logging for this epoch.")
-            finally:
-                gen_act.train()  # Restore training mode
+                if should_save:
+                    best_holdout_metrics[settings['train_save_on']] = metric_value
+                    save_lr = gen_act_opt.param_groups[0]['lr']
+                    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    print(f'💾 Saving model! New best {settings["train_save_on"]}: {metric_value:.6f}')
+                    print(f'[LR] Save-time LR: {save_lr:.6e}')
+                    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch+1, batch_step, scheduler=lr_scheduler)
+                    save_checkpoint(checkpoint_dict, checkpoint_path + '-act')
+            
+            gen_act.train()  # Restore training mode
 
             if lr_scheduler is not None:
                 lr_scheduler.step()

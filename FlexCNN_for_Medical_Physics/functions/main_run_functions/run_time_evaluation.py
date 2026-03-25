@@ -35,6 +35,11 @@ _train_dataset = None
 _holdout_dataset = None
 _qa_dataset = None
 
+# Signature tracking for cache validation: stores paths/config hash to detect when cache should be rebuilt
+_train_dataset_sig = None
+_holdout_dataset_sig = None
+_qa_dataset_sig = None
+
 # Timing control for report_cross_validation_metrics
 PRINT_REPORT_TIMING = False  # Set to False to suppress timing output during evaluations
 
@@ -97,11 +102,30 @@ def _extract_standard_eval_batch(dataset, indices):
     return result
 
 def _get_or_create_eval_dataset(split, paths, config, settings):
-    """Get cached train/holdout evaluation dataset or create it on first call."""
-    global _train_dataset, _holdout_dataset
+    """Get cached train/holdout evaluation dataset or create it on first call.
+    
+    Uses signature-based validation to detect when cache should be invalidated.
+    Rebuild occurs if paths/config change (e.g., different recon_variant, frozen_variant, or network type).
+    Within a run, cache is reused for performance.
+    """
+    global _train_dataset, _holdout_dataset, _train_dataset_sig, _holdout_dataset_sig
 
     if split == 'train':
-        if _train_dataset is None:
+        # Compute signature from current train paths and config
+        train_sig = (
+            paths['act_image_path'],
+            paths['act_sino_path'],
+            paths['act_recon1_path'],
+            paths['act_recon2_path'],
+            paths['atten_image_path'],
+            paths['atten_sino_path'],
+            config.get('network_type'),
+            config.get('frozen_variant'),
+            config.get('recon_variant')
+        )
+        
+        # Rebuild if cache is None or signature changed (paths/config different from last build)
+        if _train_dataset is None or _train_dataset_sig != train_sig:
             _train_dataset = NpArrayDataSet(
                 act_image_path=paths['act_image_path'],
                 act_sino_path=paths['act_sino_path'],
@@ -112,15 +136,30 @@ def _get_or_create_eval_dataset(split, paths, config, settings):
                 num_examples=-1,
                 sample_division=1,
                 device='cpu',
-                act_recon1_path=paths.get('act_recon1_path'),
-                act_recon2_path=paths.get('act_recon2_path'),
-                atten_image_path=paths.get('atten_image_path'),
-                atten_sino_path=paths.get('atten_sino_path')
+                act_recon1_path=paths['act_recon1_path'],
+                act_recon2_path=paths['act_recon2_path'],
+                atten_image_path=paths['atten_image_path'],
+                atten_sino_path=paths['atten_sino_path']
             )
+            _train_dataset_sig = train_sig
         return _train_dataset
 
     if split == 'holdout':
-        if _holdout_dataset is None:
+        # Compute signature from current holdout paths and config
+        holdout_sig = (
+            paths['eval_holdout_act_image_path'],
+            paths['eval_holdout_act_sino_path'],
+            paths['eval_holdout_act_recon1_path'],
+            paths['eval_holdout_act_recon2_path'],
+            paths['eval_holdout_atten_image_path'],
+            paths['eval_holdout_atten_sino_path'],
+            config.get('network_type'),
+            config.get('frozen_variant'),
+            config.get('recon_variant')
+        )
+        
+        # Rebuild if cache is None or signature changed (paths/config different from last build)
+        if _holdout_dataset is None or _holdout_dataset_sig != holdout_sig:
             _holdout_dataset = NpArrayDataSet(
                 act_image_path=paths['eval_holdout_act_image_path'],
                 act_sino_path=paths['eval_holdout_act_sino_path'],
@@ -131,11 +170,12 @@ def _get_or_create_eval_dataset(split, paths, config, settings):
                 num_examples=-1,
                 sample_division=1,
                 device='cpu',
-                act_recon1_path=paths.get('eval_holdout_act_recon1_path'),
-                act_recon2_path=paths.get('eval_holdout_act_recon2_path'),
-                atten_image_path=paths.get('eval_holdout_atten_image_path'),
-                atten_sino_path=paths.get('eval_holdout_atten_sino_path')
+                act_recon1_path=paths['eval_holdout_act_recon1_path'],
+                act_recon2_path=paths['eval_holdout_act_recon2_path'],
+                atten_image_path=paths['eval_holdout_atten_image_path'],
+                atten_sino_path=paths['eval_holdout_atten_sino_path']
             )
+            _holdout_dataset_sig = holdout_sig
         return _holdout_dataset
 
     raise ValueError(f"Unsupported split for cached eval dataset: '{split}'")

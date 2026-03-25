@@ -295,8 +295,8 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['tune_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['tune_atten_sino_file'])
     paths['tune_val_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_act_sino_file'])
     paths['tune_val_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_act_image_file'])
-    paths['tune_val_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files.get('tune_val_act_recon1_file'))
-    paths['tune_val_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files.get('tune_val_act_recon2_file'))
+    paths['tune_val_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_act_recon1_file'])
+    paths['tune_val_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_act_recon2_file'])
     paths['tune_val_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_atten_image_file'])
     paths['tune_val_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['tune_val_atten_sino_file'])
     paths['qa_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['qa_act_sino_file'])
@@ -318,8 +318,8 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     paths['train_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['train_atten_sino_file'])
     paths['train_val_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_act_sino_file'])
     paths['train_val_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_act_image_file'])
-    paths['train_val_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files.get('train_val_act_recon1_file'))
-    paths['train_val_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files.get('train_val_act_recon2_file'))
+    paths['train_val_act_recon1_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_act_recon1_file'])
+    paths['train_val_act_recon2_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_act_recon2_file'])
     paths['train_val_atten_image_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_atten_image_file'])
     paths['train_val_atten_sino_path'] = join_if_present(paths['data_dirPath'], data_files['train_val_atten_sino_file'])
     paths['test_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['test_act_sino_file'])
@@ -520,7 +520,6 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         settings['load_state'] = True
         settings['save_state'] = False
         settings['offset'] = 0
-        settings['test_frozen_drop'] = bool(test_opts.get('test_frozen_drop'))
         settings['show_times'] = test_opts['test_show_times']
         settings['sample_division'] = test_opts['test_sample_division']
         settings['test_display_step'] = test_opts['test_display_step'] # Used in compute_display_step()
@@ -534,11 +533,19 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
         settings['save_state'] = False
         settings['show_times'] = False
         settings['offset'] = viz_opts['visualize_offset']
-        settings['test_frozen_drop'] = False
         settings['sample_division'] = 1
         #settings['visualize_batch_size'] = viz_opts['visualize_batch_size']
     else:
         raise ValueError(f"Unknown run_mode: {run_mode}")
+    
+    # ===== Unified frozen-drop toggle =====
+    # For train/tune: None (scheduler-driven). For test/visualize: binary toggle from respective opts.
+    if run_mode == 'train' or run_mode == 'tune':
+        settings['frozen_drop_toggle'] = None
+    elif run_mode == 'test':
+        settings['frozen_drop_toggle'] = bool(test_opts.get('test_frozen_drop'))
+    elif run_mode in ['visualize', 'none']:
+        settings['frozen_drop_toggle'] = bool(viz_opts.get('visualize_frozen_drop', False))
     
     # ===== VALIDATION: Check tune_metric vs evaluate_on compatibility (tune mode only) =====
     if run_mode == 'tune':
