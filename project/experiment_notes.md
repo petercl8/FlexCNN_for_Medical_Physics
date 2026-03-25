@@ -7,4 +7,7 @@ Untrainable at .50/.50
 
 
 Next up:
+-ChatGPT:
+    -read test of response
+    -ask: do I really want to tune with 100% injection? Wouldn't that tune for an overly-reliant network?
 -reverse dropout scheduler
