@@ -29,10 +29,10 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
-#network_type='ACT'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
+run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+network_type='ACT'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 #network_type='RECON_SINO'
-network_type='FROZEN_COUNTERFLOW'
+#network_type='FROZEN_COUNTERFLOW'
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 #train_SI=False
 recon_variant=1       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
@@ -45,7 +45,7 @@ gen_sino_channels_SI=3       # Number of sinogram channels for sinogram->image r
 gen_sino_channels_IS=1       # Number of sinogram channels for image->sinogram runs (must remain 1).
 
 gen_image_channels=1      # Number of image channels for network currently being trained (generally 1)
-gen_sino_size=320         # Options: 180, 256, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
+gen_sino_size=288         # Options: 180, 256, 288, 320. Resize input sinograms to this size. Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 90). Images are square.
 
 SI_normalize=False    # For sino-->image mappings: normalize CNN outputs (images), iterative recons, and ground truths from dataset. You can then adjust the scale factor in the search dictionaries.
@@ -290,8 +290,8 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 ###########
 # Testing #
 ###########
-test_csv_file =           'frame-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-607epochs-testSet' # csv dataframe file to save testing results to
-test_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-607epochs' # Checkpoint to load model for testing
+test_csv_file =           'frame-ACT-288-bilinear-288x257-padSino-tunedSSIM-0p3lr-370epochs-trainSet' # csv dataframe file to save testing results to
+test_checkpoint_file='checkpoint-ACT-288-bilinear-288x257-padSino-tunedSSIM-0p3lr-370epochs' # Checkpoint to load model for testing
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
 
@@ -311,11 +311,11 @@ test_sample_division=1
 
 ## Select Data Files ##
 ## ----------------- ##
-test_act_sino_file='test-highCountSino-bilinear-288x257.npy'
-test_act_image_file= 'test-actMap.npy'
+test_act_sino_file='train-highCountSino-bilinear-288x257.npy'
+test_act_image_file= 'train-actMap.npy'
 
-test_act_recon1_file='test-highCountImage.npy'
-test_act_recon2_file='test-obliqueImage.npy'
+test_act_recon1_file='train-highCountImage.npy'
+test_act_recon2_file='train-obliqueImage.npy'
 test_atten_image_file=None
 test_atten_sino_file=None
 
