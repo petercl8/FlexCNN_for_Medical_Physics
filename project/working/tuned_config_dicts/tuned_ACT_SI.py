@@ -12,10 +12,10 @@ You also don't need to worry about "Search Spaces", as this is simply a dictiona
 Feel free to look at it though, to see how I set up the search space. The last section (Set Correct Config) is where the configuration dictionary gets assigned.
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
-'''
-# (I) 320x320 Network. Data: 288x257, SINOGRAM padded to 288x288, tuned SSIM
+
+# (I) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded sinoram-style horizontally to 288
+# results in 288x257 size which is then padded sinoram-style horizontally to 320
 config_ACT_SI={
   "SI_alpha_min": -1,
   "SI_dropout": False,
@@ -51,7 +51,7 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-'''
+
 #####################################
 ### 288x288 Network Tunings Below ###
 #####################################
