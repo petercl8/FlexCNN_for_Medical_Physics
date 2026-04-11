@@ -18,7 +18,7 @@ MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalize
 config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     # Generator Network
     'SI_gen_mult': tune.uniform(1.1, 3.5),                      # Factor by which to multiply channels/block as one moves twowards the center of the network
-    'SI_gen_fill': tune.choice([0,1]),                        # Number of constant-sized Conv2d layers/block
+    'SI_gen_fill': 1, #tune.choice([0,1]),                        # Number of constant-sized Conv2d layers/block
     'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
     'SI_gen_z_dim': tune.lograndint(512, 2000),                 # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
     'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type

@@ -117,11 +117,11 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ## Tuning ##
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
-tune_csv_file='frame-ACT-320-bilinear-288x257-padSino-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-320-bilinear-288x257-padSino-fill1SkipNone-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-RECON_SINO_IS-320-bilinear-288x257-padSino-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-FROZEN_COUNTERFLOW-RECON-320-bilinear-288x257-padSino-tunedSSIM'
 
-tune_exp_name='search-ACT-320-bilinear-288x257-padSino-tunedSSIM'
+tune_exp_name='search-ACT-320-bilinear-288x257-padSino-fill1SkipNone-tunedSSIM'
 #tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='search-FROZEN_COUNTERFLOW-RECON-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 
@@ -223,11 +223,11 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are automatically appended suffixes of -frozen and -act.
 #####
 
-train_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-fill1skipNone_tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-RECON_SINO_IS-320-FORE_recon-bilinear-288x257-padSino-tunedSSIM-0p3lr-50epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-inject50_50'
 
-train_csv_file='frame-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='frame-ACT-320-bilinear-288x257-padSino-fill1skipNone_tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 ##train_csv_file='frame-COUNTERFLOW_RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-inject50_50'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='temp'
 
@@ -291,8 +291,8 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 ###########
 # Testing #
 ###########
-test_csv_file =           'frame-ACT-288-bilinear-288x257-padSino-tunedSSIM-0p3lr-370epochs-trainSet' # csv dataframe file to save testing results to
-test_checkpoint_file='checkpoint-ACT-288-bilinear-288x257-padSino-tunedSSIM-0p3lr-370epochs' # Checkpoint to load model for testing
+test_csv_file =           'frame-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs-testSet' # csv dataframe file to save testing results to
+test_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs' # Checkpoint to load model for testing
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
 
@@ -312,11 +312,11 @@ test_sample_division=1
 
 ## Select Data Files ##
 ## ----------------- ##
-test_act_sino_file='train-highCountSino-bilinear-288x257.npy'
-test_act_image_file= 'train-actMap.npy'
+test_act_sino_file='test-highCountSino-bilinear-288x257.npy'
+test_act_image_file= 'test-actMap.npy'
 
-test_act_recon1_file='train-highCountImage.npy'
-test_act_recon2_file='train-obliqueImage.npy'
+test_act_recon1_file='test-highCountImage.npy'
+test_act_recon2_file='test-obliqueImage.npy'
 test_atten_image_file=None
 test_atten_sino_file=None
 
