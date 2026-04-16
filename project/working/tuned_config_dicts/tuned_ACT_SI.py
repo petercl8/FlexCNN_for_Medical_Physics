@@ -13,10 +13,53 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
-# (J) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+
+# (J) Fill is enforced to 1.
+# 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # Results in 288x257 size which is then padded sinoram-style horizontally to 320
-# Additionally, fill is enforced to 1 and skip connections are set to off.
+'''
+config_ACT_SI={
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 1,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 15,
+  "SI_gen_mult": 1.9773642743066986,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 701,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 3.4842938459218797,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 3.9521512708366076,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "conv",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 6,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.5470919457626097,
+  "gen_b2": 0.6638348764108472,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0007294398941549969,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 320,
+  "network_type": "ACT",
+  "recon_variant": 1,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
+'''
+# (K) Fill is enforced to 1 and skip connections are set to off.
+# 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# Results in 288x257 size which is then padded sinoram-style horizontally to 320
 config_ACT_SI={
   "SI_alpha_min": -1,
   "SI_disc_adv_criterion": 1,
@@ -53,8 +96,8 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
 '''
+
 # (I) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
@@ -93,7 +136,7 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-'''
+
 
 #####################################
 ### 288x288 Network Tunings Below ###
