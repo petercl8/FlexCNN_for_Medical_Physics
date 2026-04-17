@@ -18,14 +18,14 @@ MEAN_PIXEL_ACTIVITY = MEAN_ACTIVITY / (180 ** 2)  # Per-pixel mean for normalize
 config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     # Generator Network
     'SI_gen_mult': tune.uniform(1.1, 3.5),                      # Factor by which to multiply channels/block as one moves twowards the center of the network
-    'SI_gen_fill': 1, #tune.choice([0,1]),                        # Number of constant-sized Conv2d layers/block
+    'SI_gen_fill': tune.choice([0,1]),                          # Number of constant-sized Conv2d layers/block
     'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
     'SI_gen_z_dim': tune.lograndint(512, 2000),                 # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
     'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type
-    'SI_dropout': False, #tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
+    'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
     'SI_gen_hidden_dim': tune.lograndint(10, 35),               # Generator channel scaling factor. Larger numbers give more total channels.
-    'SI_skip_mode': 'none', #tune.choice(['none','conv']),     # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
+    'SI_skip_mode': 'none', #tune.choice(['none','conv']),      # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
                                                                 # If generator uses 1x1 convolutions ("1x1Conv"): 'none' = no skips, 'conv' = learned 1x1 convolutional skip
 
     # Statistical Regularization (SI-specific)
@@ -72,7 +72,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_gen_neck': tune.choice(['narrow','medium','wide']),
     'IS_gen_z_dim': tune.lograndint(512, 2000),
     'IS_pad_mode': tune.choice(['zeros', 'replicate']),
-    'IS_dropout': False, #tune.choice([True, False]),
+    'IS_dropout': tune.choice([True, False]),
     'IS_exp_kernel': tune.choice([3,4]),
     'IS_gen_hidden_dim': tune.lograndint(10, 35),
     'IS_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation

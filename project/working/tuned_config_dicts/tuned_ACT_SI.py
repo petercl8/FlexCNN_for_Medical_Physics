@@ -1,3 +1,4 @@
+from sqlalchemy import null
 from sympy import false, true
 from torch import nn
 
@@ -13,12 +14,52 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
+# (L) Skip connections set to 'none'
+# 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# Results in 288x257 size which is then padded sinoram-style horizontally to 320
+config_ACT_SI={
+  "SI_alpha_min": -1,
+  "SI_disc_patchGAN": 1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": None,
+  "SI_gen_hidden_dim": 13,
+  "SI_gen_mult": 2.529773994895546,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 1109,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 9.822069236276096,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 3.6812615917693363,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 6,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.3765973372905774,
+  "gen_b2": 0.4669800936956553,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.00032461357830141735,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 320,
+  "network_type": "ACT",
+  "recon_variant": 1,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
 
+'''
 # (J) Fill is enforced to 1.
 # 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # Results in 288x257 size which is then padded sinoram-style horizontally to 320
-'''
 config_ACT_SI={
   "SI_alpha_min": -1,
   "SI_dropout": False,
@@ -52,9 +93,10 @@ config_ACT_SI={
   "network_type": "ACT",
   "recon_variant": 1,
   "sup_base_criterion": "MSELoss",
-  "train_SI": True
+  "train_SI": True,
 }
 '''
+
 '''
 # (K) Fill is enforced to 1 and skip connections are set to off.
 # 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
@@ -97,7 +139,7 @@ config_ACT_SI={
   "train_SI": True
 }
 '''
-
+'''
 # (I) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
@@ -136,7 +178,7 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
+'''
 
 #####################################
 ### 288x288 Network Tunings Below ###

@@ -117,11 +117,11 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ## Tuning ##
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
-tune_csv_file='frame-ACT-320-bilinear-288x257-padSino-fill1SkipNone-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-320-bilinear-288x257-padSino-skipNone-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-RECON_SINO_IS-320-bilinear-288x257-padSino-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-FROZEN_COUNTERFLOW-RECON-320-bilinear-288x257-padSino-tunedSSIM'
 
-tune_exp_name='search-ACT-320-bilinear-288x257-padSino-fill1SkipNone-tunedSSIM'
+tune_exp_name='search-ACT-320-bilinear-288x257-padSino-skipNone-tunedSSIM'
 #tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='search-FROZEN_COUNTERFLOW-RECON-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 
@@ -223,14 +223,15 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are automatically appended suffixes of -frozen and -act.
 #####
 
-#train_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-fill1skipNone-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
+'search-ACT-320-bilinear-288x257-padSino-skipNone-tunedSSIM'
+train_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-skipNone-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-RECON_SINO_IS-320-FORE_recon-bilinear-288x257-padSino-tunedSSIM-0p3lr-50epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-inject50_50'
-train_checkpoint_file='temp'
+#train_checkpoint_file='temp'
 
-#train_csv_file='frame-ACT-320-bilinear-288x257-padSino-fill1skipNone-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='frame-ACT-320-bilinear-288x257-padSino-skipNone-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 ##train_csv_file='frame-COUNTERFLOW_RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-inject50_50'   # CSV filename for training learning curves (without .csv extension; will be appended).
-train_csv_file='temp'
+#train_csv_file='temp'
 
 train_load_state=False  # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
