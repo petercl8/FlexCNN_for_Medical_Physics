@@ -29,7 +29,7 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 network_type='ACT'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 #network_type='RECON_SINO'
 #network_type='FROZEN_COUNTERFLOW'
@@ -293,8 +293,9 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 ###########
 # Testing #
 ###########
-test_csv_file =           'frame-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs-testSet' # csv dataframe file to save testing results to
-test_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs' # Checkpoint to load model for testing
+test_csv_file =           'frame-ACT-320-bilinear-288x257-padSino-skipnone-tunedSSIM-0p3lr-800epochs-testSet' # csv dataframe file to save testing results to
+test_checkpoint_file='checkpoint-ACT-320-bilinear-288x257-padSino-skipNone-tunedSSIM-0p3lr-800epochs' # Checkpoint to load model for testing
+
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
 
