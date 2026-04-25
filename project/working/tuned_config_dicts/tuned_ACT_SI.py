@@ -14,6 +14,88 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 
+# (M2) Image-like augmentations
+# 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# Results in 288x257 size which is then zero padded to 320x320.
+config_ACT_SI = {
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": None,
+  "SI_gen_hidden_dim": 19,
+  "SI_gen_mult": 1.6411117368324177,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 1795,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 6.504262683750441,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 7.674276315843645,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.28225481402525654,
+  "gen_b2": 0.9164894546932162,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0005932276986248613,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 320,
+  "network_type": "ACT",
+  "recon_variant": 1,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+
+'''
+# (M1) Image-like augmentations
+# 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# Results in 288x257 size which is then zero padded to 320x320.
+config_ACT_SI={
+  "SI_alpha_min": -1,
+  "SI_dropout": True,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "ELU",
+  "SI_gen_hidden_dim": 19,
+  "SI_gen_mult": 1.6591837582417355,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 1683,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 13.541193699225364,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 1.540837798925665,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.3770865783290663,
+  "gen_b2": 0.9050383831293586,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0002211300790292969,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 320,
+  "network_type": "ACT",
+  "recon_variant": 1,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
+'''
 # (L) Skip connections set to 'none'
 # 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
@@ -54,7 +136,7 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
+'''
 '''
 # (J) Fill is enforced to 1.
 # 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM

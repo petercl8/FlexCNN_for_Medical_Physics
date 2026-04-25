@@ -173,15 +173,16 @@ class Generator_288(nn.Module):
 
         self.input_size = input_size
         self.pad_to_size = 288
+        network_type = str(config.get('network_type', '')).upper()
+        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI))
 
-        if gen_SI:
-            if input_size != self.pad_to_size:
-                raise ValueError('This generator is configured for 288x288 inputs in SI mode.')
-        else:
-            if input_size > self.pad_to_size:
-                raise ValueError('IS input size must be <= 288 for zero-padding to 288.')
+        if input_size > self.pad_to_size:
+            raise ValueError('Input size must be <= 288 for zero-padding to 288.')
 
-        self.pad_input = (not gen_SI) and (input_size < self.pad_to_size)
+        if (input_size != self.pad_to_size) and (not self.allow_input_zero_pad):
+            raise ValueError('Input size mismatch: this network configuration requires exact 288x288 input.')
+
+        self.pad_input = self.allow_input_zero_pad
 
         # ========================================================================
         # BUILD NETWORK ARCHITECTURE
@@ -584,7 +585,7 @@ class Generator_288(nn.Module):
         # Pattern: Concatenate frozen features → 1x1 conv projects back to base channels
         skips = []
         hidden = input
-        if self.pad_input:
+        if self.pad_input and (hidden.shape[-2] < self.pad_to_size or hidden.shape[-1] < self.pad_to_size):
             pad_h = self.pad_to_size - hidden.shape[-2]
             pad_w = self.pad_to_size - hidden.shape[-1]
             pad_top = pad_h // 2
@@ -865,15 +866,16 @@ class Generator_256(nn.Module):
 
         self.input_size = input_size
         self.pad_to_size = 256
+        network_type = str(config.get('network_type', '')).upper()
+        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI))
 
-        if gen_SI:
-            if input_size != self.pad_to_size:
-                raise ValueError('This generator is configured for 256x256 inputs in SI mode.')
-        else:
-            if input_size > self.pad_to_size:
-                raise ValueError('IS input size must be <= 256 for zero-padding to 256.')
+        if input_size > self.pad_to_size:
+            raise ValueError('Input size must be <= 256 for zero-padding to 256.')
 
-        self.pad_input = (not gen_SI) and (input_size < self.pad_to_size)
+        if (input_size != self.pad_to_size) and (not self.allow_input_zero_pad):
+            raise ValueError('Input size mismatch: this network configuration requires exact 256x256 input.')
+
+        self.pad_input = self.allow_input_zero_pad
 
         # ========================================================================
         # BUILD NETWORK ARCHITECTURE
@@ -1280,7 +1282,7 @@ class Generator_256(nn.Module):
         skips = []
 
         hidden = input
-        if self.pad_input:
+        if self.pad_input and (hidden.shape[-2] < self.pad_to_size or hidden.shape[-1] < self.pad_to_size):
             pad_h = self.pad_to_size - hidden.shape[-2]
             pad_w = self.pad_to_size - hidden.shape[-1]
             pad_top = pad_h // 2
@@ -1561,15 +1563,16 @@ class Generator_320(nn.Module):
 
         self.input_size = input_size
         self.pad_to_size = 320
+        network_type = str(config.get('network_type', '')).upper()
+        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI))
 
-        if gen_SI:
-            if input_size != self.pad_to_size:
-                raise ValueError('This generator is configured for 320x320 inputs in SI mode.')
-        else:
-            if input_size > self.pad_to_size:
-                raise ValueError('IS input size must be <= 320 for zero-padding to 320.')
+        if input_size > self.pad_to_size:
+            raise ValueError('Input size must be <= 320 for zero-padding to 320.')
 
-        self.pad_input = (not gen_SI) and (input_size < self.pad_to_size)
+        if (input_size != self.pad_to_size) and (not self.allow_input_zero_pad):
+            raise ValueError('Input size mismatch: this network configuration requires exact 320x320 input.')
+
+        self.pad_input = self.allow_input_zero_pad
 
         # ========================================================================
         # BUILD NETWORK ARCHITECTURE
@@ -2256,15 +2259,16 @@ class Generator_180(nn.Module):
 
         self.input_size = input_size
         self.pad_to_size = 180
+        network_type = str(config.get('network_type', '')).upper()
+        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI))
 
-        if gen_SI:
-            if input_size != self.pad_to_size:
-                raise ValueError('This generator is configured for 180x180 inputs in SI mode.')
-        else:
-            if input_size > self.pad_to_size:
-                raise ValueError('IS input size must be <= 180 for zero-padding to 180.')
+        if input_size > self.pad_to_size:
+            raise ValueError('Input size must be <= 180 for zero-padding to 180.')
 
-        self.pad_input = (not gen_SI) and (input_size < self.pad_to_size)
+        if (input_size != self.pad_to_size) and (not self.allow_input_zero_pad):
+            raise ValueError('Input size mismatch: this network configuration requires exact 180x180 input.')
+
+        self.pad_input = self.allow_input_zero_pad
 
         # ========================================================================
         # BUILD NETWORK ARCHITECTURE

@@ -1,3 +1,41 @@
+config_DENOISE_SI = { # Just a placeholder to test training.
+  "SI_alpha_min": -1,
+  "SI_disc_patchGAN": 1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": None,
+  "SI_gen_hidden_dim": 13,
+  "SI_gen_mult": 2.529773994895546,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 1109,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 9.822069236276096,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 3.6812615917693363,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 6,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.3765973372905774,
+  "gen_b2": 0.4669800936956553,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.00032461357830141735,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 1,
+  "gen_sino_size": 320,
+  "network_type": "DENOISE",
+  "recon_variant": 1,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+
+'''
 config_DENOISE_SI = {
   "SI_alpha_min": -1,
   "SI_dropout": False,
@@ -30,3 +68,4 @@ config_DENOISE_SI = {
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
+'''
