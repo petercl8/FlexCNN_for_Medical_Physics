@@ -1,3 +1,42 @@
+# 320x320 network
+config_DENOISE_SI = {
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "ELU",
+  "SI_gen_hidden_dim": 15,
+  "SI_gen_mult": 2.316349793516826,
+  "SI_gen_neck": "wide",
+  "SI_gen_z_dim": 960,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 2.5991724933955216,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 9.392201051046372,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.7301094278944035,
+  "gen_b2": 0.842917164969772,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0013890570355561337,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 1,
+  "gen_sino_size": 320,
+  "network_type": "DENOISE",
+  "recon_variant": 2,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+
+
+'''
 config_DENOISE_SI = { # Just a placeholder to test training.
   "SI_alpha_min": -1,
   "SI_disc_patchGAN": 1,
@@ -31,40 +70,6 @@ config_DENOISE_SI = { # Just a placeholder to test training.
   "gen_sino_size": 320,
   "network_type": "DENOISE",
   "recon_variant": 1,
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-
-'''
-config_DENOISE_SI = {
-  "SI_alpha_min": -1,
-  "SI_dropout": False,
-  "SI_exp_kernel": 4,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "LeakyReLU",
-  "SI_gen_hidden_dim": 34,
-  "SI_gen_mult": 1.6784499724995354,
-  "SI_gen_neck": "wide",
-  "SI_gen_z_dim": 1733,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 3.1060983465329053,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 4.134778822027846,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "none",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.6099253222709485,
-  "gen_b2": 0.2194047349693382,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0003521818874320586,
-  "gen_sino_channels_SI": 1,
-  "gen_sino_size": 288,
-  "network_type": "DENOISE",
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }

@@ -82,6 +82,16 @@ def cnn_reconstruct_single(input_tensor, config, paths, device, checkpoint_name)
     input_tensor: input for the network (act_sino for ACT, atten_sino for ATTEN, concatenated for CONCAT)
     '''
 
+    expected_input_channels = config['gen_sino_channels_SI']
+    if input_tensor.shape[1] != expected_input_channels:
+        if expected_input_channels == 1 and input_tensor.shape[1] > 1:
+            input_tensor = input_tensor[:, 0:1, :, :]
+        else:
+            raise ValueError(
+                f"Input tensor has {input_tensor.shape[1]} channels but the generator expects "
+                f"{expected_input_channels}."
+            )
+
     # Force reimport of generator classes to ensure fresh definitions
     if 'FlexCNN_for_Medical_Physics.classes.generators' in sys.modules:
         generators_module = importlib.reload(sys.modules['FlexCNN_for_Medical_Physics.classes.generators'])

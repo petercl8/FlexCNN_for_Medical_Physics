@@ -1,9 +1,9 @@
 
 # Maps FORE reconstructions to sinograms.
 # 320x320 Network.
-# Data: 288x257, SINOGRAM padded to 288x288, tuned SSIM
+# Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 #       Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-#       results in 288x257 size which is then padded sinoram-style horizontally to 288
+#       results in 288x257 size which is then padded sinoram-style horizontally to 320
 # Network then maps FORE reconstructions to FORE sinograms
 config_RECON_SINO_IS = {
   "IS_alpha_min": -1,
@@ -46,7 +46,6 @@ config_RECON_SINO_IS = {
   "sup_base_criterion": "MSELoss",
   "train_SI": False
 }
-
 
 ### Works okay, but was tuned to map sinos to activity maps. 
 ### Not specifically tuned for network_type='RECON_SINO'
