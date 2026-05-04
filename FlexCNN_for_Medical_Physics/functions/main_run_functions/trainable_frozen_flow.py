@@ -46,6 +46,18 @@ from FlexCNN_for_Medical_Physics.functions.helper.model_setup.config_materialize
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# ========================================================================================
+# MODULE-LEVEL CONFIGURATION FOR FROZEN FEATURE DROPOUT
+# ========================================================================================
+# frozen_drop_mode controls how frozen backbone features are dropped during training/tuning.
+# Options:
+#   'per_channel': Drop individual channels independently (current behavior). Each channel
+#                  in each batch is dropped independently with scheduled probability p_drop.
+#   'all_or_none': Drop all channels or none per batch. With probability p_drop, either all
+#                  frozen channels are zeroed (dropped) for the entire batch, or none are.
+# For test/visualize modes, no scheduled dropout is applied regardless of this setting.
+frozen_drop_mode = 'all_or_none'
+
 def run_trainable_frozen_flow(config, paths, settings):
     """
     Train, test, or visualize a network using a frozen backbone network
@@ -360,6 +372,7 @@ def run_trainable_frozen_flow(config, paths, settings):
                 run_mode=run_mode,
                 p_drop=p_drop,
                 frozen_drop_toggle=settings.get('frozen_drop_toggle'),
+                frozen_drop_mode=frozen_drop_mode,
             )
 
             # ----- SUBSECTION 10D: ACTIVITY NETWORK FORWARD/BACKWARD PASS -----

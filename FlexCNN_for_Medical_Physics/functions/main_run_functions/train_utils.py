@@ -44,33 +44,93 @@ def compute_frozen_feature_drop_prob(run_mode, epoch, report_num, num_epochs, tu
     return p_min + 0.5 * (p_max - p_min) * (1 + math.cos(math.pi * t / horizon))
 
 
-def optionally_drop_some_channels(frozen_enc_feats, frozen_dec_feats, run_mode, p_drop, frozen_drop_toggle=None):
-    """Apply per-channel batch-shared dropout to frozen features and return (enc, dec, dropped_channel_percent).
+def optionally_drop_some_channels(frozen_enc_feats, frozen_dec_feats, run_mode, p_drop, frozen_drop_toggle=None, frozen_drop_mode='per_channel'):
+    """Apply dropout to frozen features and return (enc, dec, dropped_channel_percent).
     
-    Each channel in each feature tensor is independently dropped with probability determined by:
-    - For train/tune: p_drop from scheduler (gradient-based)
-    - For test/visualize: frozen_drop_toggle (binary: None->no drop, True->drop all, False->no drop)
+    Supports two dropout modes:
+    - 'per_channel': Each channel independently dropped with probability p_drop (batch-shared per feature).
+    - 'all_or_none': All channels dropped together or kept together (binary decision per batch).
     
-    The mask is shared across all samples in the batch (shape [1, C, 1, ...]).
-    Returns dropped_channel_percent: percentage of all channels dropped across all tensors.
+    Behavior by run_mode:
+    - test/visualize: Always return features unchanged (no scheduled dropout). frozen_drop_toggle ignored.
+    - train/tune: Apply dropout according to frozen_drop_mode and p_drop.
+    
+    Args:
+        frozen_enc_feats: Encoder features from frozen backbone (tuple of tensors or None).
+        frozen_dec_feats: Decoder features from frozen backbone (tuple of tensors or None).
+        run_mode: 'train', 'tune', 'test', or 'visualize'.
+        p_drop: Dropout probability (0.0 to 1.0). Scheduled during train/tune.
+        frozen_drop_toggle: (Unused in new implementation; kept for backward compatibility).
+        frozen_drop_mode: 'per_channel' or 'all_or_none'.
+    
+    Returns:
+        Tuple of (injected_enc_feats, injected_dec_feats, dropped_channel_percent).
+    """
+    # Early return: no scheduled dropout for test/visualize
+    if run_mode in ('test', 'visualize'):
+        return frozen_enc_feats, frozen_dec_feats, 0.0
+    
+    # For train/tune, apply dropout based on mode
+    p_drop = float(p_drop)
+    
+    if frozen_drop_mode == 'all_or_none':
+        # All-or-none: sample a single decision for the entire batch
+        return _apply_all_or_none_dropout(frozen_enc_feats, frozen_dec_feats, p_drop)
+    elif frozen_drop_mode == 'per_channel':
+        # Per-channel: each channel independently dropped
+        return _apply_per_channel_dropout(frozen_enc_feats, frozen_dec_feats, p_drop)
+    else:
+        raise ValueError(f"Invalid frozen_drop_mode='{frozen_drop_mode}'. Expected 'per_channel' or 'all_or_none'")
+
+
+def _apply_all_or_none_dropout(frozen_enc_feats, frozen_dec_feats, p_drop):
+    """Apply all-or-none dropout: sample once per batch to decide drop-all or keep-all.
+    
+    Returns (enc_feats, dec_feats, dropped_channel_percent).
+    """
+    p_drop = float(p_drop)
+    if p_drop <= 0.0:
+        return frozen_enc_feats, frozen_dec_feats, 0.0
+    
+    # Sample a single Bernoulli: if True (with prob p_drop), drop all; else keep all
+    drop_all = torch.bernoulli(torch.tensor(p_drop, dtype=torch.float32)).item() > 0.5
+    
+    if drop_all:
+        # Compute total channels for the percent calculation
+        total_channels = 0
+        for features in [frozen_enc_feats, frozen_dec_feats]:
+            if features is not None:
+                for feat in features:
+                    if feat is not None:
+                        total_channels += feat.shape[1]  # shape[1] is channel dimension
+        
+        # Return zeroed features (preserving shape, device, dtype)
+        def _zero_features(features):
+            if features is None:
+                return None
+            return tuple(torch.zeros_like(feat) if feat is not None else None for feat in features)
+        
+        injected_enc = _zero_features(frozen_enc_feats)
+        injected_dec = _zero_features(frozen_dec_feats)
+        dropped_channel_percent = 100.0 if total_channels > 0 else 0.0
+    else:
+        # Keep all features unchanged
+        injected_enc = frozen_enc_feats
+        injected_dec = frozen_dec_feats
+        dropped_channel_percent = 0.0
+    
+    return injected_enc, injected_dec, dropped_channel_percent
+
+
+def _apply_per_channel_dropout(frozen_enc_feats, frozen_dec_feats, p_drop):
+    """Apply per-channel dropout: each channel independently dropped (batch-shared mask).
+    
+    Returns (enc_feats, dec_feats, dropped_channel_percent).
     """
     p_drop = float(p_drop)
     
-    # Determine effective dropout probability
-    if run_mode in ('train', 'tune'):
-        # Scheduler-driven dropout
-        effective_p_drop = p_drop
-    elif run_mode in ('test', 'visualize'):
-        # Binary ablation: frozen_drop_toggle controls if we drop all or none
-        if frozen_drop_toggle is True:
-            effective_p_drop = 1.0  # Drop all channels (clean ablation)
-        else:
-            effective_p_drop = 0.0  # Keep all channels (clean ablation)
-    else:
-        effective_p_drop = 0.0
-    
     # If dropout is disabled, return features unchanged
-    if effective_p_drop <= 0.0:
+    if p_drop <= 0.0:
         return frozen_enc_feats, frozen_dec_feats, 0.0
     
     def _apply_channel_dropout(features, p_drop_val):
@@ -113,8 +173,8 @@ def optionally_drop_some_channels(frozen_enc_feats, frozen_dec_feats, run_mode, 
         return tuple(dropped_features), total_channels, total_dropped
     
     # Apply dropout to encoder and decoder features
-    injected_enc, enc_total, enc_dropped = _apply_channel_dropout(frozen_enc_feats, effective_p_drop)
-    injected_dec, dec_total, dec_dropped = _apply_channel_dropout(frozen_dec_feats, effective_p_drop)
+    injected_enc, enc_total, enc_dropped = _apply_channel_dropout(frozen_enc_feats, p_drop)
+    injected_dec, dec_total, dec_dropped = _apply_channel_dropout(frozen_dec_feats, p_drop)
     
     # Compute percentage of channels dropped across all tensors
     all_channels = enc_total + dec_total
