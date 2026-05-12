@@ -198,7 +198,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
                       act_image_array_name=None, act_sino_array_name=None, atten_image_array_name=None,
                       atten_sino_array_name=None, recon1_array_name=None, recon2_array_name=None,
                       sino_resize_type='pool', sino_pad_type='zeros', image_pad_type='zeros',
-                      sino_init_vert_cut=None, vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
+                      sino_init_vert_cut=None, vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=(288,257), cmap='inferno'):
     """
     Load data, reconstruct images using a trained CNN, and visualize results.
     
@@ -384,8 +384,8 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     for key in outputs_to_plot:
         tensors_to_plot.extend(plot_map.get(key, []))
 
-    show_multiple_unmatched_tensors(*tensors_to_plot, fig_size=fig_size)
+    show_multiple_unmatched_tensors(*tensors_to_plot, fig_size=fig_size, cmap=cmap)
 
-    show_multiple_commonmap_tensors(*tensors_to_plot, fig_scale=1.8)
+    show_multiple_commonmap_tensors(*tensors_to_plot, fig_scale=1.8, cmap=cmap)
 
     return tensors, cnn_output

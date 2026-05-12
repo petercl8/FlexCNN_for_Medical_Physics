@@ -23,4 +23,5 @@ correct data loading parameters
 
 Other
 -----
+copy a recent checkpoint file for precaution?
 correct counts/Bq (switch if targets are annhilation maps)

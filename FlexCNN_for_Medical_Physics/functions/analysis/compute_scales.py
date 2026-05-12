@@ -20,6 +20,7 @@ def compute_average_activity_per_image(paths, dataset='train'):
                 - 'std': standard deviation of activity per image
                 - 'min': minimum activity per image
                 - 'max': maximum activity per image
+                - 'total_sum': sum of all pixel values across entire dataset
             - 'scales' contains:
                 - 'recon1_scale': ratio of image to recon1 average activity
                 - 'recon2_scale': ratio of image to recon2 average activity
@@ -32,14 +33,14 @@ def compute_average_activity_per_image(paths, dataset='train'):
     """
     # Select paths based on dataset
     if dataset == 'train':
-        image_path = paths['train_image_path']
-        recon1_path = paths['train_recon1_path']
-        recon2_path = paths['train_recon2_path']
+        image_path = paths['train_act_image_path']
+        recon1_path = paths['train_act_recon1_path']
+        recon2_path = paths['train_act_recon2_path']
         atten_image_path = paths['train_atten_image_path']
     elif dataset == 'test':
-        image_path = paths['test_image_path']
-        recon1_path = paths['test_recon1_path']
-        recon2_path = paths['test_recon2_path']
+        image_path = paths['test_act_image_path']
+        recon1_path = paths['test_act_recon1_path']
+        recon2_path = paths['test_act_recon2_path']
         atten_image_path = paths['test_atten_image_path']
     else:
         raise ValueError("dataset must be 'train' or 'test'")
@@ -48,11 +49,13 @@ def compute_average_activity_per_image(paths, dataset='train'):
         """Helper function to compute statistics for an array."""
         flat = array.reshape(len(array), -1)
         per_image_sums = flat.sum(axis=1)
+        total_sum = float(per_image_sums.sum())
         return {
             'avg': float(per_image_sums.mean()),
             'std': float(per_image_sums.std()),
             'min': float(per_image_sums.min()),
-            'max': float(per_image_sums.max())
+            'max': float(per_image_sums.max()),
+            'total_sum': total_sum
         }
     
     # Load ground truth images and compute statistics
@@ -135,6 +138,15 @@ def compute_average_activity_per_image(paths, dataset='train'):
     if stats['scales']['atten_image_scale'] != 1.0:
         print(f"    atten_image_scale: {stats['scales']['atten_image_scale']:.6f}")
     
+    print(f"\n  Total sums across entire dataset:")
+    print(f"    Image (act) total sum: {stats['image']['total_sum']:.2f}")
+    if stats['recon1'] is not None:
+        print(f"    Recon1 total sum: {stats['recon1']['total_sum']:.2f}")
+    if stats['recon2'] is not None:
+        print(f"    Recon2 total sum: {stats['recon2']['total_sum']:.2f}")
+    if stats['atten_image'] is not None:
+        print(f"    Attenuation image total sum: {stats['atten_image']['total_sum']:.2f}")
+    
     return stats
 
 
@@ -200,13 +212,13 @@ def analyze_reconstruction_scale_distribution(paths, dataset='train', sample_mod
         raise ValueError("ratio_cap_multiple must be positive")
 
     if dataset == 'train':
-        image_path = paths['train_image_path']
-        recon1_path = paths['train_recon1_path']
-        recon2_path = paths['train_recon2_path']
+        image_path = paths['train_act_image_path']
+        recon1_path = paths['train_act_recon1_path']
+        recon2_path = paths['train_act_recon2_path']
     elif dataset == 'test':
         image_path = paths['test_image_path']
-        recon1_path = paths['test_recon1_path']
-        recon2_path = paths['test_recon2_path']
+        recon1_path = paths['test_act_recon1_path']
+        recon2_path = paths['test_act_recon2_path']
     else:
         raise ValueError("dataset must be 'train' or 'test'")
 
@@ -320,11 +332,11 @@ def compute_sinogram_to_image_scale(paths, dataset='train', sample_number=None, 
     """
     # Select paths based on dataset
     if dataset == 'train':
-        image_path = paths['train_image_path']
-        sinogram_path = paths.get('train_sino_path', None)
+        image_path = paths['train_act_image_path']
+        sinogram_path = paths.get('train_act_sino_path', None)
     elif dataset == 'test':
-        image_path = paths['test_image_path']
-        sinogram_path = paths.get('test_sino_path', None)
+        image_path = paths['test_act_image_path']
+        sinogram_path = paths.get('test_act_sino_path', None)
     else:
         raise ValueError("dataset must be 'train' or 'test'")
 

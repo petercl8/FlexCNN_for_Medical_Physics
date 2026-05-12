@@ -29,15 +29,15 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 #network_type='DENOISE'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
-network_type='RECON_SINO'
-#network_type='FROZEN_COUNTERFLOW'
-train_SI=False         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
+#network_type='RECON_SINO'
+network_type='FROZEN_COUNTERFLOW'
+train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 recon_variant=2       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
 frozen_variant='RECON_SINO'  # Frozen backbone type for FROZEN_* runs: 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'
-frozen_features_drop_max_prob=0.50  # For frozen-flow tune/train: cosine-scheduled max probability of dropping injected frozen feature channels.
-frozen_features_drop_min_prob=0.50  # For frozen-flow tune/train: cosine-scheduled min probability of dropping injected frozen feature channels.
+frozen_features_drop_max_prob=0  # For frozen-flow tune/train: cosine-scheduled max probability of dropping injected frozen feature channels.
+frozen_features_drop_min_prob=0  # For frozen-flow tune/train: cosine-scheduled min probability of dropping injected frozen feature channels.
 
 ## See note below for info about these options ##
 gen_sino_channels_SI=3    # Number of sinogram channels for sinogram->image runs (or image channels for denoising).
@@ -119,13 +119,13 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 
 #tune_csv_file='frame-DENOISE-320-180x180-padZeros-tunedSSIM-0p3lr-800epochs' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-ACT-320-bilinear-288x257-padSino-IIAugment-tunedSSIM' # .csv file to save tuning dataframe to
-#tune_csv_file='frame-RECON_SINO_IS-320-bilinear-288x257-padSino-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='frame-FROZEN_COUNTERFLOW-RECON_oblique-320-bilinear-288x257-padSino-tunedSSIM'
+tune_csv_file='frame-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM' # .csv file to save tuning dataframe to
+#tune_csv_file='frame-FROZEN_COUNTERFLOW-RECON_oblique-320-bilinear-288x257-padSino-tunedSSIM'
 #tune_csv_file='frame-FROZEN_COUNTERFLOW-ACT-320-bilinear-288x257-padSino-tunedSSIM'
 
 #tune_exp_name='search-DENOISE-320-180x180-padZeros-tunedSSIM'
-#tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
-tune_exp_name='search-FROZEN_COUNTERFLOW-RECON_oblique-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+#tune_exp_name='search-FROZEN_COUNTERFLOW-RECON_oblique-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='search-FROZEN_COUNTERFLOW-ACT-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 
 tune_augment=('SI', True)    # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
@@ -154,8 +154,8 @@ tune_search_alg='optuna'     # 'optuna' or 'hyperopt'
 tune_act_sino_file='train-highCountSino-bilinear-288x257.npy'
 #tune_act_sino_file=None
 
-#tune_act_image_file='train-actMap.npy'
-tune_act_image_file=None
+tune_act_image_file='train-actMap.npy'
+#tune_act_image_file=None
 
 #tune_atten_sino_file='train-attenSino-382x513.npy'
 #tune_atten_sino_file='train-attenSino-288x180.npy'
@@ -165,19 +165,16 @@ tune_atten_image_file=None
 
 #tune_atten_image_file='train-attenMap.npy'
 
-#tune_act_recon1_file='train-highCountImage.npy'  # Can set recon files to None if dataset does not have these.
-tune_act_recon1_file=None # Can set recon files to None if dataset does not have these.
+tune_act_recon1_file='train-highCountImage.npy'  # Can set recon files to None if dataset does not have these.
+#tune_act_recon1_file=None # Can set recon files to None if dataset does not have these.
 tune_act_recon2_file='train-obliqueImage.npy'
 #tune_act_recon2_file=None
 
 
 ## Cross Validation Set ##
 ## -------------------- ##
-#tune_val_act_sino_file='val-highCountSino-382x513.npy'
-#tune_val_act_sino_file='val-highCountSino-bilinear-288x257.npy'
-#tune_val_act_sino_file='val-highCountSino-180x180.npy'
-#tune_val_act_sino_file='val-highCountSino-128x128.npy'
-tune_val_act_sino_file=None
+tune_val_act_sino_file='val-highCountSino-bilinear-288x257.npy'
+#tune_val_act_sino_file=None
 
 tune_val_act_image_file='val-actMap.npy'
 #tune_val_act_image_file=None
@@ -225,16 +222,16 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 #####
 
 #train_checkpoint_file='checkpoint-DENOISE-320-180x180-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr'
+train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # Checkpoint file to load or save to.
 #train_checkpoint_file='temp'
 
-#train_csv_file='frame-RECON_SINO_IS-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
+#train_csv_file='frame-RECON_SINO-320-bilinear-288x257-padSino--obliqueRecon-tunedSSIM-0p3lr-400epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-DENOISE-320-noResize-180x180-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
-train_csv_file='frame-COUNTERFLOW_RECON-320-bilinear-288x257-padSino-tunedSSIM-0p3lr-drop50_50-act'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0-act'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='temp'
 
 train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
-train_load_state=False  # Set to True to load pretrained weights. Use if training terminated early.
+train_load_state=True  # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
 train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
 train_epochs = 800        # Number of training epochs.
@@ -283,7 +280,8 @@ train_val_act_sino_file='val-highCountSino-bilinear-288x257.npy'     # Validatio
 
 train_val_act_image_file='val-actMap.npy'     # Validation/monitoring image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable training curve logging.
 #train_val_act_image_file=None     # Validation/monitoring activity image file for training learning curves (e.g., 'val-actMap.npy'). Set to None to disable.
-train_val_act_recon1_file='val-highCountImage.npy'
+#train_val_act_recon1_file='val-highCountImage.npy'
+train_val_act_recon1_file=None
 train_val_act_recon2_file='val-obliqueImage.npy'
 train_val_atten_sino_file=None    # Validation/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
 train_val_atten_image_file=None   # Validation/monitoring attenuation image (optional, for CONCAT/frozen flow).
@@ -293,8 +291,8 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 # Testing #
 ###########
 
-test_csv_file = 'frame-DENOISE-320-180x180-padZeros-tunedSSIM-0p3lr-800epochs-testSet' # csv dataframe file to save testing results to
-test_checkpoint_file ='checkpoint-DENOISE-320-180x180-padZeros-tunedSSIM-0p3lr-800epochs' # Checkpoint to load model for testing
+test_csv_file = 'frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0-trainSet-run1' # csv dataframe file to save testing results to
+test_checkpoint_file ='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0' # Checkpoint to load model for testing
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
 
@@ -314,12 +312,12 @@ test_sample_division=1
 
 ## Select Data Files ##
 ## ----------------- ##
-#test_act_sino_file='train-highCountSino-bilinear-288x257.npy'
-test_act_sino_file=None
-test_act_image_file= 'test-actMap.npy'
+test_act_sino_file='train-highCountSino-bilinear-288x257.npy'
+#test_act_sino_file=None
+test_act_image_file= 'train-actMap.npy'
 
-test_act_recon1_file='test-highCountImage.npy'
-test_act_recon2_file='test-obliqueImage.npy'
+test_act_recon1_file='train-highCountImage.npy'
+test_act_recon2_file='train-obliqueImage.npy'
 test_atten_image_file=None
 test_atten_sino_file=None
 

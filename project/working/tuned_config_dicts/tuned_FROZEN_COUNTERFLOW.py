@@ -1,4 +1,82 @@
-# Untuned 320x320 config for FROZEN_COUNTERFLOW network, with RECON_SINO frozen variant.
+# UNTUNED 320x320 config for FROZEN_COUNTERFLOW network, with RECON_SINO frozen variant and 3D OSEM inputs to frozen network.
+config_FROZEN_COUNTERFLOW= {
+  "FROZEN_IS_alpha_min": -1,
+  "FROZEN_IS_dropout": False,
+  "FROZEN_IS_exp_kernel": 4,
+  "FROZEN_IS_fixedScale": 1,
+  "FROZEN_IS_gen_fill": 0,
+  "FROZEN_IS_gen_final_activ": "LeakyReLU",
+  "FROZEN_IS_gen_hidden_dim": 10,
+  "FROZEN_IS_gen_mult": 2.1398717769491116,
+  "FROZEN_IS_gen_neck": "narrow",
+  "FROZEN_IS_gen_z_dim": 657,
+  "FROZEN_IS_half_life_examples": -1,
+  "FROZEN_IS_layer_norm": "none",
+  "FROZEN_IS_learnedScale_init": 10.310436748113611,
+  "FROZEN_IS_moment_1_fraction": -1,
+  "FROZEN_IS_normalize": False,
+  "FROZEN_IS_output_scale_lr_mult": 1.4951972849973978,
+  "FROZEN_IS_pad_mode": "replicate",
+  "FROZEN_IS_skip_mode": "none",
+  "FROZEN_IS_stats_criterion": -1,
+  "FROZEN_SI_disc_adv_criterion": 1,
+  "FROZEN_SI_disc_b1": 1,
+  "FROZEN_SI_disc_b2": 1,
+  "FROZEN_SI_disc_hidden_dim": 1,
+  "FROZEN_SI_disc_lr": 1,
+  "FROZEN_SI_disc_patchGAN": 1,
+  "FROZEN_batch_base2_exponent": 5,
+  "FROZEN_frozen_variant": "RECON_SINO",
+  "FROZEN_gen_b1": 0.2037541246627113,
+  "FROZEN_gen_b2": 0.17111422257861728,
+  "FROZEN_gen_image_channels": 1,
+  "FROZEN_gen_image_size": 180,
+  "FROZEN_gen_lr": 0.00026443268866718967,
+  "FROZEN_gen_sino_channels_IS": 1,
+  "FROZEN_gen_sino_channels_SI": 3,
+  "FROZEN_gen_sino_size": 320,
+  "FROZEN_network_type": "RECON_SINO",
+  "FROZEN_recon_variant": 2,
+  "FROZEN_sup_base_criterion": "MSELoss",
+  "FROZEN_train_SI": False,
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 15,
+  "SI_gen_mult": 3.004968575722759,
+  "SI_gen_neck": "wide",
+  "SI_gen_z_dim": 569,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 19.739460284661682,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 9.65705512840703,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.4546608142935394,
+  "gen_b2": 0.6673605322779892,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.00018390076185300562,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 320,
+  "network_type": "FROZEN_COUNTERFLOW",
+  "recon_variant": 2,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+
+
+'''
+# UNTUNED 320x320 config for FROZEN_COUNTERFLOW network, with RECON_SINO frozen variant and FORE rebinned inputs to frozen network.
 config_FROZEN_COUNTERFLOW= {
   "FROZEN_IS_alpha_min": -1,
   "FROZEN_IS_dropout": False,
@@ -69,11 +147,11 @@ config_FROZEN_COUNTERFLOW= {
   "gen_sino_channels_SI": 3,
   "gen_sino_size": 320,
   "network_type": "FROZEN_COUNTERFLOW",
-  "recon_variant": 1,
+  "recon_variant": 2,
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
+'''
 '''
 # Untuned 256x256 config for FROZEN_COUNTERFLOW network, with ATTEN frozen variant.
 config_FROZEN_COUNTERFLOW= { # SAMPLE
