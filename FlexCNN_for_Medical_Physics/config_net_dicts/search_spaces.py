@@ -22,7 +22,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
     'SI_gen_neck': tune.choice(['narrow','medium','wide']),     # Size of network neck (narrow/medium/wide; mapped per generator geometry)
     'SI_gen_z_dim': tune.lograndint(512, 2000),                 # If network utilizes smallest neck size (1x1 = a dense layer), this is the number of channels in the neck
     'SI_pad_mode': tune.choice(['zeros', 'replicate']),         # Padding type
-    'SI_dropout': tune.choice([True,False]),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
+    'SI_dropout': tune.choice(['true','false']),                    # Implement dropout in network? (without cross-validation, this is likely never chosen)
     'SI_exp_kernel': tune.choice([3,4]),                        # Expanding kernel size: 3x3 or 4x4
     'SI_gen_hidden_dim': tune.lograndint(10, 35),               # Generator channel scaling factor. Larger numbers give more total channels.
     'SI_skip_mode': 'none', #tune.choice(['none','conv']),      # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
@@ -54,7 +54,7 @@ config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     'SI_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'SI_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
     'SI_layer_norm': tune.choice(['none', 'instance', 'group']),
-    'SI_gen_final_activ': tune.choice([None, 'LeakyReLU', 'ELU', 'Sigmoid', 'Tanh']),
+    'SI_gen_final_activ': tune.choice(['none', 'LeakyReLU', 'ELU', 'Sigmoid', 'Tanh']),
 }
 
 config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
@@ -62,7 +62,7 @@ config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
     'SI_fixedScale': 1,
     'SI_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'SI_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
-    'SI_gen_final_activ': tune.choice([None, 'Tanh', 'Sigmoid', 'ReLU']),
+    'SI_gen_final_activ': tune.choice(['none', 'Tanh', 'Sigmoid', 'ReLU']),
 }
 
 config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
@@ -72,7 +72,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
     'IS_gen_neck': tune.choice(['narrow','medium','wide']),
     'IS_gen_z_dim': tune.lograndint(512, 2000),
     'IS_pad_mode': tune.choice(['zeros', 'replicate']),
-    'IS_dropout': tune.choice([True, False]),
+    'IS_dropout': tune.choice(['true', 'false']),
     'IS_exp_kernel': tune.choice([3,4]),
     'IS_gen_hidden_dim': tune.lograndint(10, 35),
     'IS_skip_mode': tune.choice(['none','conv']),               # If generator uses "classic" skip-connections: 'none' = no skips, 'add' = residual addition, 'concat' = channel-wise concatenation
@@ -86,7 +86,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
 
     # Discriminator Network
     'IS_disc_hidden_dim': tune.lograndint(10, 30),
-    'IS_disc_patchGAN': tune.choice([True, False]),
+    'IS_disc_patchGAN': tune.choice(['true', 'false']),
     # Discriminator Optimizer
     'IS_disc_lr': tune.loguniform(1e-4,1e-2),
     'IS_disc_b1': tune.loguniform(0.1, 0.999),
@@ -101,7 +101,7 @@ config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
     'IS_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'IS_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
     'IS_layer_norm': tune.choice(['none', 'instance', 'group']),
-    'IS_gen_final_activ': tune.choice([None, 'LeakyReLU', 'ELU', 'Sigmoid', 'Tanh']),
+    'IS_gen_final_activ': tune.choice(['none', 'LeakyReLU', 'ELU', 'Sigmoid', 'Tanh']),
 }
 
 config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
@@ -109,7 +109,7 @@ config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with n
     'IS_fixedScale': 1,
     'IS_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'IS_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
-    'IS_gen_final_activ': tune.choice([None, 'Tanh', 'Sigmoid', 'ReLU']),
+    'IS_gen_final_activ': tune.choice(['none', 'Tanh', 'Sigmoid', 'ReLU']),
 }
 config_RAY_SUP = { # This dictionary may be merged with either config_RAY_IS or config_RAY_SI to form a single dictionary for supervisory learning
     # NEW: New parameters added to config_RAY_SI (related to generator optimizer)

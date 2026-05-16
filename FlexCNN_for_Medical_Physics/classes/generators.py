@@ -681,7 +681,10 @@ class Generator_288(nn.Module):
             hidden = hidden[:, :, margin:margin+crop_size, margin:margin+crop_size]
 
         # Apply final activation (Tanh, Sigmoid, etc.)
-        if self.final_activation:
+        # Only call if the final_activation is callable. This handles
+        # both instantiated nn.Module objects and avoids calling
+        # string sentinels like 'none'.
+        if callable(self.final_activation):
             hidden = self.final_activation(hidden)
 
         # L1 normalization across spatial dimensions (if enabled)
@@ -1378,7 +1381,10 @@ class Generator_256(nn.Module):
             hidden = hidden[:, :, margin:margin+crop_size, margin:margin+crop_size]
 
         # Apply final activation (Tanh, Sigmoid, etc.)
-        if self.final_activation:
+        # Only call if the final_activation is callable. This handles
+        # both instantiated nn.Module objects and avoids calling
+        # string sentinels like 'none'.
+        if callable(self.final_activation):
             hidden = self.final_activation(hidden)
 
         # L1 normalization across spatial dimensions (if enabled)
@@ -2075,7 +2081,10 @@ class Generator_320(nn.Module):
             hidden = hidden[:, :, margin:margin+crop_size, margin:margin+crop_size]
 
         # Apply final activation (Tanh, Sigmoid, etc.)
-        if self.final_activation:
+        # Only call if the final_activation is callable. This handles
+        # both instantiated nn.Module objects and avoids calling
+        # string sentinels like 'none'.
+        if callable(self.final_activation):
             hidden = self.final_activation(hidden)
 
         # L1 normalization across spatial dimensions (if enabled)
@@ -2761,7 +2770,8 @@ class Generator_180(nn.Module):
             hidden = hidden[:, :, margin:margin+crop_size, margin:margin+crop_size]
 
         # Apply final activation (Tanh, Sigmoid, etc.)
-        if self.final_activation:
+        # Call only if callable to avoid invoking string sentinels like 'none'
+        if callable(self.final_activation):
             hidden = self.final_activation(hidden)
 
         # L1 normalization across spatial dimensions (if enabled)
