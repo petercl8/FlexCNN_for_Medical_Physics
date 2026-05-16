@@ -174,7 +174,7 @@ class Generator_288(nn.Module):
         self.input_size = input_size
         self.pad_to_size = 288
         network_type = str(config.get('network_type', '')).upper()
-        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI))
+        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI)) or (network_type == 'ATTEN')
 
         if input_size > self.pad_to_size:
             raise ValueError('Input size must be <= 288 for zero-padding to 288.')
@@ -867,7 +867,7 @@ class Generator_256(nn.Module):
         self.input_size = input_size
         self.pad_to_size = 256
         network_type = str(config.get('network_type', '')).upper()
-        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI))
+        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI)) or (network_type == 'ATTEN')
 
         if input_size > self.pad_to_size:
             raise ValueError('Input size must be <= 256 for zero-padding to 256.')
@@ -1564,7 +1564,7 @@ class Generator_320(nn.Module):
         self.input_size = input_size
         self.pad_to_size = 320
         network_type = str(config.get('network_type', '')).upper()
-        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI))
+        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI)) or (network_type == 'ATTEN')
 
         if input_size > self.pad_to_size:
             raise ValueError('Input size must be <= 320 for zero-padding to 320.')
@@ -2260,7 +2260,7 @@ class Generator_180(nn.Module):
         self.input_size = input_size
         self.pad_to_size = 180
         network_type = str(config.get('network_type', '')).upper()
-        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI))
+        self.allow_input_zero_pad = (network_type == 'DENOISE') or (network_type == 'RECON_SINO' and (not gen_SI)) or (network_type == 'ATTEN')
 
         if input_size > self.pad_to_size:
             raise ValueError('Input size must be <= 180 for zero-padding to 180.')

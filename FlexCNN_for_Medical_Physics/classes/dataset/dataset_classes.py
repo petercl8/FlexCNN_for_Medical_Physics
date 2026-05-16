@@ -56,7 +56,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
                         config, settings, augment=(None, False), index=0, device='cuda',
                         sino_resize_type='pool',  # 'pool' or 'bilinear'. If you set to 'pool' but set vert_pool_size = horiz_pool_size = 1, it will do no pooling and leave the target alone.
-                        sino_pad_type='zeros',  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
+                        sino_pad_type='sinogram',  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
                         image_pad_type='zeros',  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
                         sino_init_vert_cut=None,  # Symmetrically crop sinograms to this height before resizing (None = no initial crop)
                         vert_pool_size=1,  # Vertical pooling factor (1 = no pooling)
