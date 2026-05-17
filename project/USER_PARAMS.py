@@ -29,10 +29,12 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+
+network_type='ACT'
 #network_type='DENOISE'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 #network_type='RECON_SINO'
-network_type='FROZEN_COUNTERFLOW'
+#network_type='FROZEN_COUNTERFLOW'
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
 recon_variant=2       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
 frozen_variant='RECON_SINO'  # Frozen backbone type for FROZEN_* runs: 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'
@@ -47,13 +49,19 @@ gen_image_channels=1      # Number of image channels for network currently being
 gen_sino_size=320         # Options: 180, 256, 288, 320. Sinogram inputs sizes (or image size if denoising). Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 180). Images are square.
 
+## Data Loading ##
+sino_resize_type='pool'          # sinogram resize method: 'pool' or 'bilinear' (default: 'pool')
+sino_pad_type='sinogram'         # sinogram padding type: 'zeros' or 'sinogram' (mirror/flip horizontal padding, default: 'zeros')
+image_pad_type='zeros'           # image padding type: 'zeros' (pad with zeros) or 'none' (bilinear resize, default: 'zeros')
+sino_init_vert_cut=None          # symmetrically crop sinograms to this height before resizing (None = no initial crop, default: None)
+vert_pool_size=1                 # vertical pooling factor for sinograms (1 = no pooling, default: 1)
+horiz_pool_size=2                # horizontal pooling factor for sinograms (1 = no pooling, default: 1)
+bilinear_intermediate_size=(288, 256)  # intermediate size(s) for bilinear resize before padding. Can be: int, tuple, or None
+
+## Normalizaiton and Scaling ##
 SI_normalize=False    # For sino-->image mappings: normalize CNN outputs (images), iterative recons, and ground truths from dataset. You can then adjust the scale factor in the search dictionaries.
 IS_normalize=False    # For image-->sinogram mappings: normalize CNN outputs (sinograms), projections, and ground truth sinograms from dataset. You can then adjust scale factor in search dicts.
 
-## Plot Mode ##
-plot_mode='inline'    # Options: 'always' (always show plots), 'inline' (only in Jupyter/Interactive Window), 'never' (silent)
-
-## Scales ##
 act_recon1_scale = 3.350  # If doing quantitative recons (no normalization), this is the scale factor to multiply optional recon1 by
 act_recon2_scale = 1.998  # If doing quantitative recons (no normalization), this is the scale factor to multiply optional recon2 by
 act_sino_scale   = 0.342  # If not normalizing sinograms, multiply sinograms by this factor
@@ -61,6 +69,9 @@ act_image_scale  = 1      # If not normalizing images, multiply by this factor.
                           # Set to 60 if you want to scale up activity maps to roughly equal counts/voxel (for our dataset).
 atten_image_scale = 308.335  # Scale factor to multiply attenuation images by
 atten_sino_scale = 39.187140258382726 # Scale factor to multiply attenuation sinograms by
+
+## Plot Mode ##
+plot_mode='inline'    # Options: 'always' (always show plots), 'inline' (only in Jupyter/Interactive Window), 'never' (silent)
 
 ## Resources ##
 # Resources With Which to Initialize Ray Tune #
@@ -222,20 +233,20 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 #####
 
 #train_checkpoint_file='checkpoint-DENOISE-320-180x180-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
-train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # Checkpoint file to load or save to.
-#train_checkpoint_file='temp'
+#train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # Checkpoint file to load or save to.
+train_checkpoint_file='temp'
 
 #train_csv_file='frame-RECON_SINO-320-bilinear-288x257-padSino--obliqueRecon-tunedSSIM-0p3lr-400epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-DENOISE-320-noResize-180x180-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
-train_csv_file='frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0-act'   # CSV filename for training learning curves (without .csv extension; will be appended).
-#train_csv_file='temp'
+#train_csv_file='frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0-act'   # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file='temp'
 
 train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
-train_load_state=True  # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
+train_load_state=False  # Set to True to load pretrained weights. Use if training terminated early.
+train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
 train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
 train_epochs = 800        # Number of training epochs.
-train_display_step=50     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=10     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_eval_batch_size=256            # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.

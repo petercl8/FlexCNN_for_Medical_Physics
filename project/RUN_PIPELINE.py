@@ -93,6 +93,7 @@ test_opts = all_dicts['test_opts']
 
 # --- Run Pipeline ---
 print(f"🚀 Running pipeline in '{params['run_mode']}' mode...")
+    
 run_pipeline(
     config=config,
     paths=paths,

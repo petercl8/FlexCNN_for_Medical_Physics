@@ -55,14 +55,7 @@ resize_warned = False  # Module-level flag to ensure warning is printed only onc
 
 def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_sino_array, act_recon1_array, act_recon2_array,
                         config, settings, augment=(None, False), index=0, device='cuda',
-                        sino_resize_type='pool',  # 'pool' or 'bilinear'. If you set to 'pool' but set vert_pool_size = horiz_pool_size = 1, it will do no pooling and leave the target alone.
-                        sino_pad_type='sinogram',  # 'zeros' or 'sinogram' (mirror/flip horizontal padding)
-                        image_pad_type='zeros',  # 'zeros' (pad with zeros) or 'none' (bilinear resize)
-                        sino_init_vert_cut=None,  # Symmetrically crop sinograms to this height before resizing (None = no initial crop)
-                        vert_pool_size=1,  # Vertical pooling factor (1 = no pooling)
-                        horiz_pool_size=1,  # Horizontal pooling factor (1 = no pooling)
-                        bilinear_intermediate_size=(288,218),  # Intermediate size for bilinear resize before padding (None = resize directly to target). Not use if pooling.
-    ):
+                        data_opts=None):
 
     global resize_warned
     
@@ -76,6 +69,15 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
     gen_sino_size = config['gen_sino_size']
     gen_image_channels = config['gen_image_channels']
     gen_sino_channels = config['gen_sino_channels_SI'] if train_SI else config['gen_sino_channels_IS']
+
+    data_opts = data_opts if data_opts is not None else settings.get('data_opts', {})
+    sino_resize_type = data_opts['sino_resize_type']
+    sino_pad_type = data_opts['sino_pad_type']
+    image_pad_type = data_opts['image_pad_type']
+    sino_init_vert_cut = data_opts['sino_init_vert_cut']
+    vert_pool_size = data_opts['vert_pool_size']
+    horiz_pool_size = data_opts['horiz_pool_size']
+    bilinear_intermediate_size = data_opts['bilinear_intermediate_size']
 
     # ========================================================================================
     # SECTION 2: Set Normalization Variables
@@ -169,7 +171,7 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
             resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type,
-            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=1, bilinear_intermediate_size=bilinear_intermediate_size
+            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size, bilinear_intermediate_size=bilinear_intermediate_size
         )
 
     if augment[0]=='II':
@@ -177,7 +179,7 @@ def NpArrayDataLoader(act_sino_array, act_image_array, atten_image_array, atten_
         act_sino_multChannel_resize, atten_sino_multChannel_resize = resize_sino_data(
             act_sino_multChannel, atten_sino_multChannel, gen_sino_size,
             resize_sino=resize_sino, sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type,
-            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=1, bilinear_intermediate_size=bilinear_intermediate_size
+            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size, bilinear_intermediate_size=bilinear_intermediate_size
         )
 
         # Augment data (with image-like augmentations)
@@ -358,6 +360,8 @@ class NpArrayDataSet(Dataset):
             self.sino_array, self.image_array, self.atten_image_array, self.atten_sino_array,
             self.recon1_array, self.recon2_array,
             self.config, self.settings,
-            augment=self.augment, index=idx, device=device_arg)
+            augment=self.augment, index=idx, device=device_arg,
+            data_opts=self.settings.get('data_opts')
+        )
 
         return act_data, atten_data, recon_data

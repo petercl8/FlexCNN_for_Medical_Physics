@@ -15,8 +15,7 @@ from FlexCNN_for_Medical_Physics.functions.helper.model_setup.config_materialize
 # Updated: BuildImageSinoTensors returns lists of all images and sinograms (activity, attenuation), and reconstructions if present
 
 def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name, recon1_array_name, recon2_array_name, config, paths, indexes, device, settings,
-                 sino_resize_type='pool', sino_pad_type='zeros', image_pad_type='zeros',
-                 sino_init_vert_cut=None, vert_pool_size=1, horiz_pool_size=1, bilinear_intermediate_size=161):
+                 data_opts=None):
     '''
     Return a dictionary of tensors for activity images/sinograms, attenuation images/sinograms, and reconstructions.
     Each tensor has shape (N, C, H, W), where N is the number of indexes provided (len(indexes)).
@@ -44,9 +43,7 @@ def BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_na
         act_data, atten_data, recon_data = NpArrayDataLoader(
             act_sino_array, act_image_array, atten_image_array, atten_sino_array, recon1_array, recon2_array,
             config, settings, augment=(None, False), index=idx, device=device,
-            sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, image_pad_type=image_pad_type,
-            sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size,
-            bilinear_intermediate_size=bilinear_intermediate_size
+            data_opts=data_opts
         )
         act_sino_scaled, act_image_scaled = act_data
         atten_sino_scaled, atten_image_scaled = atten_data
@@ -293,7 +290,7 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
     ------
     ValueError
         If network_type is unsupported or checkpoint config mismatches.
-    RuntimeError
+    RuntimeErrorTensors
         If checkpoint state dict does not match the instantiated network architecture.
     
     Examples
@@ -316,11 +313,21 @@ def PlotPhantomRecons(indexes, checkpoint_name, network_type,
         network_type = config['network_type']
     # Materialize config to convert string activations to actual PyTorch objects
     config = materialize_config(config)
+    
+    # Build data_opts dict from parameters
+    data_opts = {
+        'sino_resize_type': sino_resize_type,
+        'sino_pad_type': sino_pad_type,
+        'image_pad_type': image_pad_type,
+        'sino_init_vert_cut': sino_init_vert_cut,
+        'vert_pool_size': vert_pool_size,
+        'horiz_pool_size': horiz_pool_size,
+        'bilinear_intermediate_size': bilinear_intermediate_size,
+    }
+    
     tensors = BuildTensors(act_image_array_name, act_sino_array_name, atten_image_array_name, atten_sino_array_name,
                            recon1_array_name, recon2_array_name, config, paths, indexes, device, settings,
-                           sino_resize_type=sino_resize_type, sino_pad_type=sino_pad_type, image_pad_type=image_pad_type,
-                           sino_init_vert_cut=sino_init_vert_cut, vert_pool_size=vert_pool_size, horiz_pool_size=horiz_pool_size,
-                           bilinear_intermediate_size=bilinear_intermediate_size)
+                           data_opts=data_opts)
 
     # Choose input for reconstruction based on network_type
     if network_type == 'ACT':

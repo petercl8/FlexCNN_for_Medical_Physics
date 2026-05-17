@@ -417,7 +417,7 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
     
     return paths
 
-def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, test_opts, viz_opts):
+def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, test_opts, viz_opts, data_opts):
     """
     Build all non-path runtime settings.
     
@@ -433,6 +433,7 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
                    testset_size, test_begin_at, test_compute_MLEM, test_merge_dataframes,
                    test_shuffle, test_sample_division
         viz_opts: dict with keys: visualize_shuffle, visualize_offset, visualize_batch_size
+        data_opts: dict with keys for data loading and resizing
         run_mode: 'tune', 'train', 'test', or 'visualize'
     
     Returns:
@@ -452,6 +453,7 @@ def setup_settings( run_mode, common_settings, qa_opts, tune_opts, train_opts, t
     settings['act_image_scale'] = common_settings['act_image_scale']
     settings['atten_image_scale'] = common_settings['atten_image_scale']
     settings['atten_sino_scale'] = common_settings['atten_sino_scale']
+    settings['data_opts'] = data_opts
 
     # Mode-specific
     if run_mode == 'tune':

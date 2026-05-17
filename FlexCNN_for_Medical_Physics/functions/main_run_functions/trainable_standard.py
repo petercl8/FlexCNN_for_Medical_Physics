@@ -319,6 +319,8 @@ def run_trainable(config, paths, settings):
         collate_fn=collate_nested,
     )
 
+    
+
     # ========================================================================================
     # SECTION 8: INITIALIZE RUNNING METRICS AND TIMERS
     # ========================================================================================

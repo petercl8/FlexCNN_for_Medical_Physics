@@ -231,6 +231,17 @@ def build_all_dicts(params):
         'visualize_offset': params['visualize_offset'],
         'visualize_shuffle': params['visualize_shuffle'],
     }
+
+    ## Data Loading ##
+    data_opts = {
+        'sino_resize_type': params['sino_resize_type'],
+        'sino_pad_type': params['sino_pad_type'],
+        'image_pad_type': params['image_pad_type'],
+        'sino_init_vert_cut': params['sino_init_vert_cut'],
+        'vert_pool_size': params['vert_pool_size'],
+        'horiz_pool_size': params['horiz_pool_size'],
+        'bilinear_intermediate_size': params['bilinear_intermediate_size'],
+    }
     
     # Build paths and settings using package functions
     paths = setup_paths(
@@ -250,6 +261,7 @@ def build_all_dicts(params):
         train_opts=train_opts,
         test_opts=test_opts,
         viz_opts=viz_opts,
+        data_opts=data_opts,
     )
     
     # DEBUG: Log augmentation settings
