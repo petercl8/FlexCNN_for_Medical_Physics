@@ -29,15 +29,16 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 
-network_type='ACT'
+#network_type='ACT'
 #network_type='DENOISE'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
 #network_type='RECON_SINO'
-#network_type='FROZEN_COUNTERFLOW'
+network_type='FROZEN_COUNTERFLOW'
+
 train_SI=True         # If working wit GAN or SUP networks, set to True build Sinogram-->Image networks, or False for Image --> Sinogram.
-recon_variant=2       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
 frozen_variant='RECON_SINO'  # Frozen backbone type for FROZEN_* runs: 'atten'/'ATTEN' or 'recon_sino'/'RECON_SINO'
+recon_variant=2       # Selector for reconstruction input when used by network type (1=recon1, 2=recon2)
 frozen_features_drop_max_prob=0  # For frozen-flow tune/train: cosine-scheduled max probability of dropping injected frozen feature channels.
 frozen_features_drop_min_prob=0  # For frozen-flow tune/train: cosine-scheduled min probability of dropping injected frozen feature channels.
 
@@ -55,7 +56,7 @@ sino_pad_type='sinogram'         # sinogram padding type: 'zeros' or 'sinogram' 
 image_pad_type='zeros'           # image padding type: 'zeros' (pad with zeros) or 'none' (bilinear resize, default: 'zeros')
 sino_init_vert_cut=None          # symmetrically crop sinograms to this height before resizing (None = no initial crop, default: None)
 vert_pool_size=1                 # vertical pooling factor for sinograms (1 = no pooling, default: 1)
-horiz_pool_size=2                # horizontal pooling factor for sinograms (1 = no pooling, default: 1)
+horiz_pool_size=1                # horizontal pooling factor for sinograms (1 = no pooling, default: 1)
 bilinear_intermediate_size=(288, 256)  # intermediate size(s) for bilinear resize before padding. Can be: int, tuple, or None
 
 ## Normalizaiton and Scaling ##
@@ -128,16 +129,14 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
 
-#tune_csv_file='frame-DENOISE-320-180x180-padZeros-tunedSSIM-0p3lr-800epochs' # .csv file to save tuning dataframe to
-#tune_csv_file='frame-ACT-320-bilinear-288x257-padSino-IIAugment-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='frame-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM' # .csv file to save tuning dataframe to
-#tune_csv_file='frame-FROZEN_COUNTERFLOW-RECON_oblique-320-bilinear-288x257-padSino-tunedSSIM'
-#tune_csv_file='frame-FROZEN_COUNTERFLOW-ACT-320-bilinear-288x257-padSino-tunedSSIM'
+#tune_csv_file='frame-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs' # .csv file to save tuning dataframe to
+#tune_csv_file='frame-ACT-320net-bilinear_288x257-padSino-IIAugment-tunedSSIM' # .csv file to save tuning dataframe to
+#tune_csv_file='frame-RECON_SINO_IS-320net-bilinear_288x257-obliqueRecon-padSino-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-tunedSSIM'
 
 #tune_exp_name='search-DENOISE-320-180x180-padZeros-tunedSSIM'
-tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
-#tune_exp_name='search-FROZEN_COUNTERFLOW-RECON_oblique-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
-#tune_exp_name='search-FROZEN_COUNTERFLOW-ACT-320-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+#tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-COUNTERFLOW_RECON-320net-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 
 tune_augment=('SI', True)    # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
@@ -301,9 +300,11 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 ###########
 # Testing #
 ###########
-
-test_csv_file = 'frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0-trainSet-run1' # csv dataframe file to save testing results to
-test_checkpoint_file ='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0' # Checkpoint to load model for testing
+ 
+test_csv_file = 'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-0p3lr-800epochs-valSet' # csv dataframe file to save testing results to
+#test_csv_file = 'frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0-trainSet-run1' # csv dataframe file to save testing results to
+test_checkpoint_file ='checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-0p3lr-800epochs' # Checkpoint to load model for testing
+#test_checkpoint_file ='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0' # Checkpoint to load model for testing
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
 
@@ -323,12 +324,12 @@ test_sample_division=1
 
 ## Select Data Files ##
 ## ----------------- ##
-test_act_sino_file='train-highCountSino-bilinear-288x257.npy'
+test_act_sino_file='val-highCountSino-bilinear-288x257.npy'
 #test_act_sino_file=None
-test_act_image_file= 'train-actMap.npy'
+test_act_image_file= 'val-actMap.npy'
 
-test_act_recon1_file='train-highCountImage.npy'
-test_act_recon2_file='train-obliqueImage.npy'
+test_act_recon1_file='val-highCountImage.npy'
+test_act_recon2_file='val-obliqueImage.npy'
 test_atten_image_file=None
 test_atten_sino_file=None
 

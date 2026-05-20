@@ -15,12 +15,6 @@ correct search space
 --------------------------------------
 correct tuned config
 
-
-(if altering data) dataset_classes.py
--------------------------------------
-correct data loading parameters
-
-
 Other
 -----
 copy a recent checkpoint file for precaution?

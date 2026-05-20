@@ -1,1 +1,0 @@
-IS_dropout,IS_exp_kernel,IS_gen_fill,IS_gen_hidden_dim,IS_gen_neck,IS_layer_norm,IS_normalize,IS_pad_mode,batch_size,gen_lr,num_params
