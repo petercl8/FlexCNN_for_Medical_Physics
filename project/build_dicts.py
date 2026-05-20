@@ -50,7 +50,6 @@ def build_all_dicts(params):
             - 'common_settings': Common settings across all modes
             - 'base_dirs': Base directory paths
             - 'data_files': All data file names
-            - 'mode_files': Mode-specific files (checkpoints, csvs)
             - 'network_opts': Network configuration options
             - 'tune_opts': Tuning options
             - 'train_opts': Training options
@@ -140,16 +139,6 @@ def build_all_dicts(params):
         'visualize_atten_sino_file': params['visualize_atten_sino_file'],
     }
     
-    mode_files = {
-        'tune_csv_file': params['tune_csv_file'],
-        'train_checkpoint_file': params['train_checkpoint_file'],
-        'train_dataframe_dirName': params['train_dataframe_dirName'],
-        'train_csv_file': params['train_csv_file'],
-        'test_checkpoint_file': params['test_checkpoint_file'],
-        'test_csv_file': params['test_csv_file'],
-        'visualize_checkpoint_file': params['visualize_checkpoint_file']
-    }
-    
     network_opts = {
         'network_type': params['network_type'],
         'train_SI': params['train_SI'],
@@ -172,6 +161,8 @@ def build_all_dicts(params):
     
     tune_opts = {
         'tune_exp_name': params['tune_exp_name'],
+        'tune_csv_file': params['tune_csv_file'],
+        'tune_frozen_checkpoint_file': params['tune_frozen_checkpoint_file'],
         'tune_scheduler': params['tune_scheduler'],
         'tune_dataframe_fraction': params['tune_dataframe_fraction'],
         'tune_restore': params['tune_restore'],
@@ -198,6 +189,8 @@ def build_all_dicts(params):
         'train_load_state': params['train_load_state'],
         'train_save_state': params['train_save_state'],
         'train_save_on': params['train_save_on'],
+        'train_checkpoint_file': params['train_checkpoint_file'],
+        'train_csv_file': params['train_csv_file'],
         'training_epochs': params['train_epochs'],
         'train_lr_schedule_type': params['train_lr_schedule_type'],
         'train_lr_min_factor': params['train_lr_min_factor'],
@@ -218,6 +211,7 @@ def build_all_dicts(params):
         'testset_size': params['testset_size'],
         'test_begin_at': params['test_begin_at'],
         'test_compute_MLEM': params['test_compute_MLEM'],
+        'test_checkpoint_file': params['test_checkpoint_file'],
         'test_frozen_drop': params.get('test_frozen_drop'),
         'test_merge_dataframes': params['test_merge_dataframes'],
         'test_csv_file': params['test_csv_file'],
@@ -230,6 +224,7 @@ def build_all_dicts(params):
         'visualize_batch_size': params['visualize_batch_size'],
         'visualize_offset': params['visualize_offset'],
         'visualize_shuffle': params['visualize_shuffle'],
+        'visualize_checkpoint_file': params['visualize_checkpoint_file'],
     }
 
     ## Data Loading ##
@@ -248,7 +243,8 @@ def build_all_dicts(params):
         run_mode=params['run_mode'],
         base_dirs=base_dirs,
         data_files=data_files,
-        mode_files=mode_files,
+        tune_opts=tune_opts,
+        train_opts=train_opts,
         test_ops=test_opts,
         viz_ops=viz_opts
     )
@@ -316,7 +312,6 @@ def build_all_dicts(params):
         'common_settings': common_settings,
         'base_dirs': base_dirs,
         'data_files': data_files,
-        'mode_files': mode_files,
         'network_opts': network_opts,
         'qa_opts': qa_opts,
         'tune_opts': tune_opts,

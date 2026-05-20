@@ -235,7 +235,7 @@ def construct_config(
 
     return config
 
-def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
+def setup_paths(run_mode, base_dirs, data_files, tune_opts, train_opts, test_ops, viz_ops):
     """
     Build all path-related configuration.
     
@@ -253,8 +253,10 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
               train_sino_file, train_image_file, train_recon1_file, train_recon2_file, train_atten_image_file, train_atten_sino_file,
               test_sino_file, test_image_file, test_recon1_file, test_recon2_file, test_atten_image_file, test_atten_sino_file,
               visualize_sino_file, visualize_image_file, visualize_recon1_file, visualize_recon2_file, visualize_atten_image_file, visualize_atten_sino_file
-        mode_files: dict with keys: train_checkpoint_file, test_checkpoint_file, visualize_checkpoint_file,
-                    tune_csv_file, test_csv_file
+        tune_opts: dict with keys including tune_csv_file and tune_frozen_checkpoint_file
+        train_opts: dict with keys including train_checkpoint_file and train_csv_file
+        test_ops: dict with keys including test_checkpoint_file and test_csv_file
+        viz_ops: dict with keys including visualize_checkpoint_file
         run_mode: 'tune', 'train', 'test', or 'visualize'
     
     Returns:
@@ -285,7 +287,13 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         paths['data_dirPath'] = base_dirs['data_dirPath']
     else:
         paths['data_dirPath'] = os.path.join(base_dirs['project_dirPath'], base_dirs['data_dirName'])
-    
+
+    # Checkpoint file paths by mode.
+    paths['tune_checkpoint_path'] = os.path.join(paths['checkpoint_dirPath'], tune_opts.get('tune_frozen_checkpoint_file', ''))
+    paths['train_checkpoint_path'] = os.path.join(paths['checkpoint_dirPath'], train_opts['train_checkpoint_file'])
+    paths['test_checkpoint_path'] = os.path.join(paths['checkpoint_dirPath'], test_ops['test_checkpoint_file'])
+    paths['visualize_checkpoint_path'] = os.path.join(paths['checkpoint_dirPath'], viz_ops['visualize_checkpoint_file'])
+
     # Mode-specific data file paths (activity domain renamed to act_*)
     paths['tune_act_sino_path'] = join_if_present(paths['data_dirPath'], data_files['tune_act_sino_file'])
     paths['tune_act_image_path'] = join_if_present(paths['data_dirPath'], data_files['tune_act_image_file'])
@@ -375,7 +383,7 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         paths['act_recon2_path'] = paths['tune_act_recon2_path']
         paths['atten_image_path'] = paths['tune_atten_image_path']
         paths['atten_sino_path'] = paths['tune_atten_sino_path']
-        checkpoint_file = ''
+        paths['checkpoint_path'] = paths['tune_checkpoint_path']
     elif run_mode == 'train':
         paths['act_sino_path'] = paths['train_act_sino_path']
         paths['act_image_path'] = paths['train_act_image_path']
@@ -383,7 +391,7 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         paths['act_recon2_path'] = paths['train_act_recon2_path']
         paths['atten_image_path'] = paths['train_atten_image_path']
         paths['atten_sino_path'] = paths['train_atten_sino_path']
-        checkpoint_file = mode_files['train_checkpoint_file']
+        paths['checkpoint_path'] = paths['train_checkpoint_path']
     elif run_mode == 'test':
         paths['act_sino_path'] = paths['test_act_sino_path']
         paths['act_image_path'] = paths['test_act_image_path']
@@ -391,7 +399,7 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         paths['act_recon2_path'] = paths['test_act_recon2_path']
         paths['atten_image_path'] = paths['test_atten_image_path']
         paths['atten_sino_path'] = paths['test_atten_sino_path']
-        checkpoint_file = mode_files['test_checkpoint_file']
+        paths['checkpoint_path'] = paths['test_checkpoint_path']
     elif run_mode in ['visualize', 'none']:
         paths['act_sino_path'] = paths['visualize_act_sino_path']
         paths['act_image_path'] = paths['visualize_act_image_path']
@@ -399,21 +407,18 @@ def setup_paths(run_mode, base_dirs, data_files, mode_files, test_ops, viz_ops):
         paths['act_recon2_path'] = paths['visualize_act_recon2_path']
         paths['atten_image_path'] = paths['visualize_atten_image_path']
         paths['atten_sino_path'] = paths['visualize_atten_sino_path']
-        checkpoint_file = mode_files['visualize_checkpoint_file']
+        paths['checkpoint_path'] = paths['visualize_checkpoint_path']
     else:
         raise ValueError(f"Unknown run_mode: {run_mode}")
     
-    # Checkpoint path
-    paths['checkpoint_path'] = os.path.join(paths['checkpoint_dirPath'], checkpoint_file)
-    
     # Dataframe paths (always constructed for clarity)
-    paths['tune_dataframe_path'] = os.path.join(paths['tune_dataframe_dirPath'], f"{mode_files['tune_csv_file']}.csv")
+    paths['tune_dataframe_path'] = os.path.join(paths['tune_dataframe_dirPath'], f"{tune_opts['tune_csv_file']}.csv")
     if run_mode == 'train':
-        paths['train_dataframe_path'] = os.path.join(paths['train_dataframe_dirPath'], f"{mode_files['train_csv_file']}.csv")
+        paths['train_dataframe_path'] = os.path.join(paths['train_dataframe_dirPath'], f"{train_opts['train_csv_file']}.csv")
     else:
         # Explicitly set to None for non-train modes to prevent accidental logging to training CSV
         paths['train_dataframe_path'] = None
-    paths['test_dataframe_path'] = os.path.join(paths['test_dataframe_dirPath'], f"{mode_files['test_csv_file']}.csv")
+    paths['test_dataframe_path'] = os.path.join(paths['test_dataframe_dirPath'], f"{test_ops['test_csv_file']}.csv")
     
     return paths
 

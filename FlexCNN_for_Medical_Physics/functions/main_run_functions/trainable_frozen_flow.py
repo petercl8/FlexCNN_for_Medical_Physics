@@ -446,8 +446,8 @@ def run_trainable_frozen_flow(config, paths, settings):
 
                 # Ray Tune reporting (tune mode)
                 if run_mode == 'tune':
-                    print(f'report_num/tune_max_t : {report_num / max(1, tune_max_t)}')
-                    print(f'p_drop/dropped_channel_percent : {p_drop:.4f} / {dropped_channel_percent:.1f}%')
+                    #print(f'report_num/tune_max_t : {report_num / max(1, tune_max_t)}')
+                    #print(f'p_drop/dropped_channel_percent : {p_drop:.4f} / {dropped_channel_percent:.1f}%')
                     report_cross_validation_metrics(
                         (gen_act, gen_frozen), paths, config, settings, tune_dataframe, tune_dataframe_path,
                         tune_dataframe_fraction, tune_max_t, report_num,

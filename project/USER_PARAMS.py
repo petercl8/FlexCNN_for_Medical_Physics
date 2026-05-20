@@ -132,11 +132,12 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 #tune_csv_file='frame-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-ACT-320net-bilinear_288x257-padSino-IIAugment-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-RECON_SINO_IS-320net-bilinear_288x257-obliqueRecon-padSino-tunedSSIM' # .csv file to save tuning dataframe to
-tune_csv_file='frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-tunedSSIM'
+tune_csv_file=                     'frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM'
 
 #tune_exp_name='search-DENOISE-320-180x180-padZeros-tunedSSIM'
 #tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
-tune_exp_name='search-COUNTERFLOW_RECON-320net-bilinear-288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name=                    'search-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_frozen_checkpoint_file = 'checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # Optional: specify a frozen backbone checkpoint filename (no suffix) to load for tuning.
 
 tune_augment=('SI', True)    # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
@@ -179,7 +180,6 @@ tune_act_recon1_file='train-highCountImage.npy'  # Can set recon files to None i
 #tune_act_recon1_file=None # Can set recon files to None if dataset does not have these.
 tune_act_recon2_file='train-obliqueImage.npy'
 #tune_act_recon2_file=None
-
 
 ## Cross Validation Set ##
 ## -------------------- ##
