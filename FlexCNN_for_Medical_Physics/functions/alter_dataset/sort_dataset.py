@@ -155,13 +155,12 @@ def sort_DataSet(
     for batch in iter(dataloader):
         # New dataset API returns nested tuples: (act_data, atten_data, recon_data)
         act_data, atten_data, recon_data = batch
-        # act_data is (sino_scaled, image_scaled) with a batch dim
-        sino_ground_scaled = act_data[0].squeeze(0)
-        image_ground_scaled = act_data[1].squeeze(0)
-        atten_sino_scaled = atten_data[0].squeeze(0) if atten_data[0] is not None else None
-        atten_image_scaled = atten_data[1].squeeze(0) if atten_data[1] is not None else None
-        recon1_scaled = recon_data[0].squeeze(0) if recon_data[0] is not None else None
-        recon2_scaled = recon_data[1].squeeze(0) if recon_data[1] is not None else None
+        sino_ground_scaled = act_data[0]
+        image_ground_scaled = act_data[1]
+        atten_sino_scaled = atten_data[0] if atten_data[0] is not None else None
+        atten_image_scaled = atten_data[1] if atten_data[1] is not None else None
+        recon1_scaled = recon_data[0] if recon_data[0] is not None else None
+        recon2_scaled = recon_data[1] if recon_data[1] is not None else None
 
         if first:
             save_act_image_array_shape = (max_save_size, *tuple(image_ground_scaled.shape))
@@ -229,7 +228,7 @@ def sort_DataSet(
         if recon_variant is not None:
             try:
                 recon_candidate = recon_data[recon_variant - 1] if isinstance(recon_data, (list, tuple)) else recon_data
-                recon_used = recon_candidate.squeeze(0)
+                recon_used = recon_candidate
             except Exception as e:
                 raise RuntimeError(f"sort_DataSet: requested recon_variant={recon_variant} but failed to load reconstruction: {e}")
         else:

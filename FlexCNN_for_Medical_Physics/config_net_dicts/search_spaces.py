@@ -39,7 +39,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
 
     # Discriminator Network
     'SI_disc_hidden_dim': tune.lograndint(10, 40),              # Discriminator channel scaling factor
-    'SI_disc_patchGAN': tune.choice([True, False]),             # Use PatchGAN or not
+    'SI_disc_patchGAN': tune.choice(['true', 'false']),             # Use PatchGAN or not
     # Discriminator Optimizer
     'SI_disc_lr': tune.loguniform(1e-4,1e-2),
     'SI_disc_b1': tune.loguniform(0.1, 0.999),
@@ -49,7 +49,7 @@ config_RAY_SI = { # Dictionary for Generator: Sinogram-->Image
 
 config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
     ## Data Loading ##
-    'SI_normalize': False,
+    'SI_normalize': 'false',
     'SI_fixedScale': 1,                                          # Required by NPArrayDataLoader even when normalize=False. Set to 1 (no scaling).
     'SI_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'SI_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
@@ -58,7 +58,7 @@ config_RAY_SI_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
 }
 
 config_RAY_SI_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
-    'SI_normalize': True,
+    'SI_normalize': 'true',
     'SI_fixedScale': 1,
     'SI_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'SI_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
@@ -96,7 +96,7 @@ config_RAY_IS = { # Dictionary for Generator: Image-->Sinogram
 
 config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with no normalization and learnable scaling
     ## Data Loading ##
-    'IS_normalize': False,
+    'IS_normalize': 'false',
     'IS_fixedScale': 1,        
     'IS_learnedScale_init': tune.loguniform(MEAN_PIXEL_ACTIVITY * 0.1, MEAN_PIXEL_ACTIVITY * 5.0),  # Data-driven bounds: 10%-500% of mean per-pixel activity
     'IS_output_scale_lr_mult': tune.loguniform(1.0, 10.0),       # Learning rate multiplier for learnable output scale parameter
@@ -105,7 +105,7 @@ config_RAY_IS_learnScale = { # Dictionary for Generator: Sinogram-->Image with n
 }
 
 config_RAY_IS_fixedScale = { # Dictionary for Generator: Sinogram-->Image with normalization and fixed scaling
-    'IS_normalize': True,
+    'IS_normalize': 'true',
     'IS_fixedScale': 1,
     'IS_output_scale_lr_mult:' : 1.0,  # No learnable output scale
     'IS_layer_norm': tune.choice(['batch', 'instance', 'group', 'none']),
