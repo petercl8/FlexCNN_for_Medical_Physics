@@ -178,10 +178,10 @@ tune_atten_image_file=None
 
 #tune_atten_image_file='train-attenMap.npy'
 
-tune_act_recon1_file='train-highCountImage-lowSSIM.npy'  # Can set recon files to None if dataset does not have these.
-#tune_act_recon1_file=None # Can set recon files to None if dataset does not have these.
-tune_act_recon2_file='train-obliqueImage-lowSSIM.npy'
-#tune_act_recon2_file=None
+#tune_act_recon1_file='train-highCountImage-lowSSIM.npy'  # Can set recon files to None if dataset does not have these.
+tune_act_recon1_file=None # Can set recon files to None if dataset does not have these.
+#tune_act_recon2_file='train-obliqueImage-lowSSIM.npy'
+tune_act_recon2_file=None
 
 ## Cross Validation Set ##
 ## -------------------- ##
@@ -196,8 +196,10 @@ tune_val_atten_sino_file=None
 
 tune_val_atten_image_file=None
 
-tune_val_act_recon1_file='val-highCountImage-lowSSIM.npy'
-tune_val_act_recon2_file='val-obliqueImage-lowSSIM.npy'
+#tune_val_act_recon1_file='val-highCountImage-lowSSIM.npy'
+tune_val_act_recon1_file=None
+#tune_val_act_recon2_file='val-obliqueImage-lowSSIM.npy'
+tune_val_act_recon2_file=None
 
 ## Unlikely to Change ##
 tune_storage_dirName='searches'     # Create tuning folders (one for each experiment, each of which contains multiple trials) in this directory. Leave blank ('') to place search files in project directory
