@@ -129,12 +129,12 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
 
-tune_csv_file='frame-ACT-320net-bilinear_288x257-padSino-highSSIM-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-320net-bilinear_288x257-padSino-lowSSIM-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-RECON_SINO_IS-320net-bilinear_288x257-obliqueRecon-padSino-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file=                     'frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM'
 
-tune_exp_name='search-ACT-320net-bilinear_288x257-padSino-highSSIM-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-320net-bilinear_288x257-padSino-lowSSIM-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='search-DENOISE-320-180x180-padZeros-tunedSSIM'
 #tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name=                    'search-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
@@ -164,10 +164,10 @@ tune_search_alg='optuna'     # 'optuna' or 'hyperopt'
 
 ## Tuning Files ##
 ## -------------- ##
-tune_act_sino_file='train-highCountSino-bilinear-288x257-highSSIM.npy'
+tune_act_sino_file='train-highCountSino-bilinear-288x257-lowSSIM.npy'
 #tune_act_sino_file=None
 
-tune_act_image_file='train-actMap-highSSIM.npy'
+tune_act_image_file='train-actMap-lowSSIM.npy'
 #tune_act_image_file=None
 
 #tune_atten_sino_file='train-attenSino-382x513.npy'
@@ -178,17 +178,17 @@ tune_atten_image_file=None
 
 #tune_atten_image_file='train-attenMap.npy'
 
-tune_act_recon1_file='train-highCountImage-highSSIM.npy'  # Can set recon files to None if dataset does not have these.
+tune_act_recon1_file='train-highCountImage-lowSSIM.npy'  # Can set recon files to None if dataset does not have these.
 #tune_act_recon1_file=None # Can set recon files to None if dataset does not have these.
-tune_act_recon2_file='train-obliqueImage-highSSIM.npy'
+tune_act_recon2_file='train-obliqueImage-lowSSIM.npy'
 #tune_act_recon2_file=None
 
 ## Cross Validation Set ##
 ## -------------------- ##
-tune_val_act_sino_file='val-highCountSino-bilinear-288x257-highSSIM.npy'
+tune_val_act_sino_file='val-highCountSino-bilinear-288x257-lowSSIM.npy'
 #tune_val_act_sino_file=None
 
-tune_val_act_image_file='val-actMap-highSSIM.npy'
+tune_val_act_image_file='val-actMap-lowSSIM.npy'
 #tune_val_act_image_file=None
 
 #tune_val_atten_sino_file='val-attenSino-180x180.npy'
@@ -196,8 +196,8 @@ tune_val_atten_sino_file=None
 
 tune_val_atten_image_file=None
 
-tune_val_act_recon1_file='val-highCountImage-highSSIM.npy'
-tune_val_act_recon2_file='val-obliqueImage-highSSIM.npy'
+tune_val_act_recon1_file='val-highCountImage-lowSSIM.npy'
+tune_val_act_recon2_file='val-obliqueImage-lowSSIM.npy'
 
 ## Unlikely to Change ##
 tune_storage_dirName='searches'     # Create tuning folders (one for each experiment, each of which contains multiple trials) in this directory. Leave blank ('') to place search files in project directory
@@ -233,21 +233,23 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are automatically appended suffixes of -frozen and -act.
 #####
 
-#train_checkpoint_file='checkpoint-DENOISE-320-180x180-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-320net-bilinear_288x257-padSino-lowSSIM-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
+#train_checkpoint_file='checkpoint-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # Checkpoint file to load or save to.
-train_checkpoint_file='temp'
+#train_checkpoint_file='temp'
 
+train_csv_file='frame-ACT-320net-bilinear_288x257-padSino-lowSSIM-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-RECON_SINO-320-bilinear-288x257-padSino--obliqueRecon-tunedSSIM-0p3lr-400epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-DENOISE-320-noResize-180x180-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0-act'   # CSV filename for training learning curves (without .csv extension; will be appended).
-train_csv_file='temp'
+
 
 train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
 train_load_state=False  # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
+train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
 train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
 train_epochs = 800        # Number of training epochs.
-train_display_step=10     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=50     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_eval_batch_size=256            # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
@@ -263,10 +265,10 @@ train_lr_min_factor=0.03       # Minimum LR as a fraction of gen_lr (eta_min = g
 ## -------------------------- ##
 
 #train_act_sino_file='train-highCountSino-pool-288x257.npy'
-train_act_sino_file='train-highCountSino-bilinear-288x257-highSSIM.npy'
+train_act_sino_file='train-highCountSino-bilinear-288x257-lowSSIM.npy'
 #train_act_sino_file=None
 
-train_act_image_file='train-actMap-highSSIM.npy'
+train_act_image_file='train-actMap-lowSSIM.npy'
 #train_act_image_file='train-anniMap.npy'
 #train_act_image_file=None
 
@@ -277,7 +279,7 @@ train_atten_image_file=None
 
 #train_act_recon1_file='train-highCountImage.npy'  # Can set recon files to None if dataset does not have these or are unused in training.
 train_act_recon1_file=None
-train_act_recon2_file='train-obliqueImage-highSSIM.npy'  # Can set recon files to None if dataset does not have these or are unused in training.
+train_act_recon2_file='train-obliqueImage-lowSSIM.npy'  # Can set recon files to None if dataset does not have these or are unused in training.
 #train_act_recon1_file='train-highCountImage.npy'  # Can set recon files to None if dataset does not have these or are unused in training.
 
 
@@ -287,14 +289,14 @@ train_act_recon2_file='train-obliqueImage-highSSIM.npy'  # Can set recon files t
 # Feature auto-enables when required train_val_* files are provided.
 # Learning curves are logged for both training and validation splits, saved to single dataframe.
 
-train_val_act_sino_file='val-highCountSino-bilinear-288x257-highSSIM.npy'     # Validation/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.   
+train_val_act_sino_file='val-highCountSino-bilinear-288x257-lowSSIM.npy'     # Validation/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.   
 #train_val_act_sino_file=None     # Validation/monitoring sinogram file for training learning curves (e.g., 'val-highCountSino-288x257...npy'). Set to None to disable training curve logging.
 
-train_val_act_image_file='val-actMap-highSSIM.npy'     # Validation/monitoring image file for training learning curves (e.g., 'val-actMap-highSSIM.npy'). Set to None to disable training curve logging.
-#train_val_act_image_file=None     # Validation/monitoring activity image file for training learning curves (e.g., 'val-actMap-highSSIM.npy'). Set to None to disable.
-#train_val_act_recon1_file='val-highCountImage-highSSIM.npy'
+train_val_act_image_file='val-actMap-lowSSIM.npy'     # Validation/monitoring image file for training learning curves (e.g., 'val-actMap-lowSSIM.npy'). Set to None to disable training curve logging.
+#train_val_act_image_file=None     # Validation/monitoring activity image file for training learning curves (e.g., 'val-actMap-lowSSIM.npy'). Set to None to disable.
+#train_val_act_recon1_file='val-highCountImage-lowSSIM.npy'
 train_val_act_recon1_file=None
-train_val_act_recon2_file='val-obliqueImage-highSSIM.npy'
+train_val_act_recon2_file='val-obliqueImage-lowSSIM.npy'
 train_val_atten_sino_file=None    # Validation/monitoring attenuation sinogram (optional, for CONCAT/frozen flow).
 train_val_atten_image_file=None   # Validation/monitoring attenuation image (optional, for CONCAT/frozen flow).
 

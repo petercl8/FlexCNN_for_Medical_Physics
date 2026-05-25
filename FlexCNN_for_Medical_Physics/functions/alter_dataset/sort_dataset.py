@@ -94,12 +94,63 @@ def sort_DataSet(
     load_atten_image_path = build_path(load_dir, load_atten_image_file)
     load_atten_sino_path = build_path(load_dir, load_atten_sino_file)
 
+    def _print_loaded_file_shape(label, path):
+        if path is None:
+            print(f"sort_DataSet: {label}=None")
+            return
+        loaded_file = None
+        try:
+            loaded_file = np.load(path, mmap_mode='r')
+            print(f"sort_DataSet: {label} shape={getattr(loaded_file, 'shape', None)} path={path}")
+        finally:
+            if loaded_file is not None and hasattr(loaded_file, '_mmap') and getattr(loaded_file, '_mmap') is not None:
+                try:
+                    loaded_file._mmap.close()
+                except Exception:
+                    pass
+
+    print('sort_DataSet: loaded file shapes')
+    _print_loaded_file_shape('load_act_image_path', load_act_image_path)
+    _print_loaded_file_shape('load_act_sino_path', load_act_sino_path)
+    _print_loaded_file_shape('load_act_recon1_path', load_act_recon1_path)
+    _print_loaded_file_shape('load_act_recon2_path', load_act_recon2_path)
+    _print_loaded_file_shape('load_atten_image_path', load_atten_image_path)
+    _print_loaded_file_shape('load_atten_sino_path', load_atten_sino_path)
+
     save_act_image_path = build_path(save_dir, save_act_image_file)
     save_act_sino_path = build_path(save_dir, save_act_sino_file)
     save_act_recon1_path = build_path(save_dir, save_act_recon1_file)
     save_act_recon2_path = build_path(save_dir, save_act_recon2_file)
     save_atten_image_path = build_path(save_dir, save_atten_image_file)
     save_atten_sino_path = build_path(save_dir, save_atten_sino_file)
+
+    # Guardrail: never allow reading and writing the same file in one run.
+    # Overwriting a loaded memmap source can silently corrupt filtering behavior.
+    load_paths = [
+        load_act_image_path,
+        load_act_sino_path,
+        load_act_recon1_path,
+        load_act_recon2_path,
+        load_atten_image_path,
+        load_atten_sino_path,
+    ]
+    save_paths = [
+        save_act_image_path,
+        save_act_sino_path,
+        save_act_recon1_path,
+        save_act_recon2_path,
+        save_atten_image_path,
+        save_atten_sino_path,
+    ]
+
+    load_set = {os.path.normcase(os.path.abspath(p)) for p in load_paths if p is not None}
+    save_set = {os.path.normcase(os.path.abspath(p)) for p in save_paths if p is not None}
+    overlap = sorted(load_set.intersection(save_set))
+    if overlap:
+        raise RuntimeError(
+            "sort_DataSet: load/save path overlap detected; choose different output filenames. "
+            f"Overlapping paths: {overlap}"
+        )
 
     # Conservative defaults for partitioning (do not inherit project-wide aggressive pooling)
     default_data_opts = {
@@ -155,6 +206,7 @@ def sort_DataSet(
     for batch in iter(dataloader):
         # New dataset API returns nested tuples: (act_data, atten_data, recon_data)
         act_data, atten_data, recon_data = batch
+        # Keep loader output shapes unchanged for saving.
         sino_ground_scaled = act_data[0]
         image_ground_scaled = act_data[1]
         atten_sino_scaled = atten_data[0] if atten_data[0] is not None else None
@@ -240,8 +292,9 @@ def sort_DataSet(
                 recon_type='FBP',
             )
 
-        # Ensure tensors have a batch dimension and channel dimension expected by metric functions
-        def _ensure_min3d(tensor):
+        # Match test-time metric handling: pass single-item batches ([1, C, H, W])
+        # like calculate_metric() in metrics_wrappers.py.
+        def _ensure_metric_batch(tensor):
             if tensor is None:
                 return None
             if not isinstance(tensor, torch.Tensor):
@@ -249,13 +302,17 @@ def sort_DataSet(
                     tensor = torch.from_numpy(tensor)
                 except Exception:
                     raise RuntimeError('sort_DataSet: metric inputs must be torch tensors or numpy arrays convertible to tensors')
-            # Expect images only: convert (H,W) -> (1,H,W); keep (C,H,W) as-is
+            # Convert to [1, C, H, W] for metric functions, mirroring calculate_metric path.
             if tensor.dim() == 2:
+                return tensor.unsqueeze(0).unsqueeze(0)
+            if tensor.dim() == 3:
                 return tensor.unsqueeze(0)
-            return tensor
+            if tensor.dim() == 4:
+                return tensor
+            raise RuntimeError(f'sort_DataSet: unexpected metric tensor shape {tuple(tensor.shape)}')
 
-        img_for_metric = _ensure_min3d(image_ground_scaled)
-        recon_for_metric = _ensure_min3d(recon_used)
+        img_for_metric = _ensure_metric_batch(image_ground_scaled)
+        recon_for_metric = _ensure_metric_batch(recon_used)
 
         image_metric = metric_function(img_for_metric, recon_for_metric)
 
@@ -268,6 +325,8 @@ def sort_DataSet(
             if saved_idx >= max_save_size:
                 overflow = True
             if overflow==False:
+                if save_act_sino_array is None or save_act_image_array is None:
+                    raise RuntimeError('sort_DataSet: output arrays were not initialized before save')
                 save_act_sino_array[saved_idx] = sino_ground_scaled.cpu().numpy()
                 save_act_image_array[saved_idx] = image_ground_scaled.cpu().numpy()
                 if save_act_recon1_array is not None and recon1_scaled is not None:
@@ -295,8 +354,9 @@ def sort_DataSet(
             print('image_ground_scaled / recon_used / sino_ground_scaled')
             show_multiple_matched_tensors(image_ground_scaled, recon_used)
             show_multiple_matched_tensors(sino_ground_scaled)
-            show_multiple_matched_tensors(torch.from_numpy(save_act_sino_array[0: min(current_stored_count, 9)]))
-            show_multiple_matched_tensors(torch.from_numpy(save_act_image_array[0: min(current_stored_count, 9)]))
+            if save_act_sino_array is not None and save_act_image_array is not None:
+                show_multiple_matched_tensors(torch.from_numpy(save_act_sino_array[0: min(current_stored_count, 9)]))
+                show_multiple_matched_tensors(torch.from_numpy(save_act_image_array[0: min(current_stored_count, 9)]))
         # end loop
 
     # Simple reporting and cleanup: distinguish total matches from stored rows
