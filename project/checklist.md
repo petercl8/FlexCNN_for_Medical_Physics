@@ -2,7 +2,7 @@ user_params.py
 --------------
 general settings
 run-type settings
-(if altering data) QA phantoms settings
+(if altering data sizing): QA phantoms settings
 
 
 (if tuning) search_spaces.py
