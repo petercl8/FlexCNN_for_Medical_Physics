@@ -216,7 +216,7 @@ config_ACT_SI = {
   "train_SI": True
 }
 '''
-'''
+
 # (L) Skip connections set to 'none'
 # 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
@@ -257,8 +257,8 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-'''
 
+'''
 # (J) Fill is enforced to 1.
 # 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
@@ -298,7 +298,7 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True,
 }
-
+'''
 
 '''
 # (K) Fill is enforced to 1 and skip connections are set to off.

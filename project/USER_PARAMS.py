@@ -312,10 +312,10 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 # Testing #
 ###########
 
-
-test_csv_file = 'frame-ACT-288net-bilinear_288x257-padSino-tunedSSIM-dropoutEnforced-0p3lr-165epochs-trainSet' # csv dataframe file to save testing results to
+test_csv_file =            'frame-ACT-320net-bilinear_288x257-padSino-skipNone-tunedSSIM-0p3lr-800epochs-trainSet' # csv dataframe file to save testing results to
 #test_csv_file = 'frame-COUNTERFLOW_RECON-320net-pool_288x257-padSino-obliqueRecon-tunedSSIM-1p0lr-800epochs-valSet' # csv dataframe file to save testing results to
-test_checkpoint_file ='checkpoint-ACT-288net-bilinear_288x257-padSino-tunedSSIM-dropoutEnforced-0p3lr-165epochs'  # Checkpoint to load model for testing
+
+test_checkpoint_file ='checkpoint-ACT-320net-bilinear_288x257-padSino-skipNone-tunedSSIM-0p3lr-800epochs'  # Checkpoint to load model for testing
 #test_checkpoint_file ='checkpoint-COUNTERFLOW_RECON-320net-pool_288x257-padSino-obliqueRecon-tunedSSIM-1p0lr-800epochs' # Checkpoint to load model for testing
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
