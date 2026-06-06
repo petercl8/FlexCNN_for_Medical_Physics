@@ -15,7 +15,7 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 #####################################
 ### 320x320 Network Tunings Below ###
 #####################################
-'''
+
 # (I) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
@@ -54,7 +54,7 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-'''
+
 '''
 # (C, A) 288x288, tuned SSIM
 # Crop sinograms vertically to 288, then average pool horizontally (pool size = 2)

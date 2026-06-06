@@ -29,7 +29,7 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='tune'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 
 network_type='ACT'
 #network_type='DENOISE'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
@@ -52,7 +52,7 @@ gen_image_size=180        # Image size (Options: 180). Images are square.
 
 ## Data Loading ##
 sino_resize_type='pool'          # sinogram resize method: 'pool' or 'bilinear' (default: 'pool')
-sino_pad_type='sino'         # sinogram padding type: 'zeros' or 'sinogram' (mirror/flip horizontal padding, default: 'zeros')
+sino_pad_type='sino'         # sinogram padding type: 'zeros' or 'sino' (sinogram--mirror/flip horizontal padding)
 image_pad_type='zeros'           # image padding type: 'zeros' (pad with zeros) or 'none' (bilinear resize, default: 'zeros')
 sino_init_vert_cut=None          # symmetrically crop sinograms to this height before resizing (None = no initial crop, default: None)
 vert_pool_size=1                 # vertical pooling factor for sinograms (1 = no pooling, default: 1)
@@ -113,7 +113,6 @@ checkpoint_dirName='checkpoints'   # Checkpoint directory name (used only if che
                                    # If not using Ray Tune (not tuning), PyTorch saves and loads checkpoint file from here
                                    # All checkpoint files (for training, testing, visualizing) save the states for a particular network.
                                    # Therefore, the hyperparameters for the loaded CNN must match the data in the checkpoint file.
-
 plot_dirName=  'plots'             # Plots Directory, placed in project directory (above)
 
 # NOTE: The concatenation network type introduces a fundamental problem: the sinogram input to the generator has channel numbers not corresponding 
@@ -129,23 +128,23 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
 
-tune_csv_file='frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-RECON_SINO_IS-320net-bilinear_288x257-obliqueRecon-padSino-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file=                     'frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM'
 
-tune_exp_name='search-ACT-320net-bilinear_288x257-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='search-DENOISE-320-180x180-padZeros-tunedSSIM'
 #tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name=                    'search-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 
-tune_frozen_checkpoint_file = 'checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # For frozen backbone architectures, specify a frozen backbone checkpoint filename (no suffix) to load for tuning.
+tune_frozen_checkpoint_file = 'temp'  # For frozen backbone architectures, specify a frozen backbone checkpoint filename (no suffix) to load for tuning.
 
 tune_augment=('SI', True)    # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
 tune_scheduler = 'ASHA'      # Use FIFO for simple first in/first out to train to the end, or ASHA to early stop poorly performing trials.
 tune_dataframe_fraction=0.33 # The fraction of the max tuning steps (tune_max_t) at which to save values to the tuning dataframe.
 tune_restore=False           # Resume a terminated run (loads tune_exp_name from tune_storage_dirPath). If False, deletes any existing tune_exp_name folder and starts fresh.
-tune_minutes = 12*60           # How long to run RayTune. 240 minutes is good for a simple 256x256 network.
+tune_minutes = 16*60           # How long to run RayTune. 240 minutes is good for a simple 256x256 network.
 tune_metric = 'SSIM'         # Tune for which optimization metric? For val set: 'MSE', 'SSIM', 'CUSTOM' (user defined in the code). 
                             # For QA set to 'qa-simple' for simple phantom CR metrics. Set to 'qa-nema' for NEMA hot contrast recovery.
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
@@ -236,24 +235,23 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are automatically appended suffixes of -frozen and -act.
 #####
 
-train_checkpoint_file='checkpoint-ACT-320net-bilinear_288x257-padZeros-IIAugment-tunedSSIM-0p3lr-800epochs'
-#train_checkpoint_file='checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-0p3lr-125epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # Checkpoint file to load or save to.
 #train_checkpoint_file='temp'
 
-train_csv_file='frame-ACT-320net-bilinear_288x257-padZeros-IIAugment-tunedSSIM-0p3lr-800epochs'
+train_csv_file = 'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-0p3lr-800epochs' # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-ACT-288net-pool_288x257-padZeros-tunedSSIM-1p0lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-RECON_SINO-320-bilinear-288x257-padSino--obliqueRecon-tunedSSIM-0p3lr-400epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-DENOISE-320-noResize-180x180-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0-act'   # CSV filename for training learning curves (without .csv extension; will be appended).
 
-train_augment=('II', True)     # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
+train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
 train_load_state=False  # Set to True to load pretrained weights. Use if training terminated early.
-train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
+train_save_state=False  # Save network weights to train_checkpoint_file file as it trains
 train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
 train_epochs = 800        # Number of training epochs.
-train_display_step=50     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
+train_display_step=10     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
 train_eval_batch_size=256            # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
