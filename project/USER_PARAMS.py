@@ -310,10 +310,10 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 # Testing #
 ###########
 
-test_csv_file =             'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run4-0p3lr-800epochs-trainSet' # csv dataframe file to save testing results to
+test_csv_file =             'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5-0p3lr-800epochs-testSet' # csv dataframe file to save testing results to
 #test_csv_file = 'frame-COUNTERFLOW_RECON-320net-pool_288x257-padSino-obliqueRecon-tunedSSIM-1p0lr-800epochs-valSet' # csv dataframe file to save testing results to
 
-test_checkpoint_file = 'checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run4-0p3lr-800epochs'  # Checkpoint to load model for testing
+test_checkpoint_file = 'checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5-0p3lr-800epochs'  # Checkpoint to load model for testing
 #test_checkpoint_file ='checkpoint-COUNTERFLOW_RECON-320net-pool_288x257-padSino-obliqueRecon-tunedSSIM-1p0lr-800epochs' # Checkpoint to load model for testing
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
@@ -334,12 +334,12 @@ test_sample_division=1
 
 ## Select Data Files ##
 ## ----------------- ##
-test_act_sino_file='train-highCountSino-bilinear-288x257.npy'
+test_act_sino_file='test-highCountSino-bilinear-288x257.npy'
 #test_act_sino_file=None
-test_act_image_file= 'train-actMap.npy'
+test_act_image_file= 'test-actMap.npy'
 
-test_act_recon1_file='train-highCountImage.npy'
-test_act_recon2_file='train-obliqueImage.npy'
+test_act_recon1_file='test-highCountImage.npy'
+test_act_recon2_file='test-obliqueImage.npy'
 test_atten_image_file=None
 test_atten_sino_file=None
 
