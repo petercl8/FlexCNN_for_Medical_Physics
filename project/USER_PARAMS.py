@@ -29,7 +29,7 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 
 network_type='ACT'
 #network_type='DENOISE'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
@@ -235,12 +235,12 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are automatically appended suffixes of -frozen and -act.
 #####
 
-train_checkpoint_file='checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run4-0p3lr-800epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # Checkpoint file to load or save to.
 #train_checkpoint_file='temp'
 
-train_csv_file =           'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run4-0p3lr-800epochs' # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file =           'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5-0p3lr-800epochs' # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-ACT-288net-pool_288x257-padZeros-tunedSSIM-1p0lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-RECON_SINO-320-bilinear-288x257-padSino--obliqueRecon-tunedSSIM-0p3lr-400epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-DENOISE-320-noResize-180x180-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
@@ -310,10 +310,10 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 # Testing #
 ###########
 
-test_csv_file =             'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run2-0p3lr-800epochs-trainSet' # csv dataframe file to save testing results to
+test_csv_file =             'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run4-0p3lr-800epochs-trainSet' # csv dataframe file to save testing results to
 #test_csv_file = 'frame-COUNTERFLOW_RECON-320net-pool_288x257-padSino-obliqueRecon-tunedSSIM-1p0lr-800epochs-valSet' # csv dataframe file to save testing results to
 
-test_checkpoint_file = 'checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run2-0p3lr-800epochs'  # Checkpoint to load model for testing
+test_checkpoint_file = 'checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run4-0p3lr-800epochs'  # Checkpoint to load model for testing
 #test_checkpoint_file ='checkpoint-COUNTERFLOW_RECON-320net-pool_288x257-padSino-obliqueRecon-tunedSSIM-1p0lr-800epochs' # Checkpoint to load model for testing
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
