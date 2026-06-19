@@ -17,7 +17,7 @@ The dictionary is either a searchable space, if tuning, or a set of fixed hyperp
 #####################################
 
 
-# (I5) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# (E-R5) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
 # Run 5
@@ -58,7 +58,7 @@ config_ACT_SI={
 }
 
 '''
-# (I4) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# (E-R4) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
 # Run 4
@@ -99,7 +99,7 @@ config_ACT_SI={
 }
 '''
 '''
-# (I3) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# (E-R3) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
 # Run 3
@@ -140,7 +140,7 @@ config_ACT_SI={
 }
 '''
 '''
-# (I2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# (E-R2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
 # Run 2
@@ -181,7 +181,7 @@ config_ACT_SI={
 }
 '''
 '''
-# (I1) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# (E)(E-V1)(E-V2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
 # Run 1
@@ -222,7 +222,7 @@ config_ACT_SI={
 }
 '''
 '''
-# (C)(A) 288x288, tuned SSIM
+# (A)(B) 288x288, tuned SSIM
 # Crop sinograms vertically to 288, then average pool horizontally (pool size = 2)
 # results in 288x257 size which is then padded with zeros horizontally to 288
 config_ACT_SI = { 
@@ -258,91 +258,8 @@ config_ACT_SI = {
   "train_SI": True
 }
 '''
-
 '''
-# (R) LOW QUALITY DATA. 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded sinoram-style horizontally to 320
-# Dataset then sorted so only examples with low SSIM Fourier-rebinned recons are included
-config_ACT_SI={
-  "SI_alpha_min": -1,
-  "SI_dropout": "false",
-  "SI_exp_kernel": 3,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "none",
-  "SI_gen_hidden_dim": 21,
-  "SI_gen_mult": 1.9059018188344958,
-  "SI_gen_neck": "narrow",
-  "SI_gen_z_dim": 877,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "none",
-  "SI_learnedScale_init": 6.222288155551452,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": "false",
-  "SI_output_scale_lr_mult": 5.954897100503939,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "none",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 6,
-  "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.7665067173604035,
-  "gen_b2": 0.8318184433406404,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0003828368785088089,
-  "gen_sino_channels_IS": 1,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 320,
-  "network_type": "ACT",
-  "recon_variant": 2,
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
-'''
-# (Q) HIGH QUALITY DATA. 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded sinoram-style horizontally to 320
-# Dataset then sorted so only examples with high SSIM Fourier-rebinned recons are included
-config_ACT_SI = {
-  "SI_alpha_min": -1,
-  "SI_dropout": "false",
-  "SI_exp_kernel": 4,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "ELU",
-  "SI_gen_hidden_dim": 33,
-  "SI_gen_mult": 2.358589768858479,
-  "SI_gen_neck": "medium",
-  "SI_gen_z_dim": 812,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "none",
-  "SI_learnedScale_init": 8.75411524258194,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": "false",
-  "SI_output_scale_lr_mult": 1.259914709401897,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "none",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.7779642301538979,
-  "gen_b2": 0.6898701959671907,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0001411214688051654,
-  "gen_sino_channels_IS": 1,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 320,
-  "network_type": "ACT",
-  "recon_variant": 2,
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True,
-}
-'''
-'''
-# (M) Image-like augmentations (2nd best performing network in tuning but best in training)
+# (E-V5) Image-like augmentations (2nd best performing network in tuning but best in training)
 # 320x320 Network. Data: 288x257, ZEROS padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # Results in 288x257 size which is then zero padded to 320x320.
@@ -383,7 +300,7 @@ config_ACT_SI = {
 }
 '''
 '''
-# (L) Skip connections set to 'none'
+# (E-V4) Skip connections set to 'none'
 # 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # Results in 288x257 size which is then padded sinoram-style horizontally to 320
@@ -425,7 +342,7 @@ config_ACT_SI={
 }
 '''
 '''
-# (J) Fill is enforced to 1.
+# (E-V3) Fill is enforced to 1.
 # 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # Results in 288x257 size which is then padded sinoram-style horizontally to 320
@@ -466,55 +383,12 @@ config_ACT_SI={
 }
 '''
 
-'''
-# (K) Fill is enforced to 1 and skip connections are set to off.
-# 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# Results in 288x257 size which is then padded sinoram-style horizontally to 320
-config_ACT_SI={
-  "SI_alpha_min": -1,
-  "SI_disc_adv_criterion": 1,
-  "SI_dropout": True,
-  "SI_exp_kernel": 4,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 1,
-  "SI_gen_final_activ": None,
-  "SI_gen_hidden_dim": 29,
-  "SI_gen_mult": 1.9876200979844891,
-  "SI_gen_neck": "narrow",
-  "SI_gen_z_dim": 1450,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 2.8644563405620507,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 2.9746407729257633,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "none",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.16413501992987975,
-  "gen_b2": 0.14247998566474712,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0001404137851125606,
-  "gen_sino_channels_IS": 1,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 320,
-  "network_type": "ACT",
-  "recon_variant": 1,
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
-
 #####################################
 ### 288x288 Network Tunings Below ###
 #####################################
 
 '''
-# (H) 288x257, SINOGRAM padded to 288x288, tuned SSIM, DROPOUT=True enforced 
+# (D-V4) 288x257, SINOGRAM padded to 288x288, tuned SSIM, DROPOUT=True enforced 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 288
 config_ACT_SI = { 
@@ -554,7 +428,7 @@ config_ACT_SI = {
 '''
 
 '''
-# (G) 288x180, SINOGRAM padded to 288x288, tuned SSIM 
+# (D-V3) 288x180, SINOGRAM padded to 288x288, tuned SSIM 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 180.
 # results in 288x180 size which is then sinogram padded horizontally to 288
 config_ACT_SI = { 
@@ -592,7 +466,7 @@ config_ACT_SI = {
 '''
 
 '''
-# (F) 288x218, SINOGRAM padded to 288x288, tuned SSIM 
+# (D-V2) 288x218, SINOGRAM padded to 288x288, tuned SSIM 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 218.
 # results in 288x218 size which is then sinogram padded horizontally to 288
 config_ACT_SI = { 
@@ -629,7 +503,7 @@ config_ACT_SI = {
 }
 '''
 '''
-# (E) 288x257, SINOGRAM padded to 288x288, tuned SSIM 
+# (D)(D-V1) 288x257, SINOGRAM padded to 288x288, tuned SSIM 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 288
 config_ACT_SI = { 
@@ -666,7 +540,7 @@ config_ACT_SI = {
 }
 '''
 '''
-# (D, B) 288x257, ZEROS padded to 288x288, tuned SSIM 
+# (C) 288x257, ZEROS padded to 288x288, tuned SSIM 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded with zeros horizontally to 288
 config_ACT_SI= {

@@ -13,6 +13,7 @@ Next up:
 Key
 ===
 A->A
+B->delete
 C->B
 D->C
 E-A -> D (Ref D)
@@ -23,10 +24,15 @@ H->    D-V4 (dropout)
 
 I1-A-> E       (Ref E)
 I1-B-> E-V1      (250 epochs)
-E1-C-> E-V2      (125 epochs)
+I1-C-> E-V2      (125 epochs)
 J   -> E-V3      (fill = 1)
+K (omit)
 L   -> E-V4
 M   -> E-V5
 
-K (omit)
+I2-> E-R2
+I3-> E-R3
+I4-> E-R4
+I5-> E-R5
+
 N-R (leave alone)
