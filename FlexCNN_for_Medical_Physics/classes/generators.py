@@ -196,7 +196,7 @@ class Generator_288(nn.Module):
             contract_block(dim_3, dim_4, 3, stride=2, padding=1, padding_mode=pad, fill=fill, norm=norm, drop=drop),     # 18->9
         ])
 
-        self.neck = self._build_neck(neck, dim_4, dim_5, dim_6, z_dim, pad, fill, norm, drop)
+        self.neck = self._build_neck(neck, dim_4, dim_5, dim_6, z_dim, pad, fill, norm, drop) # 7 layers: 9->5->3->1->3->5->9
         self.expand_blocks = self._build_expand(exp_kernel, out_chan, dim_0, dim_1, dim_2, dim_3, dim_4, pad, fill, norm, drop, self.skip_handling)
 
         if self.skip_handling == '1x1Conv':
