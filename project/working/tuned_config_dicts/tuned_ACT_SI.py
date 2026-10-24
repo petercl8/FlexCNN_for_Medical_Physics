@@ -13,41 +13,199 @@ Feel free to look at it though, to see how I set up the search space. The last s
 The dictionary is either a searchable space, if tuning, or a set of fixed hyperparameters, if training, testing, or visualizing the data set.
 '''
 #####################################
-### 320x320 Network Tunings Below ###
+### Performance Improvement Series ##
 #####################################
 
-
-# (E-R5) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded sinoram-style horizontally to 320
-# Run 5
-config_ACT_SI={
+'''
+# (A)(B) 288x288, tuned SSIM
+# Crop sinograms vertically to 288, then average pool horizontally (pool size = 2)
+# results in 288x257 size which is then padded with zeros horizontally to 288
+config_ACT_SI = { 
   "SI_alpha_min": -1,
-  "SI_dropout": "false",
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 10,
+  "SI_gen_mult": 1.5012782419950113,
+  "SI_gen_neck": "narrow", # narrow
+  "SI_gen_z_dim": 872,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance", # instance
+  "SI_learnedScale_init": 7.305980552864529,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 1.6943444827125673,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "conv",
+  "SI_stats_criterion": -1,
+  "SI_moment_1_fraction": -1,
+  "batch_base2_exponent": 7,
+  "gen_b1": 0.3600790033157822,
+  "gen_b2": 0.6033159868492163,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0024018267054557695,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 288, # 288
+  "network_type": "ACT",
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
+'''
+# (C) 288x257, ZEROS padded to 288x288, tuned SSIM 
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded with zeros horizontally to 288
+config_ACT_SI= {
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
   "SI_gen_final_activ": "Tanh",
-  "SI_gen_hidden_dim": 18,
-  "SI_gen_mult": 1.3721140693079135,
+  "SI_gen_hidden_dim": 10,
+  "SI_gen_mult": 1.9886575078445312,
   "SI_gen_neck": "narrow",
-  "SI_gen_z_dim": 1453,
+  "SI_gen_z_dim": 1494,
   "SI_half_life_examples": -1,
   "SI_layer_norm": "none",
-  "SI_learnedScale_init": 18.62018488978936,
+  "SI_learnedScale_init": 5.894328507562502,
   "SI_moment_1_fraction": -1,
-  "SI_normalize": "false",
-  "SI_output_scale_lr_mult": 3.531695059647526,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 9.862580591354153,
   "SI_pad_mode": "replicate",
   "SI_skip_mode": "none",
   "SI_stats_criterion": -1,
-  "batch_base2_exponent": 6,
-  "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.5081544790692346,
-  "gen_b2": 0.1505729994208556,
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.5583313727913738,
+  "gen_b2": 0.3819733954553099,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "gen_lr": 0.00410985544256514,
+  "gen_lr": 0.0016547324637469305,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 288,
+  "network_type": "ACT",
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
+'''
+# (D)(D-V1) 288x257, SINOGRAM padded to 288x288, tuned SSIM 
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded sinoram-style horizontally to 288
+config_ACT_SI = { 
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 20,
+  "SI_gen_mult": 2.1572554323300173,
+  "SI_gen_neck": "wide",
+  "SI_gen_z_dim": 1939,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 4.981741020141211,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 4.290911545096751,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "conv",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.19220905219147658,
+  "gen_b2": 0.1767702014809058,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.000330514188658911,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 288,  #288
+  "network_type": "ACT",
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
+
+'''
+# (E)(E-V1)(E-V2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded sinoram-style horizontally to 320
+# Run 1
+config_ACT_SI={
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 15,
+  "SI_gen_mult": 3.004968575722759,
+  "SI_gen_neck": "wide",
+  "SI_gen_z_dim": 569,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 19.739460284661682,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 9.65705512840703,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.4546608142935394,
+  "gen_b2": 0.6673605322779892,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.00018390076185300562,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 320,
+  "network_type": "ACT",
+  "recon_variant": 1,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
+
+#####################################
+### Run-to-run Variability Series ###
+#####################################
+
+'''
+# (E-R2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded sinoram-style horizontally to 320
+# Run 2
+config_ACT_SI={
+  "SI_alpha_min": -1,
+  "SI_dropout": "false",
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "ELU",
+  "SI_gen_hidden_dim": 21,
+  "SI_gen_mult": 2.0138725445168304,
+  "SI_gen_neck": "wide",
+  "SI_gen_z_dim": 940,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 0.9121858695715691,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": "false",
+  "SI_output_scale_lr_mult": 1.0587739682643298,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.2368197961214642,
+  "gen_b2": 0.17474465873337447,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0005522467320528485,
   "gen_sino_channels_IS": 1,
   "gen_sino_channels_SI": 3,
   "gen_sino_size": 320,
@@ -56,7 +214,47 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
+''''''
+# (E-R3) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded sinoram-style horizontally to 320
+# Run 3
+config_ACT_SI={
+  "SI_alpha_min": -1,
+  "SI_dropout": "false",
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 28,
+  "SI_gen_mult": 3.0902941349022512,
+  "SI_gen_neck": "medium",
+  "SI_gen_z_dim": 1364,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 16.51695978296268,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": "false",
+  "SI_output_scale_lr_mult": 1.916127548575486,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 6,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.5283819065597863,
+  "gen_b2": 0.697576169988047,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.00018127620230182884,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 320,
+  "network_type": "ACT",
+  "recon_variant": 2,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
 '''
 # (E-R4) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
@@ -99,37 +297,37 @@ config_ACT_SI={
 }
 '''
 '''
-# (E-R3) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# (E-R5) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
-# Run 3
+# Run 5
 config_ACT_SI={
   "SI_alpha_min": -1,
   "SI_dropout": "false",
-  "SI_exp_kernel": 4,
+  "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
-  "SI_gen_final_activ": "LeakyReLU",
-  "SI_gen_hidden_dim": 28,
-  "SI_gen_mult": 3.0902941349022512,
-  "SI_gen_neck": "medium",
-  "SI_gen_z_dim": 1364,
+  "SI_gen_final_activ": "Tanh",
+  "SI_gen_hidden_dim": 18,
+  "SI_gen_mult": 1.3721140693079135,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 1453,
   "SI_half_life_examples": -1,
   "SI_layer_norm": "none",
-  "SI_learnedScale_init": 16.51695978296268,
+  "SI_learnedScale_init": 18.62018488978936,
   "SI_moment_1_fraction": -1,
   "SI_normalize": "false",
-  "SI_output_scale_lr_mult": 1.916127548575486,
-  "SI_pad_mode": "zeros",
+  "SI_output_scale_lr_mult": 3.531695059647526,
+  "SI_pad_mode": "replicate",
   "SI_skip_mode": "none",
   "SI_stats_criterion": -1,
   "batch_base2_exponent": 6,
   "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.5283819065597863,
-  "gen_b2": 0.697576169988047,
+  "gen_b1": 0.5081544790692346,
+  "gen_b2": 0.1505729994208556,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "gen_lr": 0.00018127620230182884,
+  "gen_lr": 0.00410985544256514,
   "gen_sino_channels_IS": 1,
   "gen_sino_channels_SI": 3,
   "gen_sino_size": 320,
@@ -139,164 +337,165 @@ config_ACT_SI={
   "train_SI": True
 }
 '''
+
+#######################
+## Hypotheses Series ##
+#######################
+
+### D Variants ###
 '''
-# (E-R2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded sinoram-style horizontally to 320
-# Run 2
-config_ACT_SI={
-  "SI_alpha_min": -1,
-  "SI_dropout": "false",
-  "SI_exp_kernel": 4,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "ELU",
-  "SI_gen_hidden_dim": 21,
-  "SI_gen_mult": 2.0138725445168304,
-  "SI_gen_neck": "wide",
-  "SI_gen_z_dim": 940,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 0.9121858695715691,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": "false",
-  "SI_output_scale_lr_mult": 1.0587739682643298,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "none",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.2368197961214642,
-  "gen_b2": 0.17474465873337447,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0005522467320528485,
-  "gen_sino_channels_IS": 1,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 320,
-  "network_type": "ACT",
-  "recon_variant": 2,
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
-'''
-# (E)(E-V1)(E-V2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded sinoram-style horizontally to 320
-# Run 1
-config_ACT_SI={
+# (D-V2) 288x218, SINOGRAM padded to 288x288, tuned SSIM 
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 218.
+# results in 288x218 size which is then sinogram padded horizontally to 288
+config_ACT_SI = { 
   "SI_alpha_min": -1,
   "SI_dropout": False,
   "SI_exp_kernel": 4,
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
   "SI_gen_final_activ": "LeakyReLU",
-  "SI_gen_hidden_dim": 15,
-  "SI_gen_mult": 3.004968575722759,
+  "SI_gen_hidden_dim": 34,
+  "SI_gen_mult": 1.6784499724995354,
   "SI_gen_neck": "wide",
-  "SI_gen_z_dim": 569,
+  "SI_gen_z_dim": 1733,
   "SI_half_life_examples": -1,
-  "SI_layer_norm": "none",
-  "SI_learnedScale_init": 19.739460284661682,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 3.1060983465329053,
   "SI_moment_1_fraction": -1,
   "SI_normalize": False,
-  "SI_output_scale_lr_mult": 9.65705512840703,
+  "SI_output_scale_lr_mult": 4.134778822027846,
   "SI_pad_mode": "zeros",
   "SI_skip_mode": "none",
   "SI_stats_criterion": -1,
   "batch_base2_exponent": 5,
-  "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.4546608142935394,
-  "gen_b2": 0.6673605322779892,
+  "gen_b1": 0.6099253222709485,
+  "gen_b2": 0.2194047349693382,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "gen_lr": 0.00018390076185300562,
-  "gen_sino_channels_IS": 1,
+  "gen_lr": 0.0003521818874320586,
   "gen_sino_channels_SI": 3,
-  "gen_sino_size": 320,
+  "gen_sino_size": 288,
   "network_type": "ACT",
-  "recon_variant": 1,
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
 '''
 '''
-# (A)(B) 288x288, tuned SSIM
-# Crop sinograms vertically to 288, then average pool horizontally (pool size = 2)
-# results in 288x257 size which is then padded with zeros horizontally to 288
+# (D-V3) 288x180, SINOGRAM padded to 288x288, tuned SSIM 
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 180.
+# results in 288x180 size which is then sinogram padded horizontally to 288
 config_ACT_SI = { 
   "SI_alpha_min": -1,
   "SI_dropout": False,
   "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
-  "SI_gen_final_activ": "LeakyReLU",
-  "SI_gen_hidden_dim": 10,
-  "SI_gen_mult": 1.5012782419950113,
-  "SI_gen_neck": "narrow", # narrow
-  "SI_gen_z_dim": 872,
+  "SI_gen_final_activ": None,
+  "SI_gen_hidden_dim": 16,
+  "SI_gen_mult": 2.3555295003025276,
+  "SI_gen_neck": "medium",
+  "SI_gen_z_dim": 576,
   "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance", # instance
-  "SI_learnedScale_init": 7.305980552864529,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 10.893989027618026,
+  "SI_moment_1_fraction": -1,
   "SI_normalize": False,
-  "SI_output_scale_lr_mult": 1.6943444827125673,
+  "SI_output_scale_lr_mult": 1.1618819638475886,
   "SI_pad_mode": "zeros",
   "SI_skip_mode": "conv",
   "SI_stats_criterion": -1,
-  "SI_moment_1_fraction": -1,
-  "batch_base2_exponent": 7,
-  "gen_b1": 0.3600790033157822,
-  "gen_b2": 0.6033159868492163,
+  "batch_base2_exponent": 5,
+  "gen_b1": 0.8174588820756479,
+  "gen_b2": 0.7294818348374883,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "gen_lr": 0.0024018267054557695,
+  "gen_lr": 0.0001232534342696305,
   "gen_sino_channels_SI": 3,
-  "gen_sino_size": 288, # 288
+  "gen_sino_size": 288,
   "network_type": "ACT",
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
 '''
 '''
-# (E-V5) Image-like augmentations (2nd best performing network in tuning but best in training)
-# 320x320 Network. Data: 288x257, ZEROS padded to 320x320, tuned SSIM
+# (D-V4) 288x257, SINOGRAM padded to 288x288, tuned SSIM, DROPOUT=True enforced 
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# Results in 288x257 size which is then zero padded to 320x320.
-config_ACT_SI = {
+# results in 288x257 size which is then padded sinoram-style horizontally to 288
+config_ACT_SI = { 
   "SI_alpha_min": -1,
-  "SI_dropout": False,
-  "SI_exp_kernel": 3,
+  "SI_dropout": True,
+  "SI_exp_kernel": 4,
   "SI_fixedScale": 1,
   "SI_gen_fill": 0,
   "SI_gen_final_activ": None,
-  "SI_gen_hidden_dim": 19,
-  "SI_gen_mult": 1.6411117368324177,
-  "SI_gen_neck": "narrow",
-  "SI_gen_z_dim": 1795,
+  "SI_gen_hidden_dim": 17,
+  "SI_gen_mult": 3.235794135077702,
+  "SI_gen_neck": "medium",
+  "SI_gen_z_dim": 776,
   "SI_half_life_examples": -1,
-  "SI_layer_norm": "none",
-  "SI_learnedScale_init": 6.504262683750441,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 0.6598989774160382,
   "SI_moment_1_fraction": -1,
   "SI_normalize": False,
-  "SI_output_scale_lr_mult": 7.674276315843645,
-  "SI_pad_mode": "replicate",
-  "SI_skip_mode": "none",
+  "SI_output_scale_lr_mult": 1.1381973993890924,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "conv",
   "SI_stats_criterion": -1,
   "batch_base2_exponent": 5,
   "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.28225481402525654,
-  "gen_b2": 0.9164894546932162,
+  "gen_b1": 0.6315686454122481,
+  "gen_b2": 0.4796586315253887,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "gen_lr": 0.0005932276986248613,
+  "gen_lr": 0.004073671882171635,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 288,
+  "network_type": "ACT",
+  "recon_variant": 1,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+'''
+#### E Variants ###
+'''
+# (E-V3) Fill is enforced to 1.
+# 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# Results in 288x257 size which is then padded sinoram-style horizontally to 320
+config_ACT_SI={
+  "SI_alpha_min": -1,
+  "SI_dropout": False,
+  "SI_exp_kernel": 4,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 1,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 15,
+  "SI_gen_mult": 1.9773642743066986,
+  "SI_gen_neck": "narrow",
+  "SI_gen_z_dim": 701,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "instance",
+  "SI_learnedScale_init": 3.4842938459218797,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": False,
+  "SI_output_scale_lr_mult": 3.9521512708366076,
+  "SI_pad_mode": "replicate",
+  "SI_skip_mode": "conv",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 6,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.5470919457626097,
+  "gen_b2": 0.6638348764108472,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.0007294398941549969,
   "gen_sino_channels_IS": 1,
   "gen_sino_channels_SI": 3,
   "gen_sino_size": 320,
   "network_type": "ACT",
   "recon_variant": 1,
   "sup_base_criterion": "MSELoss",
-  "train_SI": True
+  "train_SI": True,
 }
 '''
 '''
@@ -342,240 +541,50 @@ config_ACT_SI={
 }
 '''
 '''
-# (E-V3) Fill is enforced to 1.
-# 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# (E-V5) Image-like augmentations (2nd best performing network in tuning but best in training)
+# 320x320 Network. Data: 288x257, ZEROS padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# Results in 288x257 size which is then padded sinoram-style horizontally to 320
-config_ACT_SI={
+# Results in 288x257 size which is then zero padded to 320x320.
+config_ACT_SI = {
   "SI_alpha_min": -1,
   "SI_dropout": False,
-  "SI_exp_kernel": 4,
+  "SI_exp_kernel": 3,
   "SI_fixedScale": 1,
-  "SI_gen_fill": 1,
-  "SI_gen_final_activ": "LeakyReLU",
-  "SI_gen_hidden_dim": 15,
-  "SI_gen_mult": 1.9773642743066986,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": None,
+  "SI_gen_hidden_dim": 19,
+  "SI_gen_mult": 1.6411117368324177,
   "SI_gen_neck": "narrow",
-  "SI_gen_z_dim": 701,
+  "SI_gen_z_dim": 1795,
   "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 3.4842938459218797,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 6.504262683750441,
   "SI_moment_1_fraction": -1,
   "SI_normalize": False,
-  "SI_output_scale_lr_mult": 3.9521512708366076,
+  "SI_output_scale_lr_mult": 7.674276315843645,
   "SI_pad_mode": "replicate",
-  "SI_skip_mode": "conv",
+  "SI_skip_mode": "none",
   "SI_stats_criterion": -1,
-  "batch_base2_exponent": 6,
+  "batch_base2_exponent": 5,
   "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.5470919457626097,
-  "gen_b2": 0.6638348764108472,
+  "gen_b1": 0.28225481402525654,
+  "gen_b2": 0.9164894546932162,
   "gen_image_channels": 1,
   "gen_image_size": 180,
-  "gen_lr": 0.0007294398941549969,
+  "gen_lr": 0.0005932276986248613,
   "gen_sino_channels_IS": 1,
   "gen_sino_channels_SI": 3,
   "gen_sino_size": 320,
   "network_type": "ACT",
   "recon_variant": 1,
   "sup_base_criterion": "MSELoss",
-  "train_SI": True,
-}
-'''
-
-#####################################
-### 288x288 Network Tunings Below ###
-#####################################
-
-'''
-# (D-V4) 288x257, SINOGRAM padded to 288x288, tuned SSIM, DROPOUT=True enforced 
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded sinoram-style horizontally to 288
-config_ACT_SI = { 
-  "SI_alpha_min": -1,
-  "SI_dropout": True,
-  "SI_exp_kernel": 4,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": None,
-  "SI_gen_hidden_dim": 17,
-  "SI_gen_mult": 3.235794135077702,
-  "SI_gen_neck": "medium",
-  "SI_gen_z_dim": 776,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 0.6598989774160382,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 1.1381973993890924,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "conv",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "frozen_variant": "RECON_SINO",
-  "gen_b1": 0.6315686454122481,
-  "gen_b2": 0.4796586315253887,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.004073671882171635,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 288,
-  "network_type": "ACT",
-  "recon_variant": 1,
-  "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
 '''
 
-'''
-# (D-V3) 288x180, SINOGRAM padded to 288x288, tuned SSIM 
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 180.
-# results in 288x180 size which is then sinogram padded horizontally to 288
-config_ACT_SI = { 
-  "SI_alpha_min": -1,
-  "SI_dropout": False,
-  "SI_exp_kernel": 3,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": None,
-  "SI_gen_hidden_dim": 16,
-  "SI_gen_mult": 2.3555295003025276,
-  "SI_gen_neck": "medium",
-  "SI_gen_z_dim": 576,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 10.893989027618026,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 1.1618819638475886,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "conv",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.8174588820756479,
-  "gen_b2": 0.7294818348374883,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0001232534342696305,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 288,
-  "network_type": "ACT",
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
 
-'''
-# (D-V2) 288x218, SINOGRAM padded to 288x288, tuned SSIM 
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 218.
-# results in 288x218 size which is then sinogram padded horizontally to 288
-config_ACT_SI = { 
-  "SI_alpha_min": -1,
-  "SI_dropout": False,
-  "SI_exp_kernel": 4,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "LeakyReLU",
-  "SI_gen_hidden_dim": 34,
-  "SI_gen_mult": 1.6784499724995354,
-  "SI_gen_neck": "wide",
-  "SI_gen_z_dim": 1733,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 3.1060983465329053,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 4.134778822027846,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "none",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.6099253222709485,
-  "gen_b2": 0.2194047349693382,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0003521818874320586,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 288,
-  "network_type": "ACT",
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
-'''
-# (D)(D-V1) 288x257, SINOGRAM padded to 288x288, tuned SSIM 
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded sinoram-style horizontally to 288
-config_ACT_SI = { 
-  "SI_alpha_min": -1,
-  "SI_dropout": False,
-  "SI_exp_kernel": 3,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "LeakyReLU",
-  "SI_gen_hidden_dim": 20,
-  "SI_gen_mult": 2.1572554323300173,
-  "SI_gen_neck": "wide",
-  "SI_gen_z_dim": 1939,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "instance",
-  "SI_learnedScale_init": 4.981741020141211,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 4.290911545096751,
-  "SI_pad_mode": "zeros",
-  "SI_skip_mode": "conv",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.19220905219147658,
-  "gen_b2": 0.1767702014809058,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.000330514188658911,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 288,  #288
-  "network_type": "ACT",
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
-'''
-# (C) 288x257, ZEROS padded to 288x288, tuned SSIM 
-# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
-# results in 288x257 size which is then padded with zeros horizontally to 288
-config_ACT_SI= {
-  "SI_alpha_min": -1,
-  "SI_dropout": False,
-  "SI_exp_kernel": 3,
-  "SI_fixedScale": 1,
-  "SI_gen_fill": 0,
-  "SI_gen_final_activ": "Tanh",
-  "SI_gen_hidden_dim": 10,
-  "SI_gen_mult": 1.9886575078445312,
-  "SI_gen_neck": "narrow",
-  "SI_gen_z_dim": 1494,
-  "SI_half_life_examples": -1,
-  "SI_layer_norm": "none",
-  "SI_learnedScale_init": 5.894328507562502,
-  "SI_moment_1_fraction": -1,
-  "SI_normalize": False,
-  "SI_output_scale_lr_mult": 9.862580591354153,
-  "SI_pad_mode": "replicate",
-  "SI_skip_mode": "none",
-  "SI_stats_criterion": -1,
-  "batch_base2_exponent": 5,
-  "gen_b1": 0.5583313727913738,
-  "gen_b2": 0.3819733954553099,
-  "gen_image_channels": 1,
-  "gen_image_size": 180,
-  "gen_lr": 0.0016547324637469305,
-  "gen_sino_channels_SI": 3,
-  "gen_sino_size": 288,
-  "network_type": "ACT",
-  "sup_base_criterion": "MSELoss",
-  "train_SI": True
-}
-'''
+
+
 
 ###############################
 ### OLDER TUNINGS ARE BELOW ###
