@@ -128,7 +128,7 @@ config_ACT_SI = {
 }
 '''
 
-'''
+
 # (E)(E-V1)(E-V2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
@@ -168,7 +168,7 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-'''
+
 
 #####################################
 ### Run-to-run Variability Series ###
