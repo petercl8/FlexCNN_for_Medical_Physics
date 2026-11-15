@@ -82,7 +82,7 @@ def show_single_unmatched_tensor(image_tensor, grid=False, cmap='inferno', fig_s
     '''
 
     print(f'Shape: {image_tensor.shape} // Min: {torch.min(image_tensor)} // Max: {torch.max(image_tensor)} '
-            f'// Mean: {torch.mean(image_tensor)} // Mean Sum (per image): {torch.sum(image_tensor).item()/(image_tensor.shape[0]*image_tensor.shape[1])} '
+            f'// Mean: {torch.mean(image_tensor)} // Mean Sum (total): {torch.sum(image_tensor).item()} // Mean Sum (per image): {torch.sum(image_tensor).item()/(image_tensor.shape[0]*image_tensor.shape[1])} '
             f'// Sum (a single image): {torch.sum(image_tensor[0,0,:])}')
 
 
@@ -156,7 +156,7 @@ def show_multiple_unmatched_tensors(*image_tensors, cmap='inferno', fig_size=3):
     # Print stats for each tensor
     for tensor in image_tensors:
         print(f'Shape: {tensor.shape} // Min: {torch.min(tensor)} // Max: {torch.max(tensor)} '
-              f'// Mean: {torch.mean(tensor)} // Mean Sum (per image): {torch.sum(tensor).item()/(tensor.shape[0]*tensor.shape[1])} '
+              f'// Mean: {torch.mean(tensor)} // Mean Sum (total): {torch.sum(tensor).item()} // Mean Sum (per image): {torch.sum(tensor).item()/(tensor.shape[0]*tensor.shape[1])} '
               f'// Sum (a single image): {torch.sum(tensor[0,0,:])}')
 
     combined_tensor = torch.cat(image_tensors, dim=0).detach().cpu()
@@ -230,7 +230,7 @@ def show_multiple_matched_tensors(*image_tensors, cmap='inferno', fig_size=1.5, 
         for tensor in image_tensors:
             # Begin by printing statistics for each tensor
             print(f'Shape: {tensor.shape} // Min: {torch.min(tensor)} // Max: {torch.max(tensor)} \
-            // Mean: {torch.mean(tensor)} // Mean Sum (per image): {torch.sum(tensor).item()/(tensor.shape[0]*tensor.shape[1])} // Sum (a single image): {torch.sum(tensor[0,0,:])}')
+            // Mean: {torch.mean(tensor)} // Mean Sum (total): {torch.sum(tensor).item()} // Mean Sum (per image): {torch.sum(tensor).item()/(tensor.shape[0]*tensor.shape[1])} // Sum (a single image): {torch.sum(tensor[0,0,:])}')
 
     combined_tensor = torch.cat(image_tensors, dim=0).detach().cpu()
     combined_tensor = torch.clamp(combined_tensor, min=0)
@@ -316,7 +316,7 @@ def show_multiple_matched_row_tensors(*image_tensors, cmap='inferno', fig_size=1
     if print_shapes:
         for tensor in image_tensors:
             print(f'Shape: {tensor.shape} // Min: {torch.min(tensor)} // Max: {torch.max(tensor)} \
-            // Mean: {torch.mean(tensor)} // Mean Sum (per image): {torch.sum(tensor).item()/(tensor.shape[0]*tensor.shape[1])} // Sum (a single image): {torch.sum(tensor[0,0,:])}')
+            // Mean: {torch.mean(tensor)} // Mean Sum (total): {torch.sum(tensor).item()} // Mean Sum (per image): {torch.sum(tensor).item()/(tensor.shape[0]*tensor.shape[1])} // Sum (a single image): {torch.sum(tensor[0,0,:])}')
 
     combined_tensor = torch.cat(image_tensors, dim=0).detach().cpu()
     combined_tensor = torch.clamp(combined_tensor, min=0)
@@ -415,7 +415,7 @@ def show_multiple_commonmap_tensors(*image_tensors, cmap='inferno', fig_scale=1)
     # Print tensor statistics #
     for tensor in image_tensors:
         print(f'Shape: {tensor.shape} // Min: {torch.min(tensor)} // Max: {torch.max(tensor)} \
-        // Mean: {torch.mean(tensor)} // Mean Sum (per image): {torch.sum(tensor).item()/(tensor.shape[0]*tensor.shape[1])} // Sum (a single image): {torch.sum(tensor[0,0,:])}')
+        // Mean: {torch.mean(tensor)} // Mean Sum (total): {torch.sum(tensor).item()} // Mean Sum (per image): {torch.sum(tensor).item()/(tensor.shape[0]*tensor.shape[1])} // Sum (a single image): {torch.sum(tensor[0,0,:])}')
 
     num_rows = len(image_tensors)
     num_columns = len(image_tensors[0])
