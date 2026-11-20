@@ -127,8 +127,7 @@ config_ACT_SI = {
   "train_SI": True
 }
 '''
-
-
+'''
 # (E)(E-V1)(E-V2) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
 # Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
 # results in 288x257 size which is then padded sinoram-style horizontally to 320
@@ -168,7 +167,7 @@ config_ACT_SI={
   "sup_base_criterion": "MSELoss",
   "train_SI": True
 }
-
+'''
 
 #####################################
 ### Run-to-run Variability Series ###
@@ -337,6 +336,49 @@ config_ACT_SI={
   "train_SI": True
 }
 '''
+
+# (E-R6-noInt) 320x320 Network. Data: 288x257, SINOGRAM padded to 320x320, tuned SSIM
+# Crop sinograms vertically to 288, then bilinearly resize horizontally to size 257.
+# results in 288x257 size which is then padded sinoram-style horizontally to 320
+# Fixed the floor integer bug in the augmentation
+# Run 6
+
+config_ACT_SI={
+  "SI_alpha_min": -1,
+  "SI_dropout": "false",
+  "SI_exp_kernel": 3,
+  "SI_fixedScale": 1,
+  "SI_gen_fill": 0,
+  "SI_gen_final_activ": "LeakyReLU",
+  "SI_gen_hidden_dim": 27,
+  "SI_gen_mult": 3.0403405491644153,
+  "SI_gen_neck": "medium",
+  "SI_gen_z_dim": 1233,
+  "SI_half_life_examples": -1,
+  "SI_layer_norm": "none",
+  "SI_learnedScale_init": 18.327072315670854,
+  "SI_moment_1_fraction": -1,
+  "SI_normalize": "false",
+  "SI_output_scale_lr_mult": 5.056806378240874,
+  "SI_pad_mode": "zeros",
+  "SI_skip_mode": "none",
+  "SI_stats_criterion": -1,
+  "batch_base2_exponent": 5,
+  "frozen_variant": "RECON_SINO",
+  "gen_b1": 0.4853624415003338,
+  "gen_b2": 0.775919800955216,
+  "gen_image_channels": 1,
+  "gen_image_size": 180,
+  "gen_lr": 0.00010778327307522524,
+  "gen_sino_channels_IS": 1,
+  "gen_sino_channels_SI": 3,
+  "gen_sino_size": 320,
+  "network_type": "ACT",
+  "recon_variant": 2,
+  "sup_base_criterion": "MSELoss",
+  "train_SI": True
+}
+
 
 #######################
 ## Hypotheses Series ##

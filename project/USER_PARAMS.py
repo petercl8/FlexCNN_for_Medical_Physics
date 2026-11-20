@@ -29,7 +29,7 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 
 network_type='ACT'
 #network_type='DENOISE'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
@@ -47,7 +47,7 @@ gen_sino_channels_SI=3    # Number of sinogram channels for sinogram->image runs
 gen_sino_channels_IS=1    # Number of sinogram channels for image->sinogram runs (Should be 1 if image channels are 1).
 gen_image_channels=1      # Number of image channels for network currently being trained (generally 1)
 
-gen_sino_size=320         # Options: 180, 256, 288, 320. Sinogram inputs sizes (or image size if denoising). Sinograms are square, which was found to give the best results.
+gen_sino_size=320         # Options: 180, 256, 288, 320. Sinogram inputs sizes after resizing/padding (or image size if denoising). Sinograms are square, which was found to give the best results.
 gen_image_size=180        # Image size (Options: 180). Images are square.
 
 ## Data Loading ##
@@ -128,12 +128,12 @@ plot_dirName=  'plots'             # Plots Directory, placed in project director
 ############
 # Note: When tuning, ALWAYS select "restart session and run all" from Runtime menu in Google Colab, or there may be bugs.
 
-tune_csv_file='frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5' # .csv file to save tuning dataframe to
+tune_csv_file='frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run6-noInt' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs' # .csv file to save tuning dataframe to
 #tune_csv_file='frame-RECON_SINO_IS-320net-bilinear_288x257-obliqueRecon-padSino-tunedSSIM' # .csv file to save tuning dataframe to
 #tune_csv_file=                     'frame-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM'
 
-tune_exp_name='search-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
+tune_exp_name='search-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run6-noInt'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name='search-DENOISE-320-180x180-padZeros-tunedSSIM'
 #tune_exp_name='search-RECON_SINO_IS-320-bilinear-288x257-obliqueRecon-padSino-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
 #tune_exp_name=                    'search-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM'  # Experiment directory: Ray tune (and Tensorboard) write to this directory, relative to tune_storage_dirName.
@@ -151,7 +151,7 @@ tune_even_reporting=True     # Set to True to ensure we report to Raytune at an 
 tune_batches_per_report=15   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
 
 tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
-tune_max_t = 36              # Maximum number of reports before terminating a trial (48 is good)
+tune_max_t = 36              # Maximum number of reports before terminating a trial (36 is good)
 
 tune_grace_period=4          # Minimum number of reports before terminating a trial
 tune_eval_batch_size=64      # If tuning on validation or QA set, what is the batch size to evaluate?
@@ -235,12 +235,12 @@ qa_coldBackgroundMask_file='QA-NEMA-backMask_37mm.npy'
 # NOTE: For dual network training, checkpoints are automatically appended suffixes of -frozen and -act.
 #####
 
-train_checkpoint_file='checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5-0p3lr-800epochs'  # Checkpoint file to load or save to.
+train_checkpoint_file='checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run6-noInt-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-DENOISE-320net-noResize_180x180-padZeros-tunedSSIM-0p3lr-800epochs'  # Checkpoint file to load or save to.
 #train_checkpoint_file='checkpoint-COUNTERFLOW_RECON-320net-bilinear_288x257-padSino-obliqueRecon-tunedSSIM-0p3lr-drop0_0'  # Checkpoint file to load or save to.
 #train_checkpoint_file='temp'
 
-train_csv_file =           'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5-0p3lr-800epochs' # CSV filename for training learning curves (without .csv extension; will be appended).
+train_csv_file =           'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run6-noInt-0p3lr-800epochs' # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-ACT-288net-pool_288x257-padZeros-tunedSSIM-1p0lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-RECON_SINO-320-bilinear-288x257-padSino--obliqueRecon-tunedSSIM-0p3lr-400epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
 #train_csv_file='frame-DENOISE-320-noResize-180x180-padZeros-tunedSSIM-0p3lr-800epochs'   # CSV filename for training learning curves (without .csv extension; will be appended).
@@ -254,7 +254,7 @@ train_epochs = 800        # Number of training epochs.
 train_display_step=50     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
 train_show_times=False    # Show calculation times during training?
-train_eval_batch_size=256            # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
+train_eval_batch_size=256   # Batch size for evaluating learning curves each epoch. Smaller batch size = faster evaluation.
 train_dataframe_dirName='dataframes-train'  # Directory for training learning-curve dataframes (e.g., epoch vs MSE/SSIM/CUSTOM). Code will create if it doesn't exist.
 train_shuffle=True # Shuffle examples during training?
 

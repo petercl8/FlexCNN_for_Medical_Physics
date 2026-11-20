@@ -34,7 +34,8 @@ def AugmentSinoImageDataRecons(sinogram_multChannel, image_multChannel, atten_si
         if test_image is not None and test_sino is not None and IntersectSquareBorder(test_image) == False:
             bins = test_sino.shape[2]
             bins_shifted = np.random.randint(0, bins)
-            angle = int(bins_shifted * 180/bins)
+            #angle = int(bins_shifted * 180/bins)
+            angle = bins_shifted * 180/bins
 
             # Use average top-edge value for attenuation fill to preserve air baseline.
             atten_fill = 0
