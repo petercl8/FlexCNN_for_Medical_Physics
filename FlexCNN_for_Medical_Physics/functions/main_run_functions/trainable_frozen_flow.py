@@ -104,6 +104,7 @@ def run_trainable_frozen_flow(config, paths, settings):
     num_epochs = settings['num_epochs']
     load_state = settings['load_state']
     save_state = settings['save_state']
+    save_metric = settings.get('train_save_on') # Only set if in dict (train mode)
     show_times = settings['show_times']
 
     # Tuning-specific settings
@@ -312,6 +313,26 @@ def run_trainable_frozen_flow(config, paths, settings):
     
     # Track best holdout performance for conditional saving (train mode only)
     best_holdout_metrics = {}
+    if run_mode == 'train' and save_metric != 'always':
+        default_best = -float('inf') if save_metric == 'SSIM' else float('inf')
+        best_holdout_metrics[save_metric] = default_best
+        historical_best_found = False
+
+        if load_state and not train_dataframe.empty:
+            historical_holdout = train_dataframe.loc[
+                train_dataframe['eval_split'] == 'holdout set',
+                save_metric
+            ]
+            historical_holdout = pd.to_numeric(historical_holdout, errors='coerce').dropna()
+            if not historical_holdout.empty:
+                if save_metric == 'SSIM':
+                    best_holdout_metrics[save_metric] = historical_holdout.max()
+                else:
+                    best_holdout_metrics[save_metric] = historical_holdout.min()
+                historical_best_found = True
+
+        if load_state:
+            print(f'[CHECKPOINT RESUME] Historical holdout best found: {historical_best_found}')
 
     # ========================================================================================
     # SECTION 9: EPOCH LOOP
@@ -592,24 +613,24 @@ def run_trainable_frozen_flow(config, paths, settings):
             # ===== CONDITIONAL SAVE BASED ON HOLDOUT PERFORMANCE (independent of QA) =====
             if save_state and holdout_metrics is not None:
                 should_save = False
-                if settings['train_save_on'] == 'always':
+                if save_metric == 'always':
                     should_save = True
                 else:
                     # Get the metric specified by train_save_on ('SSIM', 'MSE', or 'CUSTOM')
-                    metric_value = holdout_metrics[settings['train_save_on']]
+                    metric_value = holdout_metrics[save_metric]
                     
-                    if settings['train_save_on'] == 'SSIM':
+                    if save_metric == 'SSIM':
                         # Maximize: save if new value is higher
-                        should_save = metric_value > best_holdout_metrics.get(settings['train_save_on'], -float('inf'))
-                    elif settings['train_save_on'] in ['MSE', 'CUSTOM']:
+                        should_save = metric_value > best_holdout_metrics[save_metric]
+                    elif save_metric in ['MSE', 'CUSTOM']:
                         # Minimize: save if new value is lower
-                        should_save = metric_value < best_holdout_metrics.get(settings['train_save_on'], float('inf'))
+                        should_save = metric_value < best_holdout_metrics[save_metric]
                 
                 if should_save:
-                    best_holdout_metrics[settings['train_save_on']] = metric_value
+                    best_holdout_metrics[save_metric] = metric_value
                     save_lr = gen_act_opt.param_groups[0]['lr']
                     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                    print(f'💾 Saving model! New best {settings["train_save_on"]}: {metric_value:.6f}')
+                    print(f'💾 Saving model! New best {save_metric}: {metric_value:.6f}')
                     print(f'[LR] Save-time LR: {save_lr:.6e}')
                     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                     checkpoint_dict = build_checkpoint_dict(gen_act, gen_act_opt, config, epoch+1, batch_step, scheduler=lr_scheduler)

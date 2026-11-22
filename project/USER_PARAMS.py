@@ -29,7 +29,7 @@ v2-8 TPU - 1.82/hr
 #####################
 ## Basic Options ##
 
-run_mode='train'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
+run_mode='test'  # Options: 'tune' , 'train' , 'test' , 'visualize' , 'none' ('none' builds dictionaries like you are visualizing but does not visualize)
 
 network_type='ACT'
 #network_type='DENOISE'    # 'ACT', 'ATTEN', 'DENOISE', 'RECON_SINO', 'CONCAT', 'FROZEN_COFLOW', 'FROZEN_COUNTERFLOW' (Unmaintained: 'GAN', 'CYCLEGAN', 'SIMULT')
@@ -150,7 +150,7 @@ tune_metric = 'SSIM'         # Tune for which optimization metric? For val set: 
 tune_even_reporting=True     # Set to True to ensure we report to Raytune at an even number of training examples, regardless of batch size.
 tune_batches_per_report=15   # If tune_even_reporting = False, this is the number of batches per report (15 works pretty well).
 
-tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (4*512 = 1048 is a good number)
+tune_examples_per_report=4*256 # If tune_even_reporting = True, this is the number of training examples per Raytune report (2*512 = 1024 is a good number)
 tune_max_t = 36              # Maximum number of reports before terminating a trial (36 is good)
 
 tune_grace_period=4          # Minimum number of reports before terminating a trial
@@ -249,7 +249,7 @@ train_csv_file =           'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-
 train_augment=('SI', True)     # 'SI' (sinogram-->image or image--sinogram), "II" (image-->image) or None; True/False = augument by flipping along channels dimension?
 train_load_state=False  # Set to True to load pretrained weights. Use if training terminated early.
 train_save_state=True  # Save network weights to train_checkpoint_file file as it trains
-train_save_on='SSIM'  # Options: 'always', 'SSIM', 'MSE', 'CUSTOM'. Save model based on holdout set performance, or always.
+train_save_on='SSIM'  # Options: 'SSIM', 'MSE', 'CUSTOM', 'always', . Save model based on holdout set performance according to an SSIM, or always (on every epoch).
 train_epochs = 800        # Number of training epochs.
 train_display_step=50     # Number of steps/visualization. Good values: for supervised learning or GAN, set to: 50, For cycle-consistent, set to 20
 train_sample_division=1    # To evenly sample the training set by a given factor, set this to an integer greater than 1 (ex: to sample every other example, set to 2)
@@ -310,10 +310,10 @@ train_val_atten_image_file=None   # Validation/monitoring attenuation image (opt
 # Testing #
 ###########
 
-test_csv_file =             'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5-0p3lr-800epochs-testSet' # csv dataframe file to save testing results to
+test_csv_file =             'frame-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run6-noInt-0p3lr-800epochs-testSet' # csv dataframe file to save testing results to
 #test_csv_file = 'frame-COUNTERFLOW_RECON-320net-pool_288x257-padSino-obliqueRecon-tunedSSIM-1p0lr-800epochs-valSet' # csv dataframe file to save testing results to
 
-test_checkpoint_file = 'checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run5-0p3lr-800epochs'  # Checkpoint to load model for testing
+test_checkpoint_file = 'checkpoint-ACT-320net-bilinear_288x257-padSino-tunedSSIM-run6-noInt-0p3lr-800epochs'  # Checkpoint to load model for testing
 #test_checkpoint_file ='checkpoint-COUNTERFLOW_RECON-320net-pool_288x257-padSino-obliqueRecon-tunedSSIM-1p0lr-800epochs' # Checkpoint to load model for testing
 
 test_dataframe_dirName= 'dataframes-test'  # Directory for test metric dataframes
